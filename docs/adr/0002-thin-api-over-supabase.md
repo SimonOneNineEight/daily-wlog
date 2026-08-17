@@ -1,0 +1,3 @@
+# Thin custom API in front of Supabase
+
+The mobile app never talks to Supabase directly: all traffic goes through a thin TypeScript API (our code), which uses Supabase for Postgres, auth verification, and photo storage. Supabase's client-direct model with row-level security was rejected because business rules (storage quotas, category auto-creation, reminder logic, AI jobs) need one home that isn't spread across RLS policies and client code; a fully custom backend was rejected because auth, session security, and file storage are dangerous to hand-roll and are not this product's differentiator. The layer also means any underlying piece (photo storage economics at scale, background AI/PDF workers) can be swapped later without touching shipped clients.
