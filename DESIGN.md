@@ -39,6 +39,7 @@ A mobile-first personal life journal. Aesthetic family: **Apple Calendar's airin
 5. **Category management**: two-level list (categories with their subcategories), colored icon editing (preset + custom), rename; delete only offered when unused (in-use categories rename instead — entries follow).
 6. **Category create/edit sheet**: one sheet serving both create and edit — name, optional parent category (making it a subcategory), icon picker, color (10 presets + custom picker). Reached only from category management; inline creation in the entry form never opens it (auto-assigns icon and color instead, editable here later).
 7. **Sign-in**: wordmark, one line of promise, Sign in with Apple + Google buttons per their official styling rules (never restyled), on calm neutral ground. The only brand-moment screen; restraint is the design.
+8. **Custom color drawer**: opened from the category sheet's 自訂顏色 option (Apple Journal-like). Hue and lightness/saturation controls, the 10 presets as a reference row, and a live preview rendering the chosen color as an actual dot on a mini month grid beside the user's existing category colors — so distinguishability is seen, not policed.
 
 Settings and other long-tail screens (dialogs, errors, empty states, account deletion) are derived from the system during implementation, not designed in the session; any derived moment that feels wrong gets taken back into a design session individually.
 
