@@ -8,6 +8,9 @@ type Config struct {
 	Addr string
 	// DatabaseURL is the Postgres connection string. Required.
 	DatabaseURL string
+	// SupabaseJWKSURL is where Supabase Auth publishes its signing keys.
+	// Required: token verification fails closed without it.
+	SupabaseJWKSURL string
 	// SentryDSN enables Sentry error reporting when non-empty.
 	SentryDSN string
 }
@@ -18,13 +21,18 @@ func Load(getenv func(string) string) (Config, error) {
 	if databaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
 	}
+	jwksURL := getenv("SUPABASE_JWKS_URL")
+	if jwksURL == "" {
+		return Config{}, errors.New("SUPABASE_JWKS_URL is required")
+	}
 	port := getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	return Config{
-		Addr:        ":" + port,
-		DatabaseURL: databaseURL,
-		SentryDSN:   getenv("SENTRY_DSN"),
+		Addr:            ":" + port,
+		DatabaseURL:     databaseURL,
+		SupabaseJWKSURL: jwksURL,
+		SentryDSN:       getenv("SENTRY_DSN"),
 	}, nil
 }

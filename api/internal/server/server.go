@@ -15,13 +15,14 @@ import (
 
 	"github.com/SimonOneNineEight/daily-wlog/api/gen/apigen"
 	"github.com/SimonOneNineEight/daily-wlog/api/gen/dbgen"
+	"github.com/SimonOneNineEight/daily-wlog/api/internal/auth"
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/logging"
 )
 
 // handlers implements apigen.StrictServerInterface.
 type handlers struct {
 	logger  *slog.Logger
-	queries *dbgen.Queries
+	queries dbgen.Querier
 }
 
 func (h handlers) GetHealth(ctx context.Context, _ apigen.GetHealthRequestObject) (apigen.GetHealthResponseObject, error) {
@@ -37,8 +38,50 @@ func (h handlers) GetHealth(ctx context.Context, _ apigen.GetHealthRequestObject
 	return apigen.GetHealth200JSONResponse{Status: "ok", SchemaVersion: int(version)}, nil
 }
 
+func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestObject) (apigen.ProvisionMeResponseObject, error) {
+	userID := auth.UserID(ctx)
+	if err := h.queries.ProvisionUser(ctx, userID); err != nil {
+		return h.provisionFailed(ctx, err)
+	}
+	journalID, err := h.queries.GetJournal(ctx, userID)
+	if err != nil {
+		return h.provisionFailed(ctx, err)
+	}
+	rows, err := h.queries.ListCategories(ctx, userID)
+	if err != nil {
+		return h.provisionFailed(ctx, err)
+	}
+	categories := make([]apigen.Category, len(rows))
+	for i, row := range rows {
+		categories[i] = apigen.Category{
+			Id:       row.ID,
+			Name:     row.Name,
+			Color:    row.Color,
+			Icon:     row.Icon,
+			ParentId: row.ParentID,
+			Position: int(row.Position),
+		}
+	}
+	return apigen.ProvisionMe200JSONResponse{UserId: userID, JournalId: journalID, Categories: categories}, nil
+}
+
+func (h handlers) provisionFailed(ctx context.Context, err error) (apigen.ProvisionMeResponseObject, error) {
+	h.logger.LogAttrs(ctx, slog.LevelError, "provisioning failed", slog.String("error", err.Error()))
+	if hub := sentry.GetHubFromContext(ctx); hub != nil {
+		hub.CaptureException(err)
+	}
+	return apigen.ProvisionMe500JSONResponse{Message: "provisioning failed"}, nil
+}
+
 // New builds the API handler on top of a database pool.
-func New(logger *slog.Logger, pool *pgxpool.Pool) http.Handler {
+func New(logger *slog.Logger, pool *pgxpool.Pool, verifier *auth.Verifier) http.Handler {
+	return NewWithQuerier(logger, dbgen.New(pool), verifier)
+}
+
+// NewWithQuerier exists so tests can inject a fault-injecting Querier for
+// database error paths unreachable through the real database; behavior tests
+// use New against local Supabase.
+func NewWithQuerier(logger *slog.Logger, queries dbgen.Querier, verifier *auth.Verifier) http.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(logging.AccessLog(logger))
@@ -46,6 +89,7 @@ func New(logger *slog.Logger, pool *pgxpool.Pool) http.Handler {
 	// the panic and repanics so Recoverer still sees it.
 	router.Use(middleware.Recoverer)
 	router.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
-	h := handlers{logger: logger, queries: dbgen.New(pool)}
+	router.Use(auth.Middleware(verifier, map[string]bool{"/healthz": true}))
+	h := handlers{logger: logger, queries: queries}
 	return apigen.HandlerFromMux(apigen.NewStrictHandler(h, nil), router)
 }

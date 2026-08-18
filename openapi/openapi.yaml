@@ -24,8 +24,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /me:
+    post:
+      operationId: provisionMe
+      summary: Provision and return the signed-in User's world
+      description: >
+        Idempotent. On first sign-in it atomically creates the User, their
+        Journal, and the five seeded categories; on every later call it
+        returns the same world unchanged.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The signed-in User's provisioned world.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Provisioning failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth access token, verified against the project JWKS.
   schemas:
+    Me:
+      type: object
+      required:
+        - userId
+        - journalId
+        - categories
+      properties:
+        userId:
+          type: string
+        journalId:
+          type: string
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+    Category:
+      type: object
+      required:
+        - id
+        - name
+        - color
+        - icon
+        - position
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+          description: Hex color; presets map to the category palette.
+        icon:
+          type: string
+        parentId:
+          type: string
+        position:
+          type: integer
     Health:
       type: object
       required:

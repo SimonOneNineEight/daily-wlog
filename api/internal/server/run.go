@@ -11,6 +11,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/SimonOneNineEight/daily-wlog/api/internal/auth"
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/config"
 )
 
@@ -28,7 +29,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	srv := &http.Server{Addr: cfg.Addr, Handler: New(logger, pool)}
+	srv := &http.Server{Addr: cfg.Addr, Handler: New(logger, pool, auth.NewVerifier(cfg.SupabaseJWKSURL))}
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

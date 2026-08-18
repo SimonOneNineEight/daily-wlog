@@ -21,10 +21,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Provision and return the signed-in User's world
+         * @description Idempotent. On first sign-in it atomically creates the User, their Journal, and the five seeded categories; on every later call it returns the same world unchanged.
+         */
+        post: operations["provisionMe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Me: {
+            userId: string;
+            journalId: string;
+            categories: components["schemas"]["Category"][];
+        };
+        Category: {
+            id: string;
+            name: string;
+            /** @description Hex color; presets map to the category palette. */
+            color: string;
+            icon: string;
+            parentId?: string;
+            position: number;
+        };
         Health: {
             /** @enum {string} */
             status: "ok";
@@ -63,6 +97,44 @@ export interface operations {
             };
             /** @description The database is unreachable. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    provisionMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signed-in User's provisioned world. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Provisioning failed. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -28,6 +28,17 @@ func (e HealthStatus) Valid() bool {
 	}
 }
 
+// Category defines model for Category.
+type Category struct {
+	// Color Hex color; presets map to the category palette.
+	Color    string  `json:"color"`
+	Icon     string  `json:"icon"`
+	Id       string  `json:"id"`
+	Name     string  `json:"name"`
+	ParentId *string `json:"parentId,omitempty"`
+	Position int     `json:"position"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Message string `json:"message"`
@@ -43,11 +54,21 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// Me defines model for Me.
+type Me struct {
+	Categories []Category `json:"categories"`
+	JournalId  string     `json:"journalId"`
+	UserId     string     `json:"userId"`
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// ProvisionMe Provision and return the signed-in User's world
+	// (POST /me)
+	ProvisionMe(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -57,6 +78,12 @@ type Unimplemented struct{}
 // GetHealth Liveness and database health
 // (GET /healthz)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ProvisionMe Provision and return the signed-in User's world
+// (POST /me)
+func (_ Unimplemented) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -74,6 +101,20 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ProvisionMe operation middleware
+func (siw *ServerInterfaceWrapper) ProvisionMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ProvisionMe(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -199,6 +240,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.GetHealth)
 	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me", wrapper.ProvisionMe)
+	})
 
 	return r
 }
@@ -238,11 +282,63 @@ func (response GetHealth503JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	return err
 }
 
+type ProvisionMeRequestObject struct {
+}
+
+type ProvisionMeResponseObject interface {
+	VisitProvisionMeResponse(w http.ResponseWriter) error
+}
+
+type ProvisionMe200JSONResponse Me
+
+func (response ProvisionMe200JSONResponse) VisitProvisionMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProvisionMe401JSONResponse Error
+
+func (response ProvisionMe401JSONResponse) VisitProvisionMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProvisionMe500JSONResponse Error
+
+func (response ProvisionMe500JSONResponse) VisitProvisionMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
+	// ProvisionMe Provision and return the signed-in User's world
+	// (POST /me)
+	ProvisionMe(ctx context.Context, request ProvisionMeRequestObject) (ProvisionMeResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -301,6 +397,30 @@ func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
 		if err := validResponse.VisitGetHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ProvisionMe operation middleware
+func (sh *strictHandler) ProvisionMe(w http.ResponseWriter, r *http.Request) {
+	var request ProvisionMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ProvisionMe(ctx, request.(ProvisionMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ProvisionMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ProvisionMeResponseObject); ok {
+		if err := validResponse.VisitProvisionMeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

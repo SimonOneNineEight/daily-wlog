@@ -4,7 +4,33 @@
 
 package dbgen
 
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
 type AppInfo struct {
 	OnlyRow       bool
 	SchemaVersion int32
+}
+
+type Category struct {
+	ID        string
+	UserID    string
+	ParentID  *string
+	Name      string
+	Color     string
+	Icon      string
+	Position  int32
+	CreatedAt pgtype.Timestamptz
+}
+
+type Journal struct {
+	ID        string
+	OwnerID   string
+	CreatedAt pgtype.Timestamptz
+}
+
+type User struct {
+	ID        string
+	CreatedAt pgtype.Timestamptz
 }

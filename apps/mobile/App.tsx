@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/react-native';
 import { StatusBar } from 'expo-status-bar';
 
-import { HealthScreen } from './src/screens/HealthScreen';
+import { AppRoot } from './src/AppRoot';
 import { SpecimenScreen } from './src/screens/SpecimenScreen';
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -18,7 +18,7 @@ const showSpecimen = process.env.EXPO_PUBLIC_SCREEN === 'specimen';
 export default Sentry.wrap(function App() {
   return (
     <>
-      {showSpecimen ? <SpecimenScreen /> : <HealthScreen />}
+      {showSpecimen ? <SpecimenScreen /> : <AppRoot />}
       {/* Light-only MVP on a light background: status bar content is dark. */}
       <StatusBar style="dark" />
     </>

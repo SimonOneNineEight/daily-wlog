@@ -2,6 +2,10 @@
 # Run the API tests and enforce 100% statement coverage over internal
 # packages. cmd/api/main.go is excluded: it is a logic-free shim (see its
 # package comment); all behavior lives in internal/ where this gate sees it.
+#
+# If this reports phantom uncovered lines right after editing covered files
+# (duplicate shifted blocks in cover.out), it is a Go build-cache artifact:
+# run `go clean -cache -testcache` and rerun. CI builds cold and never hits it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

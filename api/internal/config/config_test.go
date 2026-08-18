@@ -12,9 +12,10 @@ func env(vars map[string]string) func(string) string {
 
 func TestLoadReadsEnvironment(t *testing.T) {
 	cfg, err := config.Load(env(map[string]string{
-		"DATABASE_URL": "postgresql://db/example",
-		"PORT":         "9090",
-		"SENTRY_DSN":   "https://key@sentry.example/1",
+		"DATABASE_URL":      "postgresql://db/example",
+		"PORT":              "9090",
+		"SUPABASE_JWKS_URL": "https://auth.example/jwks.json",
+		"SENTRY_DSN":        "https://key@sentry.example/1",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -25,13 +26,19 @@ func TestLoadReadsEnvironment(t *testing.T) {
 	if cfg.DatabaseURL != "postgresql://db/example" {
 		t.Errorf("DatabaseURL = %q, want the env value", cfg.DatabaseURL)
 	}
+	if cfg.SupabaseJWKSURL != "https://auth.example/jwks.json" {
+		t.Errorf("SupabaseJWKSURL = %q, want the env value", cfg.SupabaseJWKSURL)
+	}
 	if cfg.SentryDSN != "https://key@sentry.example/1" {
 		t.Errorf("SentryDSN = %q, want the env value", cfg.SentryDSN)
 	}
 }
 
 func TestLoadDefaultsPortTo8080(t *testing.T) {
-	cfg, err := config.Load(env(map[string]string{"DATABASE_URL": "postgresql://db/example"}))
+	cfg, err := config.Load(env(map[string]string{
+		"DATABASE_URL":      "postgresql://db/example",
+		"SUPABASE_JWKS_URL": "https://auth.example/jwks.json",
+	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -41,7 +48,13 @@ func TestLoadDefaultsPortTo8080(t *testing.T) {
 }
 
 func TestLoadRequiresDatabaseURL(t *testing.T) {
-	if _, err := config.Load(env(nil)); err == nil {
+	if _, err := config.Load(env(map[string]string{"SUPABASE_JWKS_URL": "https://auth.example/jwks.json"})); err == nil {
 		t.Fatal("Load succeeded without DATABASE_URL, want an error")
+	}
+}
+
+func TestLoadRequiresJWKSURL(t *testing.T) {
+	if _, err := config.Load(env(map[string]string{"DATABASE_URL": "postgresql://db/example"})); err == nil {
+		t.Fatal("Load succeeded without SUPABASE_JWKS_URL, want an error")
 	}
 }

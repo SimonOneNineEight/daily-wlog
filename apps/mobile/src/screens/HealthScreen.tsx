@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { apiUrl } from '../api/client';
 import type { components } from '../api/types.gen';
 import { strings } from '../i18n/strings';
 import { createStyles } from '../theme';
 
 type Health = components['schemas']['Health'];
-
-const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 export function HealthScreen() {
   const [health, setHealth] = useState<Health | null>(null);

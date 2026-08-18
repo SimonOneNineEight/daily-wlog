@@ -4,6 +4,15 @@
 // language. English later is a second catalog typed as StringCatalog, so the
 // compiler enforces its completeness.
 const zhTW = {
+  signIn: {
+    wordmark: 'daily-wlog',
+    promise: '每天五分鐘，留下你的生活',
+    google: '使用 Google 帳戶登入',
+    error: '登入失敗，請再試一次',
+  },
+  home: {
+    signOut: '登出',
+  },
   health: {
     loading: '連線中…',
     ok: '系統狀態:正常',

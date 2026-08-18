@@ -28,7 +28,7 @@ func TestRunServesHealthzUntilContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- server.Run(ctx, config.Config{Addr: addr, DatabaseURL: testDatabaseURL()}, discardLogger())
+		done <- server.Run(ctx, config.Config{Addr: addr, DatabaseURL: testDatabaseURL(), SupabaseJWKSURL: testJWKSURL()}, discardLogger())
 	}()
 
 	deadline := time.Now().Add(5 * time.Second)
@@ -58,14 +58,14 @@ func TestRunServesHealthzUntilContextCancelled(t *testing.T) {
 }
 
 func TestRunFailsOnUnparsableDatabaseURL(t *testing.T) {
-	err := server.Run(context.Background(), config.Config{Addr: freeAddr(t), DatabaseURL: "://not-a-url"}, discardLogger())
+	err := server.Run(context.Background(), config.Config{Addr: freeAddr(t), DatabaseURL: "://not-a-url", SupabaseJWKSURL: testJWKSURL()}, discardLogger())
 	if err == nil {
 		t.Fatal("Run succeeded with an unparsable DATABASE_URL, want an error")
 	}
 }
 
 func TestRunFailsOnInvalidSentryDSN(t *testing.T) {
-	err := server.Run(context.Background(), config.Config{Addr: freeAddr(t), DatabaseURL: testDatabaseURL(), SentryDSN: "not-a-dsn"}, discardLogger())
+	err := server.Run(context.Background(), config.Config{Addr: freeAddr(t), DatabaseURL: testDatabaseURL(), SupabaseJWKSURL: testJWKSURL(), SentryDSN: "not-a-dsn"}, discardLogger())
 	if err == nil {
 		t.Fatal("Run succeeded with an invalid SENTRY_DSN, want an error")
 	}
@@ -78,7 +78,7 @@ func TestRunFailsWhenAddrIsTaken(t *testing.T) {
 	}
 	defer l.Close()
 
-	err = server.Run(context.Background(), config.Config{Addr: l.Addr().String(), DatabaseURL: testDatabaseURL()}, discardLogger())
+	err = server.Run(context.Background(), config.Config{Addr: l.Addr().String(), DatabaseURL: testDatabaseURL(), SupabaseJWKSURL: testJWKSURL()}, discardLogger())
 	if err == nil {
 		t.Fatal("Run succeeded on an occupied address, want an error")
 	}
