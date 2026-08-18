@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: daily-wlog API
+  description: >
+    Contract source of truth for the daily-wlog API. Go server stubs
+    (oapi-codegen) and the app's TypeScript client types (openapi-typescript)
+    are both generated from this file; regenerate whenever it changes.
+  version: 0.1.0
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: Liveness and database health
+      responses:
+        "200":
+          description: API and database are healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: The database is unreachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Health:
+      type: object
+      required:
+        - status
+        - schemaVersion
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+        schemaVersion:
+          type: integer
+          description: Version read from the app_info migration baseline.
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string

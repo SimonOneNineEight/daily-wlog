@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Contract types are up to date
+        run: |
+          pnpm run generate:api-types
+          git diff --exit-code apps/mobile/src/api/types.gen.ts
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  api:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:55322/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+      - uses: supabase/setup-cli@v1
+      - name: Start local Supabase database (applies migrations)
+        run: supabase db start
+      - name: Generated code is up to date
+        working-directory: api
+        run: |
+          go generate ./...
+          git diff --exit-code
+      - name: Vet
+        working-directory: api
+        run: go vet ./...
+      - name: Test with 100% coverage gate
+        run: api/scripts/coverage.sh
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -t daily-wlog-api api

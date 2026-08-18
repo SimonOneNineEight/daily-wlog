@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "queries"
+    schema: "../supabase/migrations"
+    gen:
+      go:
+        package: "dbgen"
+        out: "gen/dbgen"
+        sql_package: "pgx/v5"
