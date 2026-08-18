@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import type { components } from '../api/types.gen';
 import { strings } from '../i18n/strings';
+import { createStyles } from '../theme';
 
 type Health = components['schemas']['Health'];
 
@@ -35,26 +36,33 @@ export function HealthScreen() {
   return (
     <View style={styles.container}>
       {unreachable ? (
-        <Text>{strings.health.unreachable}</Text>
+        <Text style={styles.status}>{strings.health.unreachable}</Text>
       ) : health ? (
         <>
-          <Text>{strings.health.ok}</Text>
-          <Text>{strings.health.schemaVersion(health.schemaVersion)}</Text>
+          <Text style={styles.status}>{strings.health.ok}</Text>
+          <Text style={styles.meta}>{strings.health.schemaVersion(health.schemaVersion)}</Text>
         </>
       ) : (
-        <Text>{strings.health.loading}</Text>
+        <Text style={styles.meta}>{strings.health.loading}</Text>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles((t) => ({
   container: {
     flex: 1,
-    // TODO(#3): replace with semantic color tokens once the theme foundation
-    // lands; the spec bans hardcoded colors from the first real component.
-    backgroundColor: '#fff',
+    backgroundColor: t.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: t.spacing.space2,
   },
-});
+  status: {
+    ...t.typography.entryTitle,
+    color: t.colors.textPrimary,
+  },
+  meta: {
+    ...t.typography.meta,
+    color: t.colors.textSecondary,
+  },
+}));

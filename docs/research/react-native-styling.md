@@ -270,6 +270,13 @@ project with the default template"
 2. Constrain component style APIs to theme keys; enforce the escape hatches with
    `react-native/no-color-literals`, `react-native/no-inline-styles`, and
    `i18next/no-literal-string`.
+   > **Amendment (2026-08-18, implementation of ticket #3):** `no-inline-styles`
+   > ships disabled. Data-driven token styles (category dot colors via
+   > `[styles.dot, { backgroundColor: category.base }]`) are idiomatic for this
+   > app and the rule cannot distinguish them from literals; the color
+   > discipline is carried by the `TokenColor` brand plus `no-color-literals`,
+   > which still flags literals inside inline styles. Revisit if inline-object
+   > misuse actually shows up in review.
 3. When dark mode arrives, add a `dark` theme object with the same type — completeness is then
    compiler-verified.
 4. If theming infrastructure needs ever outgrow this (runtime switching without re-renders,

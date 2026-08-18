@@ -4,7 +4,9 @@
   "scripts": {
     "generate:api-types": "openapi-typescript openapi/openapi.yaml -o apps/mobile/src/api/types.gen.ts",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "generate:theme": "pnpm --filter mobile generate:theme",
+    "lint": "pnpm -r lint"
   },
   "devDependencies": {
     "openapi-typescript": "^7.9.1"

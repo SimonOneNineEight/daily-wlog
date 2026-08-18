@@ -20,7 +20,12 @@ jobs:
         run: |
           pnpm run generate:api-types
           git diff --exit-code apps/mobile/src/api/types.gen.ts
+      - name: Theme is up to date with design tokens
+        run: |
+          pnpm run generate:theme
+          git diff --exit-code apps/mobile/src/theme/theme.gen.ts
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
 
   api:

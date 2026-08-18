@@ -13,6 +13,10 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "^57.0.1",
+    "eslint-plugin-i18next": "^6.1.5",
+    "eslint-plugin-react-native": "^5.0.0",
     "jest": "^29.7.0",
     "jest-expo": "~57.0.0",
     "typescript": "~6.0.3"
@@ -23,7 +27,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint .",
+    "generate:theme": "node scripts/generate-theme.mjs"
   },
   "jest": {
     "preset": "jest-expo",

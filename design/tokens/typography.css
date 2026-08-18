@@ -62,4 +62,7 @@
   --type-weekday: var(--weight-semibold) var(--size-caption-1) / var(--leading-caption-1) var(--font-text);
   --type-day-numeral: var(--weight-regular) var(--size-day-numeral) / 18px var(--font-numeric);
   --type-day-numeral-strong: var(--weight-semibold) var(--size-day-numeral) / 18px var(--font-numeric);
+  /* Mirrors the canvas's own rendering (components/calendar/MiniMonth.jsx:
+     regular / 8px / line-height 1). */
+  --type-year-numeral: var(--weight-regular) var(--size-year-numeral) / 8px var(--font-numeric);
 }
