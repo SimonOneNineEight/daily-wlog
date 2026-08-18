@@ -6,9 +6,12 @@ Ratified by Simon (designer/owner), 2026-08-17. This is the guardrail brief a de
 
 A mobile-first personal life journal. Aesthetic family: **Apple Calendar's airiness × Apple Journal's warmth**. The UI chrome is quiet and neutral; color belongs to the user's categories and nowhere else. The calendar is the product's face: a month filling with colored dots should feel like a life filling up.
 
+**Primary language: Traditional Chinese (zh-TW).** All UI copy, all design mocks, and all layout decisions are made on zh-TW text first; English arrives post-MVP as a translation.
+
 ## Typography
 
-- SF Pro (iOS system font) everywhere: chrome, entry titles, and note text. No custom or display faces in MVP.
+- iOS system font stack everywhere: **PingFang TC is the face users actually read** (zh-TW copy and entries), with SF Pro carrying Latin text and numerals. No custom or display faces in MVP.
+- Line heights, cell paddings, and truncation rules are set against Chinese text: CJK runs denser and taller than Latin, so a layout that only works on English placeholder text is wrong.
 - Recorded evolution: a warm reading face for entry content and the printed book, chosen later against real entries — not now against placeholder text.
 - Day numbers and titles: regular weight; today and selected states get semibold, never color alone.
 - One type scale, few sizes. Entry titles are short by design (they live in calendar cells and day lists).
