@@ -37,6 +37,7 @@ A mobile-first personal life journal. Aesthetic family: **Apple Calendar's airin
 3. **Entry form**: category picker first (with inline "Create …" when typing a new name), short title field, optional note, photo grid up to 10 with drag order. Fast path: category + title + save in under a minute.
 4. **Year view**: 12 mini-month grids, rounded single-color highlights on entry days, tap a month to enter it.
 5. **Category management**: two-level list (categories with their subcategories), colored icon editing (preset + custom), rename; delete only offered when unused (in-use categories rename instead — entries follow).
+6. **Category create/edit sheet**: one sheet serving both create and edit — name, optional parent category (making it a subcategory), icon picker, color (10 presets + custom picker). Reached only from category management; inline creation in the entry form never opens it (auto-assigns icon and color instead, editable here later).
 
 ## Explicit bans
 
