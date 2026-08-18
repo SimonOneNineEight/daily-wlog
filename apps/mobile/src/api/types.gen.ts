@@ -41,6 +41,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a date's Entries in order */
+        get: operations["listEntries"];
+        put?: never;
+        /** Create an Entry */
+        post: operations["createEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -58,6 +76,25 @@ export interface components {
             icon: string;
             parentId?: string;
             position: number;
+        };
+        CreateEntry: {
+            /** @description The Entry date, YYYY-MM-DD. */
+            date: string;
+            /** @description A top-level Category owned by the signed-in User. */
+            categoryId: string;
+            /** @description Opaque versioned blob holding the Entry's title and note. The server stores and returns it verbatim and never parses it (ADR-0004); the title requirement is enforced by the client. Capped at 64 KiB. */
+            content: string;
+        };
+        Entry: {
+            id: string;
+            date: string;
+            position: number;
+            categoryId: string;
+            authorId: string;
+            content: string;
+        };
+        EntryList: {
+            entries: components["schemas"]["Entry"][];
         };
         Health: {
             /** @enum {string} */
@@ -134,6 +171,107 @@ export interface operations {
                 };
             };
             /** @description Provisioning failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listEntries: {
+        parameters: {
+            query: {
+                /** @description The Entry date, YYYY-MM-DD. */
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The date's Entries, ordered by position. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryList"];
+                };
+            };
+            /** @description Invalid date. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Listing Entries failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEntry"];
+            };
+        };
+        responses: {
+            /** @description The created Entry, with its assigned position. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Invalid date, unknown category, or missing content. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Creating the Entry failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

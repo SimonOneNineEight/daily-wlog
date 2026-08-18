@@ -41,15 +41,15 @@ func (h handlers) GetHealth(ctx context.Context, _ apigen.GetHealthRequestObject
 func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestObject) (apigen.ProvisionMeResponseObject, error) {
 	userID := auth.UserID(ctx)
 	if err := h.queries.ProvisionUser(ctx, userID); err != nil {
-		return h.provisionFailed(ctx, err)
+		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
 	}
 	journalID, err := h.queries.GetJournal(ctx, userID)
 	if err != nil {
-		return h.provisionFailed(ctx, err)
+		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
 	}
 	rows, err := h.queries.ListCategories(ctx, userID)
 	if err != nil {
-		return h.provisionFailed(ctx, err)
+		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
 	}
 	categories := make([]apigen.Category, len(rows))
 	for i, row := range rows {
@@ -65,12 +65,15 @@ func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestOb
 	return apigen.ProvisionMe200JSONResponse{UserId: userID, JournalId: journalID, Categories: categories}, nil
 }
 
-func (h handlers) provisionFailed(ctx context.Context, err error) (apigen.ProvisionMeResponseObject, error) {
-	h.logger.LogAttrs(ctx, slog.LevelError, "provisioning failed", slog.String("error", err.Error()))
+// failure logs an operation failure, reports it to Sentry, and returns the
+// contract Error. Only the driver error is logged; journal content never
+// appears (entry content is opaque bytes the server cannot read anyway).
+func (h handlers) failure(ctx context.Context, message string, err error) apigen.Error {
+	h.logger.LogAttrs(ctx, slog.LevelError, message, slog.String("error", err.Error()))
 	if hub := sentry.GetHubFromContext(ctx); hub != nil {
 		hub.CaptureException(err)
 	}
-	return apigen.ProvisionMe500JSONResponse{Message: "provisioning failed"}, nil
+	return apigen.Error{Message: message}
 }
 
 // New builds the API handler on top of a database pool.

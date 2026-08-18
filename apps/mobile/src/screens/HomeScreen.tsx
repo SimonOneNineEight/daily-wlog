@@ -1,18 +1,24 @@
 import { Pressable, Text, View } from 'react-native';
 
+import type { Category } from '../api/client';
 import { supabase } from '../auth/supabase';
 import { strings } from '../i18n/strings';
 import { createStyles } from '../theme';
 
-import { HealthScreen } from './HealthScreen';
+import { DayScreen } from './DayScreen';
 
-// Placeholder home until the month view lands (#6): the walking skeleton's
-// health readout plus sign-out, which moves into settings with #15.
-export function HomeScreen() {
+type Props = {
+  accessToken: string;
+  categories: Category[];
+};
+
+// Home is today's day list (#5). Sign-out moves into settings with #15;
+// month-view navigation arrives with #6.
+export function HomeScreen({ accessToken, categories }: Props) {
   return (
     <View style={styles.screen}>
       <View style={styles.body}>
-        <HealthScreen />
+        <DayScreen accessToken={accessToken} categories={categories} />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -39,7 +45,7 @@ const styles = createStyles((t) => ({
     alignSelf: 'center',
     paddingVertical: t.spacing.space5,
     paddingHorizontal: t.spacing.space8,
-    marginBottom: t.spacing.space9,
+    marginBottom: t.spacing.space6,
   },
   signOutLabel: {
     ...t.typography.meta,

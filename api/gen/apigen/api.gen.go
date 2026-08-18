@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 )
 
 // Defines values for HealthStatus.
@@ -39,6 +41,33 @@ type Category struct {
 	Position int     `json:"position"`
 }
 
+// CreateEntry defines model for CreateEntry.
+type CreateEntry struct {
+	// CategoryId A top-level Category owned by the signed-in User.
+	CategoryId string `json:"categoryId"`
+
+	// Content Opaque versioned blob holding the Entry's title and note. The server stores and returns it verbatim and never parses it (ADR-0004); the title requirement is enforced by the client. Capped at 64 KiB.
+	Content string `json:"content"`
+
+	// Date The Entry date, YYYY-MM-DD.
+	Date string `json:"date"`
+}
+
+// Entry defines model for Entry.
+type Entry struct {
+	AuthorId   string `json:"authorId"`
+	CategoryId string `json:"categoryId"`
+	Content    string `json:"content"`
+	Date       string `json:"date"`
+	Id         string `json:"id"`
+	Position   int    `json:"position"`
+}
+
+// EntryList defines model for EntryList.
+type EntryList struct {
+	Entries []Entry `json:"entries"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Message string `json:"message"`
@@ -61,8 +90,23 @@ type Me struct {
 	UserId     string     `json:"userId"`
 }
 
+// ListEntriesParams defines parameters for ListEntries.
+type ListEntriesParams struct {
+	// Date The Entry date, YYYY-MM-DD.
+	Date string `form:"date" json:"date"`
+}
+
+// CreateEntryJSONRequestBody defines body for CreateEntry for application/json ContentType.
+type CreateEntryJSONRequestBody = CreateEntry
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListEntries List a date's Entries in order
+	// (GET /entries)
+	ListEntries(w http.ResponseWriter, r *http.Request, params ListEntriesParams)
+	// CreateEntry Create an Entry
+	// (POST /entries)
+	CreateEntry(w http.ResponseWriter, r *http.Request)
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -74,6 +118,18 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// ListEntries List a date's Entries in order
+// (GET /entries)
+func (_ Unimplemented) ListEntries(w http.ResponseWriter, r *http.Request, params ListEntriesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateEntry Create an Entry
+// (POST /entries)
+func (_ Unimplemented) CreateEntry(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // GetHealth Liveness and database health
 // (GET /healthz)
@@ -95,6 +151,53 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListEntries operation middleware
+func (siw *ServerInterfaceWrapper) ListEntries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListEntriesParams
+
+	// ------------- Required query parameter "date" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "date", r.URL.Query(), &params.Date, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "date"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "date", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListEntries(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateEntry operation middleware
+func (siw *ServerInterfaceWrapper) CreateEntry(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateEntry(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
@@ -243,8 +346,142 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/me", wrapper.ProvisionMe)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/entries", wrapper.ListEntries)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/entries", wrapper.CreateEntry)
+	})
 
 	return r
+}
+
+type ListEntriesRequestObject struct {
+	Params ListEntriesParams
+}
+
+type ListEntriesResponseObject interface {
+	VisitListEntriesResponse(w http.ResponseWriter) error
+}
+
+type ListEntries200JSONResponse EntryList
+
+func (response ListEntries200JSONResponse) VisitListEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEntries400JSONResponse Error
+
+func (response ListEntries400JSONResponse) VisitListEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEntries401JSONResponse Error
+
+func (response ListEntries401JSONResponse) VisitListEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEntries500JSONResponse Error
+
+func (response ListEntries500JSONResponse) VisitListEntriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEntryRequestObject struct {
+	Body *CreateEntryJSONRequestBody
+}
+
+type CreateEntryResponseObject interface {
+	VisitCreateEntryResponse(w http.ResponseWriter) error
+}
+
+type CreateEntry201JSONResponse Entry
+
+func (response CreateEntry201JSONResponse) VisitCreateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEntry400JSONResponse Error
+
+func (response CreateEntry400JSONResponse) VisitCreateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEntry401JSONResponse Error
+
+func (response CreateEntry401JSONResponse) VisitCreateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateEntry500JSONResponse Error
+
+func (response CreateEntry500JSONResponse) VisitCreateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type GetHealthRequestObject struct {
@@ -333,6 +570,12 @@ func (response ProvisionMe500JSONResponse) VisitProvisionMeResponse(w http.Respo
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ListEntries List a date's Entries in order
+	// (GET /entries)
+	ListEntries(ctx context.Context, request ListEntriesRequestObject) (ListEntriesResponseObject, error)
+	// CreateEntry Create an Entry
+	// (POST /entries)
+	CreateEntry(ctx context.Context, request CreateEntryRequestObject) (CreateEntryResponseObject, error)
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
@@ -378,6 +621,63 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListEntries operation middleware
+func (sh *strictHandler) ListEntries(w http.ResponseWriter, r *http.Request, params ListEntriesParams) {
+	var request ListEntriesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListEntries(ctx, request.(ListEntriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListEntries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListEntriesResponseObject); ok {
+		if err := validResponse.VisitListEntriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateEntry operation middleware
+func (sh *strictHandler) CreateEntry(w http.ResponseWriter, r *http.Request) {
+	var request CreateEntryRequestObject
+
+	var body CreateEntryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateEntry(ctx, request.(CreateEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateEntryResponseObject); ok {
+		if err := validResponse.VisitCreateEntryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetHealth operation middleware

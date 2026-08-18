@@ -13,6 +13,19 @@ const zhTW = {
   home: {
     signOut: '登出',
   },
+  day: {
+    addEntry: '新增紀錄',
+    empty: '今天還沒有紀錄',
+    loadFailed: '無法載入紀錄',
+    unreadable: '（無法讀取的紀錄）',
+  },
+  entryForm: {
+    cancel: '取消',
+    save: '儲存',
+    titlePlaceholder: '標題',
+    notePlaceholder: '備註（選填）',
+    saveFailed: '儲存失敗，請再試一次',
+  },
   health: {
     loading: '連線中…',
     ok: '系統狀態:正常',

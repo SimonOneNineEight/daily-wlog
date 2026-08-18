@@ -2,11 +2,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { AppRoot } from './AppRoot';
 
-type Listener = (event: string, session: { access_token: string } | null) => void;
+type MockSession = { access_token: string; user: { id: string } };
+type Listener = (event: string, session: MockSession | null) => void;
 
 const mockAuthState = {
   listeners: [] as Listener[],
-  session: null as { access_token: string } | null,
+  session: null as MockSession | null,
 };
 
 jest.mock('./auth/supabase', () => ({
@@ -52,6 +53,9 @@ beforeEach(() => {
     if (String(url).endsWith('/me')) {
       return { ok: true, json: async () => ({ userId: 'u1', journalId: 'j1', categories: [] }) };
     }
+    if (String(url).includes('/entries')) {
+      return { ok: true, json: async () => ({ entries: [] }) };
+    }
     throw new Error(`unexpected fetch ${String(url)}`);
   }) as jest.Mock;
 });
@@ -68,17 +72,17 @@ it('shows the sign-in screen when no session exists', async () => {
 });
 
 it('shows the app and provisions the world when a session exists', async () => {
-  mockAuthState.session = { access_token: 'token-1' };
+  mockAuthState.session = { access_token: 'token-1', user: { id: 'u1' } };
   render(<AppRoot />);
 
-  expect(await screen.findByText('系統狀態:正常')).toBeTruthy();
+  expect(await screen.findByText('新增紀錄')).toBeTruthy();
   const meCall = (globalThis.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/me'));
   expect(meCall).toBeTruthy();
   expect(meCall?.[1]?.headers?.Authorization).toBe('Bearer token-1');
 });
 
 it('returns to the sign-in screen on sign-out', async () => {
-  mockAuthState.session = { access_token: 'token-1' };
+  mockAuthState.session = { access_token: 'token-1', user: { id: 'u1' } };
   render(<AppRoot />);
   expect(await screen.findByText('登出')).toBeTruthy();
 

@@ -53,6 +53,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /entries:
+    post:
+      operationId: createEntry
+      summary: Create an Entry
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEntry"
+      responses:
+        "201":
+          description: The created Entry, with its assigned position.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "400":
+          description: Invalid date, unknown category, or missing content.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Creating the Entry failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: listEntries
+      summary: List a date's Entries in order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The Entry date, YYYY-MM-DD.
+      responses:
+        "200":
+          description: The date's Entries, ordered by position.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntryList"
+        "400":
+          description: Invalid date.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Listing Entries failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   securitySchemes:
     bearerAuth:
@@ -98,6 +172,57 @@ components:
           type: string
         position:
           type: integer
+    CreateEntry:
+      type: object
+      required:
+        - date
+        - categoryId
+        - content
+      properties:
+        date:
+          type: string
+          description: The Entry date, YYYY-MM-DD.
+        categoryId:
+          type: string
+          description: A top-level Category owned by the signed-in User.
+        content:
+          type: string
+          description: >
+            Opaque versioned blob holding the Entry's title and note. The
+            server stores and returns it verbatim and never parses it
+            (ADR-0004); the title requirement is enforced by the client.
+            Capped at 64 KiB.
+    Entry:
+      type: object
+      required:
+        - id
+        - date
+        - position
+        - categoryId
+        - authorId
+        - content
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+        position:
+          type: integer
+        categoryId:
+          type: string
+        authorId:
+          type: string
+        content:
+          type: string
+    EntryList:
+      type: object
+      required:
+        - entries
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entry"
     Health:
       type: object
       required:

@@ -24,6 +24,19 @@ type Category struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type Entry struct {
+	ID            string
+	JournalID     string
+	AuthorID      string
+	EntryDate     pgtype.Date
+	Position      int32
+	CategoryID    string
+	SubcategoryID *string
+	Content       []byte
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type Journal struct {
 	ID        string
 	OwnerID   string

@@ -18,9 +18,12 @@ import (
 // provisioning calls). Behavior tests never mock the platform; this exists
 // only to prove /me fails closed on each step.
 type failingQuerier struct {
-	provisionErr  error
-	journalErr    error
-	categoriesErr error
+	provisionErr   error
+	journalErr     error
+	categoriesErr  error
+	categoryErr    error
+	insertErr      error
+	listEntriesErr error
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
@@ -30,6 +33,53 @@ func (f failingQuerier) GetJournal(context.Context, string) (string, error) {
 }
 func (f failingQuerier) ListCategories(context.Context, string) ([]dbgen.ListCategoriesRow, error) {
 	return nil, f.categoriesErr
+}
+func (f failingQuerier) CategoryIsUsable(context.Context, dbgen.CategoryIsUsableParams) (bool, error) {
+	return true, f.categoryErr
+}
+func (f failingQuerier) InsertEntry(context.Context, dbgen.InsertEntryParams) (dbgen.InsertEntryRow, error) {
+	return dbgen.InsertEntryRow{ID: "entry-id", Position: 1}, f.insertErr
+}
+func (f failingQuerier) ListEntriesByDate(context.Context, dbgen.ListEntriesByDateParams) ([]dbgen.ListEntriesByDateRow, error) {
+	return nil, f.listEntriesErr
+}
+
+func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
+	token := signUpTestUser(t)
+	valid := map[string]string{
+		"date": "2026-08-19", "categoryId": "7f000000-0000-4000-8000-000000000000", "content": "x",
+	}
+	createCases := map[string]failingQuerier{
+		"journal read fails":   {journalErr: errors.New("boom")},
+		"category check fails": {categoryErr: errors.New("boom")},
+		"insert fails":         {insertErr: errors.New("boom")},
+	}
+	for name, querier := range createCases {
+		t.Run("create/"+name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL())))
+			defer ts.Close()
+			resp := createEntry(t, ts, token, valid)
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", resp.StatusCode)
+			}
+		})
+	}
+	listCases := map[string]failingQuerier{
+		"journal read fails": {journalErr: errors.New("boom")},
+		"list fails":         {listEntriesErr: errors.New("boom")},
+	}
+	for name, querier := range listCases {
+		t.Run("list/"+name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL())))
+			defer ts.Close()
+			resp := listEntries(t, ts, token, "2026-08-19")
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", resp.StatusCode)
+			}
+		})
+	}
 }
 
 func TestMeFailsClosedOnDatabaseErrors(t *testing.T) {

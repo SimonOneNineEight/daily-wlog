@@ -9,9 +9,16 @@ import (
 )
 
 type Querier interface {
+	// A usable Entry category is owned by the user and top-level: Subcategories
+	// refine an Entry's Category, they never replace it.
+	CategoryIsUsable(ctx context.Context, arg CategoryIsUsableParams) (bool, error)
 	GetJournal(ctx context.Context, userID string) (string, error)
 	GetSchemaVersion(ctx context.Context) (int32, error)
+	// Position is assigned at the end of the date's existing order in the same
+	// statement, so multiple Entries per day stack in creation order.
+	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)
+	ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error)
 	// First-sign-in provisioning in one atomic statement: User, Journal, and the
 	// five seeded categories (colors/icons per the design canvas). Every level
 	// conflict-skips, so re-sign-in and concurrent first sign-ins are no-ops.
