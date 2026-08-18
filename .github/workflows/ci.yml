@@ -32,7 +32,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
       - uses: supabase/setup-cli@v1
+        with:
+          # Keep in sync with the CLI that generated supabase/config.toml;
+          # older CLIs reject its newer config keys.
+          version: 2.107.0
       - name: Start local Supabase database (applies migrations)
         run: supabase db start
       - name: Generated code is up to date
