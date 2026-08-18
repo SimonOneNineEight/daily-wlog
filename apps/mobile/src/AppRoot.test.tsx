@@ -53,6 +53,9 @@ beforeEach(() => {
     if (String(url).endsWith('/me')) {
       return { ok: true, json: async () => ({ userId: 'u1', journalId: 'j1', categories: [] }) };
     }
+    if (String(url).includes('/months/')) {
+      return { ok: true, json: async () => ({ days: [] }) };
+    }
     if (String(url).includes('/entries')) {
       return { ok: true, json: async () => ({ entries: [] }) };
     }
@@ -75,7 +78,7 @@ it('shows the app and provisions the world when a session exists', async () => {
   mockAuthState.session = { access_token: 'token-1', user: { id: 'u1' } };
   render(<AppRoot />);
 
-  expect(await screen.findByText('新增紀錄')).toBeTruthy();
+  expect(await screen.findByLabelText('新增紀錄')).toBeTruthy();
   const meCall = (globalThis.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/me'));
   expect(meCall).toBeTruthy();
   expect(meCall?.[1]?.headers?.Authorization).toBe('Bearer token-1');

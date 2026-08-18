@@ -13,8 +13,19 @@ const zhTW = {
   home: {
     signOut: '登出',
   },
+  month: {
+    title: (month: number) => `${month}月`,
+    yearLabel: (year: number) => `${year}年`,
+    prevMonth: '上一個月',
+    nextMonth: '下一個月',
+    emptyDay: '這天沒有紀錄',
+    dateLabel: (month: number, day: number, weekday: string) => `${month}月${day}日 ${weekday}`,
+    weekdaysShort: ['日', '一', '二', '三', '四', '五', '六'],
+    weekdaysFull: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'],
+  },
   day: {
     addEntry: '新增紀錄',
+    back: '返回',
     empty: '今天還沒有紀錄',
     loadFailed: '無法載入紀錄',
     unreadable: '（無法讀取的紀錄）',

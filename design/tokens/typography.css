@@ -65,4 +65,7 @@
   /* Mirrors the canvas's own rendering (components/calendar/MiniMonth.jsx:
      regular / 8px / line-height 1). */
   --type-year-numeral: var(--weight-regular) var(--size-year-numeral) / 8px var(--font-numeric);
+  /* The day cell's "+n" overflow label (components/categories/CategoryDot.jsx:
+     medium / caption-2 / line-height 1). */
+  --type-dot-overflow: var(--weight-medium) var(--size-caption-2) / 11px var(--font-numeric);
 }

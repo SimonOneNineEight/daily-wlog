@@ -127,6 +127,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /months/{month}:
+    get:
+      operationId: getMonth
+      summary: A month's dot structure in one call
+      description: >
+        Days that have Entries, each with its category ids in entry order —
+        everything the month grid needs to draw dots. Titles stay out: the
+        selected-day panel fetches its day through /entries.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: month
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The month, YYYY-MM.
+      responses:
+        "200":
+          description: The month's days that have Entries, in date order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthDots"
+        "400":
+          description: Invalid month.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Loading the month failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   securitySchemes:
     bearerAuth:
@@ -223,6 +265,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Entry"
+    MonthDay:
+      type: object
+      required:
+        - date
+        - categoryIds
+      properties:
+        date:
+          type: string
+        categoryIds:
+          type: array
+          description: The day's Entry categories, in entry order.
+          items:
+            type: string
+    MonthDots:
+      type: object
+      required:
+        - days
+      properties:
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthDay"
     Health:
       type: object
       required:

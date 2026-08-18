@@ -1,3 +1,4 @@
+import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -5,27 +6,23 @@ import type { Category, Entry } from '../api/client';
 import { listEntries } from '../api/client';
 import { decodeContent } from '../entries/content';
 import { strings } from '../i18n/strings';
-import { createStyles } from '../theme';
+import { createStyles, theme } from '../theme';
 
 import { EntryFormScreen } from './EntryFormScreen';
-
-/** The device's local date as YYYY-MM-DD (an Entry date is a calendar day). */
-function localDateString(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
 
 type Props = {
   accessToken: string;
   categories: Category[];
+  /** The date whose Entries this screen shows, YYYY-MM-DD. */
+  date: string;
+  onBack?: () => void;
+  /** Called after an Entry is saved from this screen. */
+  onEntrySaved?: () => void;
 };
 
-// The minimal day list (#5): today's Entries in position order, plus the
-// entry form. It proves the round trip; the real day view (cards, reorder,
-// edit) is #7 and the month view with tappable dates is #6.
-export function DayScreen({ accessToken, categories }: Props) {
-  const today = localDateString(new Date());
+// The minimal day list (#5), reached from the month view (#6) for any
+// tapped date. The real day view (cards, reorder, edit) is #7.
+export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved }: Props) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -35,7 +32,7 @@ export function DayScreen({ accessToken, categories }: Props) {
 
   useEffect(() => {
     let active = true;
-    listEntries(accessToken, today)
+    listEntries(accessToken, date)
       .then((result) => {
         if (active) {
           setEntries(result.entries);
@@ -48,31 +45,44 @@ export function DayScreen({ accessToken, categories }: Props) {
     return () => {
       active = false;
     };
-  }, [accessToken, today, refresh]);
+  }, [accessToken, date, refresh]);
 
   if (composing) {
     return (
       <EntryFormScreen
         accessToken={accessToken}
-        date={today}
+        date={date}
         categories={categories}
         onDone={(saved) => {
           setComposing(false);
-          if (saved) setRefresh((n) => n + 1);
+          if (saved) {
+            setRefresh((n) => n + 1);
+            onEntrySaved?.();
+          }
         }}
       />
     );
   }
 
-  const heading = new Intl.DateTimeFormat('zh-TW', {
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  }).format(new Date());
+  const [, monthPart, dayPart] = date.split('-').map(Number);
+  const weekday = strings.month.weekdaysFull[new Date(date + 'T00:00:00').getDay()];
+  const heading = strings.month.dateLabel(monthPart, dayPart, weekday);
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.heading}>{heading}</Text>
+      <View style={styles.headerRow}>
+        {onBack ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.day.back}
+            style={styles.backButton}
+            onPress={onBack}
+          >
+            <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
+          </Pressable>
+        ) : null}
+        <Text style={styles.heading}>{heading}</Text>
+      </View>
       <ScrollView contentContainerStyle={styles.list}>
         {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
         {entries !== null && entries.length === 0 && !failed ? (
@@ -108,10 +118,21 @@ const styles = createStyles((t) => ({
     backgroundColor: t.colors.background,
     paddingHorizontal: t.spacing.screenGutter,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.space3,
+    paddingVertical: t.spacing.space6,
+  },
+  backButton: {
+    width: t.spacing.space9,
+    height: t.spacing.space9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heading: {
     ...t.typography.navTitle,
     color: t.colors.textPrimary,
-    paddingVertical: t.spacing.space6,
   },
   list: {
     gap: t.spacing.space4,

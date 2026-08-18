@@ -8,6 +8,8 @@ export type CreateEntryBody =
   paths['/entries']['post']['requestBody']['content']['application/json'];
 export type Entry = paths['/entries']['post']['responses']['201']['content']['application/json'];
 type EntryList = paths['/entries']['get']['responses']['200']['content']['application/json'];
+export type MonthDots =
+  paths['/months/{month}']['get']['responses']['200']['content']['application/json'];
 
 async function request<T>(
   accessToken: string,
@@ -39,4 +41,8 @@ export function createEntry(accessToken: string, body: CreateEntryBody): Promise
 
 export function listEntries(accessToken: string, date: string): Promise<EntryList> {
   return request<EntryList>(accessToken, `/entries?date=${date}`);
+}
+
+export function getMonth(accessToken: string, month: string): Promise<MonthDots> {
+  return request<MonthDots>(accessToken, `/months/${month}`);
 }

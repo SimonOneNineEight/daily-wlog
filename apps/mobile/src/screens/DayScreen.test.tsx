@@ -44,20 +44,20 @@ it('renders the day entries with decoded titles, in order', async () => {
     { id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', authorId: 'u1', content: encodeContent({ title: '晨跑', note: '' }) },
     { id: 'e2', date: '2026-08-19', position: 2, categoryId: 'c-food', authorId: 'u1', content: encodeContent({ title: '午餐吃了拉麵', note: '' }) },
   ];
-  render(<DayScreen accessToken="tok" categories={categories} />);
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   expect(await screen.findByText('晨跑')).toBeTruthy();
   expect(screen.getByText('午餐吃了拉麵')).toBeTruthy();
 });
 
 it('shows the empty state when the day has no entries', async () => {
-  render(<DayScreen accessToken="tok" categories={categories} />);
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   expect(await screen.findByText('今天還沒有紀錄')).toBeTruthy();
 });
 
 it('does not save until a category is picked and a title is typed', async () => {
-  render(<DayScreen accessToken="tok" categories={categories} />);
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
   fireEvent.press(await screen.findByText('新增紀錄'));
 
   fireEvent.press(screen.getByText('儲存'));
@@ -71,7 +71,7 @@ it('does not save until a category is picked and a title is typed', async () => 
 });
 
 it('saves an entry as an encoded blob and returns to the list', async () => {
-  render(<DayScreen accessToken="tok" categories={categories} />);
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
   fireEvent.press(await screen.findByText('新增紀錄'));
 
   fireEvent.press(screen.getByText('運動'));

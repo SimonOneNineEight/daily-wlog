@@ -10,8 +10,10 @@
     "expo": "~57.0.14",
     "expo-apple-authentication": "~57.0.1",
     "expo-status-bar": "~57.0.1",
+    "lucide-react-native": "^1.32.0",
     "react": "19.2.3",
-    "react-native": "0.86.2"
+    "react-native": "0.86.2",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@testing-library/react-native": "^13.3.3",
@@ -38,8 +40,11 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|react-native-svg))"
-    ]
+      "node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|react-native-svg|lucide-react-native))"
+    ],
+    "moduleNameMapper": {
+      "^lucide-react-native$": "<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js"
+    }
   },
   "private": true
 }

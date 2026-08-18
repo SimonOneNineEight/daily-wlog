@@ -90,6 +90,18 @@ type Me struct {
 	UserId     string     `json:"userId"`
 }
 
+// MonthDay defines model for MonthDay.
+type MonthDay struct {
+	// CategoryIds The day's Entry categories, in entry order.
+	CategoryIds []string `json:"categoryIds"`
+	Date        string   `json:"date"`
+}
+
+// MonthDots defines model for MonthDots.
+type MonthDots struct {
+	Days []MonthDay `json:"days"`
+}
+
 // ListEntriesParams defines parameters for ListEntries.
 type ListEntriesParams struct {
 	// Date The Entry date, YYYY-MM-DD.
@@ -113,6 +125,9 @@ type ServerInterface interface {
 	// ProvisionMe Provision and return the signed-in User's world
 	// (POST /me)
 	ProvisionMe(w http.ResponseWriter, r *http.Request)
+	// GetMonth A month's dot structure in one call
+	// (GET /months/{month})
+	GetMonth(w http.ResponseWriter, r *http.Request, month string)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -140,6 +155,12 @@ func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 // ProvisionMe Provision and return the signed-in User's world
 // (POST /me)
 func (_ Unimplemented) ProvisionMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMonth A month's dot structure in one call
+// (GET /months/{month})
+func (_ Unimplemented) GetMonth(w http.ResponseWriter, r *http.Request, month string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -218,6 +239,32 @@ func (siw *ServerInterfaceWrapper) ProvisionMe(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ProvisionMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMonth operation middleware
+func (siw *ServerInterfaceWrapper) GetMonth(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "month" -------------
+	var month string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "month", chi.URLParam(r, "month"), &month, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "month", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMonth(w, r, month)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -351,6 +398,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/entries", wrapper.CreateEntry)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/months/{month}", wrapper.GetMonth)
 	})
 
 	return r
@@ -568,6 +618,70 @@ func (response ProvisionMe500JSONResponse) VisitProvisionMeResponse(w http.Respo
 	return err
 }
 
+type GetMonthRequestObject struct {
+	Month string `json:"month"`
+}
+
+type GetMonthResponseObject interface {
+	VisitGetMonthResponse(w http.ResponseWriter) error
+}
+
+type GetMonth200JSONResponse MonthDots
+
+func (response GetMonth200JSONResponse) VisitGetMonthResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMonth400JSONResponse Error
+
+func (response GetMonth400JSONResponse) VisitGetMonthResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMonth401JSONResponse Error
+
+func (response GetMonth401JSONResponse) VisitGetMonthResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMonth500JSONResponse Error
+
+func (response GetMonth500JSONResponse) VisitGetMonthResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ListEntries List a date's Entries in order
@@ -582,6 +696,9 @@ type StrictServerInterface interface {
 	// ProvisionMe Provision and return the signed-in User's world
 	// (POST /me)
 	ProvisionMe(ctx context.Context, request ProvisionMeRequestObject) (ProvisionMeResponseObject, error)
+	// GetMonth A month's dot structure in one call
+	// (GET /months/{month})
+	GetMonth(ctx context.Context, request GetMonthRequestObject) (GetMonthResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -721,6 +838,32 @@ func (sh *strictHandler) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ProvisionMeResponseObject); ok {
 		if err := validResponse.VisitProvisionMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMonth operation middleware
+func (sh *strictHandler) GetMonth(w http.ResponseWriter, r *http.Request, month string) {
+	var request GetMonthRequestObject
+
+	request.Month = month
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMonth(ctx, request.(GetMonthRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMonth")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMonthResponseObject); ok {
+		if err := validResponse.VisitGetMonthResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

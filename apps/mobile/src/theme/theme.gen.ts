@@ -120,6 +120,7 @@ export const theme = {
     dayNumeral: { fontSize: 15, lineHeight: 18, fontWeight: '400', letterSpacing: 0 },
     dayNumeralStrong: { fontSize: 15, lineHeight: 18, fontWeight: '600', letterSpacing: 0 },
     yearNumeral: { fontSize: 8, lineHeight: 8, fontWeight: '400', letterSpacing: 0 },
+    dotOverflow: { fontSize: 11, lineHeight: 11, fontWeight: '500', letterSpacing: 0 },
   },
 } as const;
 

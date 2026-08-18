@@ -1,24 +1,65 @@
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import type { Category } from '../api/client';
 import { supabase } from '../auth/supabase';
+import { localDateString } from '../calendar/monthMath';
 import { strings } from '../i18n/strings';
 import { createStyles } from '../theme';
 
 import { DayScreen } from './DayScreen';
+import { EntryFormScreen } from './EntryFormScreen';
+import { MonthScreen } from './MonthScreen';
 
 type Props = {
   accessToken: string;
   categories: Category[];
 };
 
-// Home is today's day list (#5). Sign-out moves into settings with #15;
-// month-view navigation arrives with #6.
+type Route = { name: 'month' } | { name: 'day'; date: string } | { name: 'form'; date: string };
+
+// Home lands on the month view (#6); the day list and entry form are routes
+// behind it. Real navigation infrastructure can replace this switch when the
+// screen graph outgrows it. Sign-out moves into settings with #15.
 export function HomeScreen({ accessToken, categories }: Props) {
+  const [route, setRoute] = useState<Route>({ name: 'month' });
+  const [monthRefresh, setMonthRefresh] = useState(0);
+  const bumpMonth = () => setMonthRefresh((n) => n + 1);
+
+  if (route.name === 'day') {
+    return (
+      <DayScreen
+        accessToken={accessToken}
+        categories={categories}
+        date={route.date}
+        onBack={() => setRoute({ name: 'month' })}
+        onEntrySaved={bumpMonth}
+      />
+    );
+  }
+  if (route.name === 'form') {
+    return (
+      <EntryFormScreen
+        accessToken={accessToken}
+        date={route.date}
+        categories={categories}
+        onDone={(saved) => {
+          if (saved) bumpMonth();
+          setRoute({ name: 'month' });
+        }}
+      />
+    );
+  }
   return (
     <View style={styles.screen}>
       <View style={styles.body}>
-        <DayScreen accessToken={accessToken} categories={categories} />
+        <MonthScreen
+          accessToken={accessToken}
+          categories={categories}
+          refresh={monthRefresh}
+          onOpenDay={(date) => setRoute({ name: 'day', date })}
+          onAddEntry={() => setRoute({ name: 'form', date: localDateString(new Date()) })}
+        />
       </View>
       <Pressable
         accessibilityRole="button"
@@ -42,10 +83,10 @@ const styles = createStyles((t) => ({
     flex: 1,
   },
   signOut: {
-    alignSelf: 'center',
-    paddingVertical: t.spacing.space5,
-    paddingHorizontal: t.spacing.space8,
-    marginBottom: t.spacing.space6,
+    alignSelf: 'flex-start',
+    paddingVertical: t.spacing.space4,
+    paddingHorizontal: t.spacing.screenGutter,
+    marginBottom: t.spacing.space4,
   },
   signOutLabel: {
     ...t.typography.meta,

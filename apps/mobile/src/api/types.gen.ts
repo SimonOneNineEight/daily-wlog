@@ -59,6 +59,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/months/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A month's dot structure in one call
+         * @description Days that have Entries, each with its category ids in entry order — everything the month grid needs to draw dots. Titles stay out: the selected-day panel fetches its day through /entries.
+         */
+        get: operations["getMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -95,6 +115,14 @@ export interface components {
         };
         EntryList: {
             entries: components["schemas"]["Entry"][];
+        };
+        MonthDay: {
+            date: string;
+            /** @description The day's Entry categories, in entry order. */
+            categoryIds: string[];
+        };
+        MonthDots: {
+            days: components["schemas"]["MonthDay"][];
         };
         Health: {
             /** @enum {string} */
@@ -272,6 +300,56 @@ export interface operations {
                 };
             };
             /** @description Creating the Entry failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getMonth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The month, YYYY-MM. */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The month's days that have Entries, in date order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthDots"];
+                };
+            };
+            /** @description Invalid month. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Loading the month failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

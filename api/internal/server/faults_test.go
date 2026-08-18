@@ -24,6 +24,7 @@ type failingQuerier struct {
 	categoryErr    error
 	insertErr      error
 	listEntriesErr error
+	monthDotsErr   error
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
@@ -42,6 +43,9 @@ func (f failingQuerier) InsertEntry(context.Context, dbgen.InsertEntryParams) (d
 }
 func (f failingQuerier) ListEntriesByDate(context.Context, dbgen.ListEntriesByDateParams) ([]dbgen.ListEntriesByDateRow, error) {
 	return nil, f.listEntriesErr
+}
+func (f failingQuerier) ListMonthDots(context.Context, dbgen.ListMonthDotsParams) ([]dbgen.ListMonthDotsRow, error) {
+	return nil, f.monthDotsErr
 }
 
 func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
@@ -74,6 +78,21 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL())))
 			defer ts.Close()
 			resp := listEntries(t, ts, token, "2026-08-19")
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", resp.StatusCode)
+			}
+		})
+	}
+	monthCases := map[string]failingQuerier{
+		"journal read fails": {journalErr: errors.New("boom")},
+		"month dots fail":    {monthDotsErr: errors.New("boom")},
+	}
+	for name, querier := range monthCases {
+		t.Run("month/"+name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL())))
+			defer ts.Close()
+			resp := getMonth(t, ts, token, "2026-08")
 			resp.Body.Close()
 			if resp.StatusCode != http.StatusInternalServerError {
 				t.Fatalf("status = %d, want 500", resp.StatusCode)

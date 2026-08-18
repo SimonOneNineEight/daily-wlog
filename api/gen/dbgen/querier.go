@@ -19,6 +19,10 @@ type Querier interface {
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)
 	ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error)
+	// One row per entry in the month, date-then-position order; the handler
+	// groups rows into days. Only structure leaves the database — dots need
+	// categories, never content (ADR-0004).
+	ListMonthDots(ctx context.Context, arg ListMonthDotsParams) ([]ListMonthDotsRow, error)
 	// First-sign-in provisioning in one atomic statement: User, Journal, and the
 	// five seeded categories (colors/icons per the design canvas). Every level
 	// conflict-skips, so re-sign-in and concurrent first sign-ins are no-ops.
