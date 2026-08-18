@@ -4,9 +4,13 @@
 > "daily-wlog Design System" project on claude.ai/design (the design source of truth for
 > implementation). Pulled: `tokens/`, `components/`, `styles.css`, the `ui_kits/ios-app`
 > screens (as `screens/`), `readme.md` (this file), `github.md`. Deliberately not pulled:
-> `_ds_bundle.js` (compiled), `guidelines/` preview cards, `review/`, `assets/icons/`
-> (30 vendored Lucide SVGs — vendor them or use lucide-react-native at implementation time),
-> and the browser-demo harness (`Shell.jsx`, `index.html`, `App.jsx`).
+> `_ds_bundle.js` (compiled), `guidelines/` preview cards, `review/`, the icon SVGs
+> (standard Lucide glyphs — see `assets/icons.md` for the 79-glyph manifest), and the
+> browser-demo harness (`Shell.jsx`, `index.html`, `App.jsx`).
+>
+> `canvas/` holds the **"Daily-wlog iOS prototype"** design canvas with all nine designed
+> surfaces (see `canvas/README.md`) — the five screens here plus the category sheet, custom
+> color drawer, sign-in, and the filter explorations.
 
 A design system for **daily-wlog**, a mobile-first personal life journal (React Native, iOS
 first). A person writes a few short entries a day — title, optional note, up to ten photos —
