@@ -49,7 +49,7 @@
   --dot-size: 7px;
   --dot-size-compact: 6px;
   --dot-size-list: 10px;
-  --dot-gap: 3px;
+  --dot-gap: 0px; /* Ratified 2026-08-18: dots touch (the canvas's override is the final look). */
   --dot-max-per-day: 4; /* @kind other */
 
   /* Year view: solid single-color day box, numeral punched out in white. */
