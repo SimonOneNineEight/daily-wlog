@@ -35,6 +35,24 @@ func (q *Queries) CategoryIsUsable(ctx context.Context, arg CategoryIsUsablePara
 	return usable, err
 }
 
+const deleteEntry = `-- name: DeleteEntry :execrows
+delete from entries
+where id = $1::uuid and journal_id = $2::uuid
+`
+
+type DeleteEntryParams struct {
+	ID        string
+	JournalID string
+}
+
+func (q *Queries) DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteEntry, arg.ID, arg.JournalID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertEntry = `-- name: InsertEntry :one
 insert into entries (journal_id, author_id, entry_date, position, category_id, content)
 values (
@@ -132,4 +150,114 @@ func (q *Queries) ListEntriesByDate(ctx context.Context, arg ListEntriesByDatePa
 		return nil, err
 	}
 	return items, nil
+}
+
+const listEntryIDs = `-- name: ListEntryIDs :many
+select id
+from entries
+where journal_id = $1::uuid and entry_date = $2::date
+order by position
+`
+
+type ListEntryIDsParams struct {
+	JournalID string
+	EntryDate pgtype.Date
+}
+
+func (q *Queries) ListEntryIDs(ctx context.Context, arg ListEntryIDsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listEntryIDs, arg.JournalID, arg.EntryDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const reorderEntries = `-- name: ReorderEntries :exec
+update entries e
+set position = new_order.new_position
+from (
+    select
+        unnest($3::uuid[]) as id,
+        generate_subscripts($3::uuid[], 1) as new_position
+) as new_order
+where e.id = new_order.id
+  and e.journal_id = $1::uuid
+  and e.entry_date = $2::date
+`
+
+type ReorderEntriesParams struct {
+	JournalID string
+	EntryDate pgtype.Date
+	EntryIds  []string
+}
+
+// One statement assigning every entry its new 1..n position; the deferred
+// unique constraint validates the final order at commit.
+func (q *Queries) ReorderEntries(ctx context.Context, arg ReorderEntriesParams) error {
+	_, err := q.db.Exec(ctx, reorderEntries, arg.JournalID, arg.EntryDate, arg.EntryIds)
+	return err
+}
+
+const updateEntry = `-- name: UpdateEntry :one
+update entries
+set category_id = $1::uuid,
+    content = $2,
+    updated_at = now()
+where id = $3::uuid and journal_id = $4::uuid
+returning
+    id,
+    to_char(entry_date, 'YYYY-MM-DD') as entry_date,
+    position,
+    category_id,
+    author_id,
+    content
+`
+
+type UpdateEntryParams struct {
+	CategoryID string
+	Content    []byte
+	ID         string
+	JournalID  string
+}
+
+type UpdateEntryRow struct {
+	ID         string
+	EntryDate  string
+	Position   int32
+	CategoryID string
+	AuthorID   string
+	Content    []byte
+}
+
+// Full replacement of the editable fields; journal_id scoping means a User
+// can only ever touch their own Entries (no rows = not found).
+func (q *Queries) UpdateEntry(ctx context.Context, arg UpdateEntryParams) (UpdateEntryRow, error) {
+	row := q.db.QueryRow(ctx, updateEntry,
+		arg.CategoryID,
+		arg.Content,
+		arg.ID,
+		arg.JournalID,
+	)
+	var i UpdateEntryRow
+	err := row.Scan(
+		&i.ID,
+		&i.EntryDate,
+		&i.Position,
+		&i.CategoryID,
+		&i.AuthorID,
+		&i.Content,
+	)
+	return i, err
 }

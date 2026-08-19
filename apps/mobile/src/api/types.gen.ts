@@ -59,6 +59,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an Entry */
+        delete: operations["deleteEntry"];
+        options?: never;
+        head?: never;
+        /**
+         * Update an Entry
+         * @description Full replacement of the editable fields: the client always sends the category and the whole content blob (it owns both).
+         */
+        patch: operations["updateEntry"];
+        trace?: never;
+    };
+    "/days/{date}/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder a date's Entries
+         * @description Replaces the date's entry order. entryIds must be exactly the date's Entries — every id, once. Positions become 1..n in the given order.
+         */
+        put: operations["reorderDay"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/months/{month}": {
         parameters: {
             query?: never;
@@ -104,6 +145,16 @@ export interface components {
             categoryId: string;
             /** @description Opaque versioned blob holding the Entry's title and note. The server stores and returns it verbatim and never parses it (ADR-0004); the title requirement is enforced by the client. Capped at 64 KiB. */
             content: string;
+        };
+        UpdateEntry: {
+            /** @description A top-level Category owned by the signed-in User. */
+            categoryId: string;
+            /** @description The full replacement content blob (opaque, ADR-0004). */
+            content: string;
+        };
+        ReorderDay: {
+            /** @description Every Entry id of the date, once, in the new order. */
+            entryIds: string[];
         };
         Entry: {
             id: string;
@@ -300,6 +351,169 @@ export interface operations {
                 };
             };
             /** @description Creating the Entry failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such Entry in the signed-in User's Journal. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Deleting the Entry failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEntry"];
+            };
+        };
+        responses: {
+            /** @description The updated Entry. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entry"];
+                };
+            };
+            /** @description Unknown category or missing content. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such Entry in the signed-in User's Journal. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Updating the Entry failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reorderDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The Entry date, YYYY-MM-DD. */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderDay"];
+            };
+        };
+        responses: {
+            /** @description The date's Entries in their new order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryList"];
+                };
+            };
+            /** @description Invalid date, or entryIds is not exactly the date's Entries. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Reordering failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import { encodeContent } from '../entries/content';
 import { DayScreen } from './DayScreen';
@@ -14,6 +15,17 @@ let listedEntries: object[] = [];
 beforeEach(() => {
   listedEntries = [];
   globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+    if (init?.method === 'PUT') {
+      const body = JSON.parse(init.body ?? '{}');
+      const byId = Object.fromEntries(listedEntries.map((e: { id?: string }) => [e.id, e]));
+      return { ok: true, json: async () => ({ entries: body.entryIds.map((id: string) => byId[id]) }) };
+    }
+    if (init?.method === 'PATCH') {
+      return { ok: true, json: async () => ({ ...listedEntries[0], content: JSON.parse(init.body ?? '{}').content }) };
+    }
+    if (init?.method === 'DELETE') {
+      return { ok: true, status: 204, json: async () => ({}) };
+    }
     if (String(url).includes('/entries') && init?.method === 'POST') {
       const body = JSON.parse(init.body ?? '{}');
       return {
@@ -98,4 +110,78 @@ it('filters the category picker by search', async () => {
   fireEvent.changeText(screen.getByPlaceholderText('類別'), '美');
   expect(screen.queryByText('運動')).toBeNull();
   expect(screen.getByText('美食')).toBeTruthy();
+});
+
+const dayEntriesFixture = () => [
+  { id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', authorId: 'u1', content: encodeContent({ title: '晨跑', note: '河濱' }) },
+  { id: 'e2', date: '2026-08-19', position: 2, categoryId: 'c-food', authorId: 'u1', content: encodeContent({ title: '午餐', note: '' }) },
+];
+
+it('persists a drag reorder through the API', async () => {
+  listedEntries = dayEntriesFixture();
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+  await screen.findByText('晨跑');
+
+  const mockDragState = (globalThis as { __mockDragState?: { onDragEnd?: (p: { data: object[] }) => void } })
+    .__mockDragState!;
+  expect(typeof mockDragState.onDragEnd).toBe('function');
+  await act(async () => {
+    mockDragState.onDragEnd?.({ data: [listedEntries[1], listedEntries[0]] });
+  });
+
+  const put = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PUT');
+  expect(put).toBeTruthy();
+  expect(String(put?.[0])).toContain('/days/2026-08-19/order');
+  expect(JSON.parse(put?.[1]?.body ?? '{}').entryIds).toEqual(['e2', 'e1']);
+});
+
+it('opens an entry for editing, prefilled, and saves via PATCH', async () => {
+  listedEntries = dayEntriesFixture();
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+
+  const card = await screen.findByText('晨跑');
+  await act(async () => {
+    fireEvent.press(card);
+  });
+  expect(screen.getByPlaceholderText('標題').props.value).toBe('晨跑');
+  expect(screen.getByPlaceholderText('備註（選填）').props.value).toBe('河濱');
+
+  fireEvent.changeText(screen.getByPlaceholderText('標題'), '夜跑');
+  await act(async () => {
+    fireEvent.press(screen.getByText('儲存'));
+  });
+
+  const patch = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PATCH');
+  expect(patch).toBeTruthy();
+  expect(String(patch?.[0])).toContain('/entries/e1');
+  const body = JSON.parse(patch?.[1]?.body ?? '{}');
+  expect(body.categoryId).toBe('c-sport');
+  expect(JSON.parse(body.content)).toEqual({ v: 1, title: '夜跑', note: '河濱' });
+});
+
+it('deletes an entry after confirmation', async () => {
+  listedEntries = dayEntriesFixture();
+  const alertSpy = jest.spyOn(Alert, 'alert');
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+
+  const card = await screen.findByText('晨跑');
+  await act(async () => {
+    fireEvent.press(card);
+  });
+  await act(async () => {
+    fireEvent.press(screen.getByText('刪除紀錄'));
+  });
+
+  expect(alertSpy).toHaveBeenCalled();
+  const buttons = alertSpy.mock.calls[0][2] ?? [];
+  const destructive = buttons.find((b) => b.style === 'destructive');
+  expect(destructive).toBeTruthy();
+  await act(async () => {
+    destructive?.onPress?.();
+  });
+
+  const del = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'DELETE');
+  expect(del).toBeTruthy();
+  expect(String(del?.[0])).toContain('/entries/e1');
+  alertSpy.mockRestore();
 });

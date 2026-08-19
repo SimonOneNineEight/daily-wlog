@@ -27,6 +27,46 @@ values (
 )
 returning id, position;
 
+-- name: UpdateEntry :one
+-- Full replacement of the editable fields; journal_id scoping means a User
+-- can only ever touch their own Entries (no rows = not found).
+update entries
+set category_id = @category_id::uuid,
+    content = @content,
+    updated_at = now()
+where id = @id::uuid and journal_id = @journal_id::uuid
+returning
+    id,
+    to_char(entry_date, 'YYYY-MM-DD') as entry_date,
+    position,
+    category_id,
+    author_id,
+    content;
+
+-- name: DeleteEntry :execrows
+delete from entries
+where id = @id::uuid and journal_id = @journal_id::uuid;
+
+-- name: ListEntryIDs :many
+select id
+from entries
+where journal_id = @journal_id::uuid and entry_date = @entry_date::date
+order by position;
+
+-- name: ReorderEntries :exec
+-- One statement assigning every entry its new 1..n position; the deferred
+-- unique constraint validates the final order at commit.
+update entries e
+set position = new_order.new_position
+from (
+    select
+        unnest(@entry_ids::uuid[]) as id,
+        generate_subscripts(@entry_ids::uuid[], 1) as new_position
+) as new_order
+where e.id = new_order.id
+  and e.journal_id = @journal_id::uuid
+  and e.entry_date = @entry_date::date;
+
 -- name: ListEntriesByDate :many
 select
     id,

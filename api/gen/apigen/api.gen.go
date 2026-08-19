@@ -102,23 +102,53 @@ type MonthDots struct {
 	Days []MonthDay `json:"days"`
 }
 
+// ReorderDay defines model for ReorderDay.
+type ReorderDay struct {
+	// EntryIds Every Entry id of the date, once, in the new order.
+	EntryIds []string `json:"entryIds"`
+}
+
+// UpdateEntry defines model for UpdateEntry.
+type UpdateEntry struct {
+	// CategoryId A top-level Category owned by the signed-in User.
+	CategoryId string `json:"categoryId"`
+
+	// Content The full replacement content blob (opaque, ADR-0004).
+	Content string `json:"content"`
+}
+
 // ListEntriesParams defines parameters for ListEntries.
 type ListEntriesParams struct {
 	// Date The Entry date, YYYY-MM-DD.
 	Date string `form:"date" json:"date"`
 }
 
+// ReorderDayJSONRequestBody defines body for ReorderDay for application/json ContentType.
+type ReorderDayJSONRequestBody = ReorderDay
+
 // CreateEntryJSONRequestBody defines body for CreateEntry for application/json ContentType.
 type CreateEntryJSONRequestBody = CreateEntry
 
+// UpdateEntryJSONRequestBody defines body for UpdateEntry for application/json ContentType.
+type UpdateEntryJSONRequestBody = UpdateEntry
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ReorderDay Reorder a date's Entries
+	// (PUT /days/{date}/order)
+	ReorderDay(w http.ResponseWriter, r *http.Request, date string)
 	// ListEntries List a date's Entries in order
 	// (GET /entries)
 	ListEntries(w http.ResponseWriter, r *http.Request, params ListEntriesParams)
 	// CreateEntry Create an Entry
 	// (POST /entries)
 	CreateEntry(w http.ResponseWriter, r *http.Request)
+	// DeleteEntry Delete an Entry
+	// (DELETE /entries/{id})
+	DeleteEntry(w http.ResponseWriter, r *http.Request, id string)
+	// UpdateEntry Update an Entry
+	// (PATCH /entries/{id})
+	UpdateEntry(w http.ResponseWriter, r *http.Request, id string)
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -134,6 +164,12 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
+// ReorderDay Reorder a date's Entries
+// (PUT /days/{date}/order)
+func (_ Unimplemented) ReorderDay(w http.ResponseWriter, r *http.Request, date string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListEntries List a date's Entries in order
 // (GET /entries)
 func (_ Unimplemented) ListEntries(w http.ResponseWriter, r *http.Request, params ListEntriesParams) {
@@ -143,6 +179,18 @@ func (_ Unimplemented) ListEntries(w http.ResponseWriter, r *http.Request, param
 // CreateEntry Create an Entry
 // (POST /entries)
 func (_ Unimplemented) CreateEntry(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteEntry Delete an Entry
+// (DELETE /entries/{id})
+func (_ Unimplemented) DeleteEntry(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateEntry Update an Entry
+// (PATCH /entries/{id})
+func (_ Unimplemented) UpdateEntry(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -172,6 +220,32 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ReorderDay operation middleware
+func (siw *ServerInterfaceWrapper) ReorderDay(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "date" -------------
+	var date string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "date", chi.URLParam(r, "date"), &date, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "date", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReorderDay(w, r, date)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListEntries operation middleware
 func (siw *ServerInterfaceWrapper) ListEntries(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +285,58 @@ func (siw *ServerInterfaceWrapper) CreateEntry(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateEntry(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteEntry operation middleware
+func (siw *ServerInterfaceWrapper) DeleteEntry(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteEntry(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateEntry operation middleware
+func (siw *ServerInterfaceWrapper) UpdateEntry(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateEntry(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -400,10 +526,84 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/entries", wrapper.CreateEntry)
 	})
 	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/entries/{id}", wrapper.DeleteEntry)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/entries/{id}", wrapper.UpdateEntry)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/days/{date}/order", wrapper.ReorderDay)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/months/{month}", wrapper.GetMonth)
 	})
 
 	return r
+}
+
+type ReorderDayRequestObject struct {
+	Date string `json:"date"`
+	Body *ReorderDayJSONRequestBody
+}
+
+type ReorderDayResponseObject interface {
+	VisitReorderDayResponse(w http.ResponseWriter) error
+}
+
+type ReorderDay200JSONResponse EntryList
+
+func (response ReorderDay200JSONResponse) VisitReorderDayResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderDay400JSONResponse Error
+
+func (response ReorderDay400JSONResponse) VisitReorderDayResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderDay401JSONResponse Error
+
+func (response ReorderDay401JSONResponse) VisitReorderDayResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderDay500JSONResponse Error
+
+func (response ReorderDay500JSONResponse) VisitReorderDayResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ListEntriesRequestObject struct {
@@ -523,6 +723,143 @@ func (response CreateEntry401JSONResponse) VisitCreateEntryResponse(w http.Respo
 type CreateEntry500JSONResponse Error
 
 func (response CreateEntry500JSONResponse) VisitCreateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEntryRequestObject struct {
+	Id string `json:"id"`
+}
+
+type DeleteEntryResponseObject interface {
+	VisitDeleteEntryResponse(w http.ResponseWriter) error
+}
+
+type DeleteEntry204Response struct {
+}
+
+func (response DeleteEntry204Response) VisitDeleteEntryResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteEntry401JSONResponse Error
+
+func (response DeleteEntry401JSONResponse) VisitDeleteEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEntry404JSONResponse Error
+
+func (response DeleteEntry404JSONResponse) VisitDeleteEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEntry500JSONResponse Error
+
+func (response DeleteEntry500JSONResponse) VisitDeleteEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateEntryRequestObject struct {
+	Id   string `json:"id"`
+	Body *UpdateEntryJSONRequestBody
+}
+
+type UpdateEntryResponseObject interface {
+	VisitUpdateEntryResponse(w http.ResponseWriter) error
+}
+
+type UpdateEntry200JSONResponse Entry
+
+func (response UpdateEntry200JSONResponse) VisitUpdateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateEntry400JSONResponse Error
+
+func (response UpdateEntry400JSONResponse) VisitUpdateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateEntry401JSONResponse Error
+
+func (response UpdateEntry401JSONResponse) VisitUpdateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateEntry404JSONResponse Error
+
+func (response UpdateEntry404JSONResponse) VisitUpdateEntryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateEntry500JSONResponse Error
+
+func (response UpdateEntry500JSONResponse) VisitUpdateEntryResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -684,12 +1021,21 @@ func (response GetMonth500JSONResponse) VisitGetMonthResponse(w http.ResponseWri
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ReorderDay Reorder a date's Entries
+	// (PUT /days/{date}/order)
+	ReorderDay(ctx context.Context, request ReorderDayRequestObject) (ReorderDayResponseObject, error)
 	// ListEntries List a date's Entries in order
 	// (GET /entries)
 	ListEntries(ctx context.Context, request ListEntriesRequestObject) (ListEntriesResponseObject, error)
 	// CreateEntry Create an Entry
 	// (POST /entries)
 	CreateEntry(ctx context.Context, request CreateEntryRequestObject) (CreateEntryResponseObject, error)
+	// DeleteEntry Delete an Entry
+	// (DELETE /entries/{id})
+	DeleteEntry(ctx context.Context, request DeleteEntryRequestObject) (DeleteEntryResponseObject, error)
+	// UpdateEntry Update an Entry
+	// (PATCH /entries/{id})
+	UpdateEntry(ctx context.Context, request UpdateEntryRequestObject) (UpdateEntryResponseObject, error)
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
@@ -738,6 +1084,39 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ReorderDay operation middleware
+func (sh *strictHandler) ReorderDay(w http.ResponseWriter, r *http.Request, date string) {
+	var request ReorderDayRequestObject
+
+	request.Date = date
+
+	var body ReorderDayJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReorderDay(ctx, request.(ReorderDayRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReorderDay")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReorderDayResponseObject); ok {
+		if err := validResponse.VisitReorderDayResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ListEntries operation middleware
@@ -790,6 +1169,65 @@ func (sh *strictHandler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateEntryResponseObject); ok {
 		if err := validResponse.VisitCreateEntryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteEntry operation middleware
+func (sh *strictHandler) DeleteEntry(w http.ResponseWriter, r *http.Request, id string) {
+	var request DeleteEntryRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteEntry(ctx, request.(DeleteEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteEntryResponseObject); ok {
+		if err := validResponse.VisitDeleteEntryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateEntry operation middleware
+func (sh *strictHandler) UpdateEntry(w http.ResponseWriter, r *http.Request, id string) {
+	var request UpdateEntryRequestObject
+
+	request.Id = id
+
+	var body UpdateEntryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateEntry(ctx, request.(UpdateEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateEntryResponseObject); ok {
+		if err := validResponse.VisitUpdateEntryResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

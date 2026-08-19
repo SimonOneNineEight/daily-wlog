@@ -12,6 +12,7 @@ type Querier interface {
 	// A usable Entry category is owned by the user and top-level: Subcategories
 	// refine an Entry's Category, they never replace it.
 	CategoryIsUsable(ctx context.Context, arg CategoryIsUsableParams) (bool, error)
+	DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error)
 	GetJournal(ctx context.Context, userID string) (string, error)
 	GetSchemaVersion(ctx context.Context) (int32, error)
 	// Position is assigned at the end of the date's existing order in the same
@@ -19,6 +20,7 @@ type Querier interface {
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)
 	ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error)
+	ListEntryIDs(ctx context.Context, arg ListEntryIDsParams) ([]string, error)
 	// One row per entry in the month, date-then-position order; the handler
 	// groups rows into days. Only structure leaves the database — dots need
 	// categories, never content (ADR-0004).
@@ -29,6 +31,12 @@ type Querier interface {
 	// CTE chaining (each part reads the_user) forces execution order; FK checks
 	// fire at end of statement, when the user row exists.
 	ProvisionUser(ctx context.Context, userID string) error
+	// One statement assigning every entry its new 1..n position; the deferred
+	// unique constraint validates the final order at commit.
+	ReorderEntries(ctx context.Context, arg ReorderEntriesParams) error
+	// Full replacement of the editable fields; journal_id scoping means a User
+	// can only ever touch their own Entries (no rows = not found).
+	UpdateEntry(ctx context.Context, arg UpdateEntryParams) (UpdateEntryRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

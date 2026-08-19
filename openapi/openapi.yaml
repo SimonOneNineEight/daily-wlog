@@ -127,6 +127,137 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /entries/{id}:
+    patch:
+      operationId: updateEntry
+      summary: Update an Entry
+      description: >
+        Full replacement of the editable fields: the client always sends the
+        category and the whole content blob (it owns both).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEntry"
+      responses:
+        "200":
+          description: The updated Entry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "400":
+          description: Unknown category or missing content.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such Entry in the signed-in User's Journal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Updating the Entry failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteEntry
+      summary: Delete an Entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such Entry in the signed-in User's Journal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Deleting the Entry failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /days/{date}/order:
+    put:
+      operationId: reorderDay
+      summary: Reorder a date's Entries
+      description: >
+        Replaces the date's entry order. entryIds must be exactly the date's
+        Entries — every id, once. Positions become 1..n in the given order.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The Entry date, YYYY-MM-DD.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderDay"
+      responses:
+        "200":
+          description: The date's Entries in their new order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntryList"
+        "400":
+          description: Invalid date, or entryIds is not exactly the date's Entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Reordering failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /months/{month}:
     get:
       operationId: getMonth
@@ -234,6 +365,28 @@ components:
             server stores and returns it verbatim and never parses it
             (ADR-0004); the title requirement is enforced by the client.
             Capped at 64 KiB.
+    UpdateEntry:
+      type: object
+      required:
+        - categoryId
+        - content
+      properties:
+        categoryId:
+          type: string
+          description: A top-level Category owned by the signed-in User.
+        content:
+          type: string
+          description: The full replacement content blob (opaque, ADR-0004).
+    ReorderDay:
+      type: object
+      required:
+        - entryIds
+      properties:
+        entryIds:
+          type: array
+          items:
+            type: string
+          description: Every Entry id of the date, once, in the new order.
     Entry:
       type: object
       required:

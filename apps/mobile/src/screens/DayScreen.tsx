@@ -1,11 +1,14 @@
 import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import DraggableFlatList from 'react-native-draggable-flatlist';
+import type { RenderItemParams } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry } from '../api/client';
-import { listEntries } from '../api/client';
+import { listEntries, reorderDay } from '../api/client';
 import { decodeContent } from '../entries/content';
+import { EntryCard } from '../entries/EntryCard';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
@@ -17,18 +20,19 @@ type Props = {
   /** The date whose Entries this screen shows, YYYY-MM-DD. */
   date: string;
   onBack?: () => void;
-  /** Called after an Entry is saved from this screen. */
+  /** Called after an Entry changes here (save, edit, delete, reorder). */
   onEntrySaved?: () => void;
 };
 
-// The minimal day list (#5), reached from the month view (#6) for any
-// tapped date. The real day view (cards, reorder, edit) is #7.
+// The day view (#7): the date's Entries as cards; long-press drag reorders
+// and persists, tap edits, the form's 刪除紀錄 deletes.
 export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved }: Props) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [composing, setComposing] = useState(false);
+  const [editing, setEditing] = useState<Entry | null>(null);
 
-  // Bumping refresh reloads the list (after a save).
+  // Bumping refresh reloads the list (after a save/edit/delete).
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -48,26 +52,60 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved 
     };
   }, [accessToken, date, refresh]);
 
-  if (composing) {
+  const changed = () => {
+    setRefresh((n) => n + 1);
+    onEntrySaved?.();
+  };
+
+  if (composing || editing) {
     return (
       <EntryFormScreen
         accessToken={accessToken}
         date={date}
         categories={categories}
+        entry={editing ?? undefined}
         onDone={(saved) => {
           setComposing(false);
-          if (saved) {
-            setRefresh((n) => n + 1);
-            onEntrySaved?.();
-          }
+          setEditing(null);
+          if (saved) changed();
         }}
       />
     );
   }
 
+  const persistOrder = async (ordered: Entry[]) => {
+    try {
+      const result = await reorderDay(accessToken, date, ordered.map((e) => e.id));
+      setEntries(result.entries);
+      onEntrySaved?.();
+    } catch {
+      // The optimistic order stays on screen; the next load restores truth.
+      setFailed(true);
+    }
+  };
+
   const [, monthPart, dayPart] = date.split('-').map(Number);
-  const weekday = strings.month.weekdaysFull[new Date(date + 'T00:00:00').getDay()];
+  const weekday = strings.month.weekdaysFull[new Date(`${date}T00:00:00`).getDay()];
   const heading = strings.month.dateLabel(monthPart, dayPart, weekday);
+
+  const renderCard = ({ item, drag, isActive }: RenderItemParams<Entry>) => {
+    const category = categories.find((c) => c.id === item.categoryId);
+    const content = decodeContent(item.content);
+    return (
+      <View style={styles.cardHolder}>
+        <EntryCard
+          title={content?.title ?? strings.day.unreadable}
+          categoryName={category?.name ?? ''}
+          categoryColor={category?.color ?? theme.colors.iconMuted}
+          categoryIcon={category?.icon ?? 'tag'}
+          note={content?.note || undefined}
+          dragging={isActive}
+          onPress={() => setEditing(item)}
+          onLongPress={drag}
+        />
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -84,24 +122,21 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved 
         ) : null}
         <Text style={styles.heading}>{heading}</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.list}>
-        {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
-        {entries !== null && entries.length === 0 && !failed ? (
-          <Text style={styles.muted}>{strings.day.empty}</Text>
-        ) : null}
-        {entries?.map((entry) => {
-          const category = categories.find((c) => c.id === entry.categoryId);
-          const content = decodeContent(entry.content);
-          return (
-            <View key={entry.id} style={styles.row}>
-              <View style={[styles.dot, { backgroundColor: category?.color ?? styles.fallbackDot.backgroundColor }]} />
-              <Text style={styles.rowTitle} numberOfLines={1}>
-                {content?.title ?? strings.day.unreadable}
-              </Text>
-            </View>
-          );
-        })}
-      </ScrollView>
+      {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
+      {entries !== null && entries.length === 0 && !failed ? (
+        <Text style={styles.muted}>{strings.day.empty}</Text>
+      ) : null}
+      <DraggableFlatList
+        data={entries ?? []}
+        keyExtractor={(entry) => entry.id}
+        renderItem={renderCard}
+        onDragEnd={({ data }) => {
+          setEntries(data);
+          void persistOrder(data);
+        }}
+        containerStyle={styles.listContainer}
+        contentContainerStyle={styles.list}
+      />
       <Pressable
         accessibilityRole="button"
         style={styles.addButton}
@@ -135,35 +170,19 @@ const styles = createStyles((t) => ({
     ...t.typography.navTitle,
     color: t.colors.textPrimary,
   },
-  list: {
-    gap: t.spacing.space4,
-    paddingBottom: t.spacing.space9,
-  },
   muted: {
     ...t.typography.note,
     color: t.colors.textTertiary,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  listContainer: {
+    flex: 1,
+  },
+  list: {
     gap: t.spacing.space5,
-    backgroundColor: t.colors.surface,
-    borderRadius: t.radius.card,
-    paddingHorizontal: t.spacing.cardPadding,
-    minHeight: t.spacing.rowHeight,
+    paddingBottom: t.spacing.space9,
   },
-  dot: {
-    width: t.dot.sizeList,
-    height: t.dot.sizeList,
-    borderRadius: t.radius.pill,
-  },
-  fallbackDot: {
-    backgroundColor: t.colors.textQuaternary,
-  },
-  rowTitle: {
-    ...t.typography.entryTitle,
-    color: t.colors.textPrimary,
-    flexShrink: 1,
+  cardHolder: {
+    marginBottom: 0,
   },
   addButton: {
     alignSelf: 'center',

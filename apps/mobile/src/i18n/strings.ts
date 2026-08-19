@@ -35,6 +35,10 @@ const zhTW = {
   entryForm: {
     cancel: '取消',
     save: '儲存',
+    editTitle: '紀錄',
+    delete: '刪除紀錄',
+    deleteConfirmTitle: '刪除這筆紀錄？',
+    deleteConfirm: '刪除',
     categoryPlaceholder: '類別',
     titlePlaceholder: '標題',
     notePlaceholder: '備註（選填）',

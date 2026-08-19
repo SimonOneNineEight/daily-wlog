@@ -1,12 +1,12 @@
 import { ChevronDown, Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { Category } from '../api/client';
-import { createEntry } from '../api/client';
+import type { Category, Entry } from '../api/client';
+import { createEntry, deleteEntry, updateEntry } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
-import { encodeContent } from '../entries/content';
+import { decodeContent, encodeContent } from '../entries/content';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
@@ -14,6 +14,8 @@ type Props = {
   accessToken: string;
   date: string;
   categories: Category[];
+  /** When present, the form edits this Entry instead of creating one. */
+  entry?: Entry;
   onDone: (saved: boolean) => void;
 };
 
@@ -22,11 +24,14 @@ type Props = {
 // required by this form, not by the server — the title lives inside the
 // opaque content blob the server never parses (ADR-0004). The 建立「…」
 // no-match row and photos arrive with #9 and #8.
-export function EntryFormScreen({ accessToken, date, categories, onDone }: Props) {
-  const [category, setCategory] = useState<Category | null>(null);
+export function EntryFormScreen({ accessToken, date, categories, entry, onDone }: Props) {
+  const initialContent = entry ? decodeContent(entry.content) : null;
+  const [category, setCategory] = useState<Category | null>(
+    entry ? (categories.find((c) => c.id === entry.categoryId) ?? null) : null,
+  );
   const [query, setQuery] = useState('');
-  const [title, setTitle] = useState('');
-  const [note, setNote] = useState('');
+  const [title, setTitle] = useState(initialContent?.title ?? '');
+  const [note, setNote] = useState(initialContent?.note ?? '');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -43,17 +48,34 @@ export function EntryFormScreen({ accessToken, date, categories, onDone }: Props
     if (!canSave || category === null) return;
     setSaving(true);
     setFailed(false);
+    const content = encodeContent({ title: title.trim(), note });
     try {
-      await createEntry(accessToken, {
-        date,
-        categoryId: category.id,
-        content: encodeContent({ title: title.trim(), note }),
-      });
+      if (entry) {
+        await updateEntry(accessToken, entry.id, { categoryId: category.id, content });
+      } else {
+        await createEntry(accessToken, { date, categoryId: category.id, content });
+      }
       onDone(true);
     } catch {
       setFailed(true);
       setSaving(false);
     }
+  };
+
+  const confirmDelete = () => {
+    if (!entry) return;
+    Alert.alert(strings.entryForm.deleteConfirmTitle, undefined, [
+      { text: strings.entryForm.cancel, style: 'cancel' },
+      {
+        text: strings.entryForm.deleteConfirm,
+        style: 'destructive',
+        onPress: () => {
+          deleteEntry(accessToken, entry.id)
+            .then(() => onDone(true))
+            .catch(() => setFailed(true));
+        },
+      },
+    ]);
   };
 
   return (
@@ -63,7 +85,9 @@ export function EntryFormScreen({ accessToken, date, categories, onDone }: Props
           <Text style={styles.cancelLabel}>{strings.entryForm.cancel}</Text>
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{strings.day.addEntry}</Text>
+          <Text style={styles.headerTitle}>
+            {entry ? strings.entryForm.editTitle : strings.day.addEntry}
+          </Text>
           <Text style={styles.headerSubtitle}>{dateLabel}</Text>
         </View>
         <View style={styles.headerSideEnd}>
@@ -110,6 +134,11 @@ export function EntryFormScreen({ accessToken, date, categories, onDone }: Props
               onChangeText={setNote}
             />
             {failed ? <Text style={styles.error}>{strings.entryForm.saveFailed}</Text> : null}
+            {entry ? (
+              <Pressable accessibilityRole="button" style={styles.deleteButton} onPress={confirmDelete}>
+                <Text style={styles.deleteLabel}>{strings.entryForm.delete}</Text>
+              </Pressable>
+            ) : null}
           </>
         ) : (
           <>
@@ -271,6 +300,14 @@ const styles = createStyles((t) => ({
   },
   placeholder: {
     color: t.colors.textPlaceholder,
+  },
+  deleteButton: {
+    alignItems: 'center',
+    paddingVertical: t.spacing.space5,
+  },
+  deleteLabel: {
+    ...t.typography.entryTitle,
+    color: t.colors.textDestructive,
   },
   error: {
     ...t.typography.meta,

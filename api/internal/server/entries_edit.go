@@ -1,0 +1,148 @@
+package server
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/SimonOneNineEight/daily-wlog/api/gen/apigen"
+	"github.com/SimonOneNineEight/daily-wlog/api/gen/dbgen"
+	"github.com/SimonOneNineEight/daily-wlog/api/internal/auth"
+)
+
+func (h handlers) UpdateEntry(ctx context.Context, request apigen.UpdateEntryRequestObject) (apigen.UpdateEntryResponseObject, error) {
+	if _, err := uuid.Parse(request.Id); err != nil {
+		return apigen.UpdateEntry404JSONResponse{Message: "entry not found"}, nil
+	}
+	body := request.Body
+	if _, err := uuid.Parse(body.CategoryId); err != nil {
+		return apigen.UpdateEntry400JSONResponse{Message: "categoryId must be a UUID"}, nil
+	}
+	if body.Content == "" {
+		return apigen.UpdateEntry400JSONResponse{Message: "content is required"}, nil
+	}
+	if len(body.Content) > maxContentBytes {
+		return apigen.UpdateEntry400JSONResponse{Message: "content exceeds 64 KiB"}, nil
+	}
+
+	userID := auth.UserID(ctx)
+	journalID, err := h.queries.GetJournal(ctx, userID)
+	if err != nil {
+		return apigen.UpdateEntry500JSONResponse(h.failure(ctx, "updating the entry failed", err)), nil
+	}
+	usable, err := h.queries.CategoryIsUsable(ctx, dbgen.CategoryIsUsableParams{
+		CategoryID: body.CategoryId,
+		UserID:     userID,
+	})
+	if err != nil {
+		return apigen.UpdateEntry500JSONResponse(h.failure(ctx, "updating the entry failed", err)), nil
+	}
+	if !usable {
+		return apigen.UpdateEntry400JSONResponse{Message: "category not found"}, nil
+	}
+	row, err := h.queries.UpdateEntry(ctx, dbgen.UpdateEntryParams{
+		ID:         request.Id,
+		JournalID:  journalID,
+		CategoryID: body.CategoryId,
+		Content:    []byte(body.Content),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return apigen.UpdateEntry404JSONResponse{Message: "entry not found"}, nil
+	}
+	if err != nil {
+		return apigen.UpdateEntry500JSONResponse(h.failure(ctx, "updating the entry failed", err)), nil
+	}
+	return apigen.UpdateEntry200JSONResponse{
+		Id:         row.ID,
+		Date:       row.EntryDate,
+		Position:   int(row.Position),
+		CategoryId: row.CategoryID,
+		AuthorId:   row.AuthorID,
+		Content:    string(row.Content),
+	}, nil
+}
+
+func (h handlers) DeleteEntry(ctx context.Context, request apigen.DeleteEntryRequestObject) (apigen.DeleteEntryResponseObject, error) {
+	if _, err := uuid.Parse(request.Id); err != nil {
+		return apigen.DeleteEntry404JSONResponse{Message: "entry not found"}, nil
+	}
+	userID := auth.UserID(ctx)
+	journalID, err := h.queries.GetJournal(ctx, userID)
+	if err != nil {
+		return apigen.DeleteEntry500JSONResponse(h.failure(ctx, "deleting the entry failed", err)), nil
+	}
+	deleted, err := h.queries.DeleteEntry(ctx, dbgen.DeleteEntryParams{ID: request.Id, JournalID: journalID})
+	if err != nil {
+		return apigen.DeleteEntry500JSONResponse(h.failure(ctx, "deleting the entry failed", err)), nil
+	}
+	if deleted == 0 {
+		return apigen.DeleteEntry404JSONResponse{Message: "entry not found"}, nil
+	}
+	return apigen.DeleteEntry204Response{}, nil
+}
+
+func (h handlers) ReorderDay(ctx context.Context, request apigen.ReorderDayRequestObject) (apigen.ReorderDayResponseObject, error) {
+	entryDate, err := time.Parse(dateLayout, request.Date)
+	if err != nil {
+		return apigen.ReorderDay400JSONResponse{Message: "date must be YYYY-MM-DD"}, nil
+	}
+	userID := auth.UserID(ctx)
+	journalID, err := h.queries.GetJournal(ctx, userID)
+	if err != nil {
+		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
+	}
+	pgDate := pgtype.Date{Time: entryDate, Valid: true}
+	existing, err := h.queries.ListEntryIDs(ctx, dbgen.ListEntryIDsParams{JournalID: journalID, EntryDate: pgDate})
+	if err != nil {
+		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
+	}
+	if !sameIDSet(existing, request.Body.EntryIds) {
+		return apigen.ReorderDay400JSONResponse{Message: "entryIds must be exactly the date's entries"}, nil
+	}
+	if err := h.queries.ReorderEntries(ctx, dbgen.ReorderEntriesParams{
+		EntryIds:  request.Body.EntryIds,
+		JournalID: journalID,
+		EntryDate: pgDate,
+	}); err != nil {
+		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
+	}
+	rows, err := h.queries.ListEntriesByDate(ctx, dbgen.ListEntriesByDateParams{JournalID: journalID, EntryDate: pgDate})
+	if err != nil {
+		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
+	}
+	entries := make([]apigen.Entry, len(rows))
+	for i, row := range rows {
+		entries[i] = apigen.Entry{
+			Id:         row.ID,
+			Date:       row.EntryDate,
+			Position:   int(row.Position),
+			CategoryId: row.CategoryID,
+			AuthorId:   row.AuthorID,
+			Content:    string(row.Content),
+		}
+	}
+	return apigen.ReorderDay200JSONResponse{Entries: entries}, nil
+}
+
+// sameIDSet reports whether requested is exactly the existing ids: every id
+// once, order free.
+func sameIDSet(existing, requested []string) bool {
+	if len(existing) != len(requested) {
+		return false
+	}
+	counts := make(map[string]int, len(existing))
+	for _, id := range existing {
+		counts[id]++
+	}
+	for _, id := range requested {
+		counts[id]--
+		if counts[id] < 0 {
+			return false
+		}
+	}
+	return true
+}

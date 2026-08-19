@@ -27,6 +27,9 @@ async function request<T>(
   if (!response.ok) {
     throw new Error(`${path} responded ${response.status}`);
   }
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return (await response.json()) as T;
 }
 
@@ -45,4 +48,19 @@ export function listEntries(accessToken: string, date: string): Promise<EntryLis
 
 export function getMonth(accessToken: string, month: string): Promise<MonthDots> {
   return request<MonthDots>(accessToken, `/months/${month}`);
+}
+
+type UpdateEntryBody =
+  paths['/entries/{id}']['patch']['requestBody']['content']['application/json'];
+
+export function updateEntry(accessToken: string, id: string, body: UpdateEntryBody): Promise<Entry> {
+  return request<Entry>(accessToken, `/entries/${id}`, { method: 'PATCH', body });
+}
+
+export function deleteEntry(accessToken: string, id: string): Promise<void> {
+  return request<void>(accessToken, `/entries/${id}`, { method: 'DELETE' });
+}
+
+export function reorderDay(accessToken: string, date: string, entryIds: string[]): Promise<EntryList> {
+  return request<EntryList>(accessToken, `/days/${date}/order`, { method: 'PUT', body: { entryIds } });
 }

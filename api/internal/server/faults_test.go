@@ -25,6 +25,10 @@ type failingQuerier struct {
 	insertErr      error
 	listEntriesErr error
 	monthDotsErr   error
+	updateErr      error
+	deleteErr      error
+	listIDsErr     error
+	reorderErr     error
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
@@ -46,6 +50,18 @@ func (f failingQuerier) ListEntriesByDate(context.Context, dbgen.ListEntriesByDa
 }
 func (f failingQuerier) ListMonthDots(context.Context, dbgen.ListMonthDotsParams) ([]dbgen.ListMonthDotsRow, error) {
 	return nil, f.monthDotsErr
+}
+func (f failingQuerier) UpdateEntry(context.Context, dbgen.UpdateEntryParams) (dbgen.UpdateEntryRow, error) {
+	return dbgen.UpdateEntryRow{ID: "entry-id", Position: 1}, f.updateErr
+}
+func (f failingQuerier) DeleteEntry(context.Context, dbgen.DeleteEntryParams) (int64, error) {
+	return 1, f.deleteErr
+}
+func (f failingQuerier) ListEntryIDs(context.Context, dbgen.ListEntryIDsParams) ([]string, error) {
+	return []string{"7f000000-0000-4000-8000-00000000000a"}, f.listIDsErr
+}
+func (f failingQuerier) ReorderEntries(context.Context, dbgen.ReorderEntriesParams) error {
+	return f.reorderErr
 }
 
 func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
@@ -82,6 +98,45 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			if resp.StatusCode != http.StatusInternalServerError {
 				t.Fatalf("status = %d, want 500", resp.StatusCode)
 			}
+		})
+	}
+	editCases := map[string]struct {
+		querier failingQuerier
+		run     func(t *testing.T, ts *httptest.Server)
+	}{
+		"update journal fails": {failingQuerier{journalErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, patchEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a", map[string]string{"categoryId": "7f000000-0000-4000-8000-000000000000", "content": "x"}), 500)
+		}},
+		"update category fails": {failingQuerier{categoryErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, patchEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a", map[string]string{"categoryId": "7f000000-0000-4000-8000-000000000000", "content": "x"}), 500)
+		}},
+		"update fails": {failingQuerier{updateErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, patchEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a", map[string]string{"categoryId": "7f000000-0000-4000-8000-000000000000", "content": "x"}), 500)
+		}},
+		"delete journal fails": {failingQuerier{journalErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, deleteEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a"), 500)
+		}},
+		"delete fails": {failingQuerier{deleteErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, deleteEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a"), 500)
+		}},
+		"reorder journal fails": {failingQuerier{journalErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, reorderDay(t, ts, token, "2026-05-09", []string{"7f000000-0000-4000-8000-00000000000a"}), 500)
+		}},
+		"reorder list-ids fails": {failingQuerier{listIDsErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, reorderDay(t, ts, token, "2026-05-09", []string{"7f000000-0000-4000-8000-00000000000a"}), 500)
+		}},
+		"reorder fails": {failingQuerier{reorderErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, reorderDay(t, ts, token, "2026-05-09", []string{"7f000000-0000-4000-8000-00000000000a"}), 500)
+		}},
+		"reorder relist fails": {failingQuerier{listEntriesErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, reorderDay(t, ts, token, "2026-05-09", []string{"7f000000-0000-4000-8000-00000000000a"}), 500)
+		}},
+	}
+	for name, c := range editCases {
+		t.Run("edit/"+name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), c.querier, auth.NewVerifier(testJWKSURL())))
+			defer ts.Close()
+			c.run(t, ts)
 		})
 	}
 	monthCases := map[string]failingQuerier{
@@ -125,5 +180,13 @@ func TestMeFailsClosedOnDatabaseErrors(t *testing.T) {
 				t.Errorf("500 body should carry an Error message, got err=%v message=%q", err, body.Message)
 			}
 		})
+	}
+}
+
+func checkStatus(t *testing.T, resp *http.Response, want int) {
+	t.Helper()
+	resp.Body.Close()
+	if resp.StatusCode != want {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, want)
 	}
 }
