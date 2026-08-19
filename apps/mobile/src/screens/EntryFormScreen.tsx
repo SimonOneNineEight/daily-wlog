@@ -532,15 +532,18 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     gap: t.spacing.space4,
   },
+  // No inherited lineHeight and a real control height: TextInput clips CJK
+  // glyphs on iOS when a line box is forced inside a tight pill.
   subInput: {
-    ...t.typography.meta,
+    fontSize: t.typography.meta.fontSize,
     color: t.colors.textPrimary,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.pill,
     borderWidth: t.border.hairline,
     borderColor: t.colors.lineField,
+    height: t.spacing.space9,
     paddingHorizontal: t.spacing.space5,
-    paddingVertical: t.spacing.space3,
+    paddingVertical: 0,
     minWidth: t.spacing.fabSize * 2,
   },
   subConfirm: {
