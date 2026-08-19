@@ -532,8 +532,10 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     gap: t.spacing.space4,
   },
-  // No inherited lineHeight and a real control height: TextInput clips CJK
-  // glyphs on iOS when a line box is forced inside a tight pill.
+  // Padding-based sizing, no forced height and no inherited lineHeight:
+  // iOS TextInput clips CJK glyphs inside a forced line box and top-anchors
+  // the placeholder inside a fixed height; letting it wrap its natural line
+  // centers both (Simon, 2026-08-19, two rounds).
   subInput: {
     fontSize: t.typography.meta.fontSize,
     color: t.colors.textPrimary,
@@ -541,9 +543,8 @@ const styles = createStyles((t) => ({
     borderRadius: t.radius.pill,
     borderWidth: t.border.hairline,
     borderColor: t.colors.lineField,
-    height: t.spacing.space9,
     paddingHorizontal: t.spacing.space5,
-    paddingVertical: 0,
+    paddingVertical: t.spacing.space3,
     minWidth: t.spacing.fabSize * 2,
   },
   subConfirm: {
