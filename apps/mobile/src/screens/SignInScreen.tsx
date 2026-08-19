@@ -11,6 +11,12 @@ import { createStyles, theme } from '../theme';
 // the platform's official component and only renders where the entitlement
 // exists; the Google button falls back to a themed label until the official
 // GoogleSigninButton is wired in the dev-build pass (needs OAuth client ids).
+// Local-development affordance only: real provider sign-in needs a dev build
+// plus Apple/Google console config (deferred on #4). These env vars must
+// never be set in a real build.
+const devEmail = process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL;
+const devPassword = process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD;
+
 export function SignInScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -67,6 +73,26 @@ export function SignInScreen() {
     }
   };
 
+  const signInAsDev = async () => {
+    if (!devEmail || !devPassword) return;
+    setFailed(false);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: devEmail,
+        password: devPassword,
+      });
+      if (error) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: devEmail,
+          password: devPassword,
+        });
+        if (signUpError) throw signUpError;
+      }
+    } catch {
+      setFailed(true);
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <View style={styles.brand}>
@@ -86,6 +112,11 @@ export function SignInScreen() {
         <Pressable accessibilityRole="button" style={styles.googleButton} onPress={signInWithGoogle}>
           <Text style={styles.googleLabel}>{strings.signIn.google}</Text>
         </Pressable>
+        {devEmail && devPassword ? (
+          <Pressable accessibilityRole="button" style={styles.devButton} onPress={() => void signInAsDev()}>
+            <Text style={styles.devLabel}>{strings.signIn.devLogin}</Text>
+          </Pressable>
+        ) : null}
         {failed ? <Text style={styles.error}>{strings.signIn.error}</Text> : null}
       </View>
     </View>
@@ -131,6 +162,14 @@ const styles = createStyles((t) => ({
   googleLabel: {
     ...t.typography.entryTitle,
     color: t.colors.textPrimary,
+  },
+  devButton: {
+    alignItems: 'center',
+    paddingVertical: t.spacing.space4,
+  },
+  devLabel: {
+    ...t.typography.meta,
+    color: t.colors.textSecondary,
   },
   error: {
     ...t.typography.meta,

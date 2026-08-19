@@ -8,6 +8,7 @@ const zhTW = {
     wordmark: 'daily-wlog',
     promise: '每天五分鐘，留下你的生活',
     google: '使用 Google 帳戶登入',
+    devLogin: '以測試帳號登入（開發用）',
     error: '登入失敗，請再試一次',
   },
   home: {
