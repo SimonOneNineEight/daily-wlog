@@ -14,6 +14,10 @@ type Querier interface {
 	CategoryIsUsable(ctx context.Context, arg CategoryIsUsableParams) (bool, error)
 	GetJournal(ctx context.Context, userID string) (string, error)
 	GetSchemaVersion(ctx context.Context) (int32, error)
+	// Position lands after existing siblings (same parent level). Name
+	// uniqueness per (user, parent) is enforced by the table's UNIQUE NULLS NOT
+	// DISTINCT constraint; the handler maps that violation to 409.
+	InsertCategory(ctx context.Context, arg InsertCategoryParams) (InsertCategoryRow, error)
 	// Position is assigned at the end of the date's existing order in the same
 	// statement, so multiple Entries per day stack in creation order.
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
@@ -29,6 +33,9 @@ type Querier interface {
 	// CTE chaining (each part reads the_user) forces execution order; FK checks
 	// fire at end of statement, when the user row exists.
 	ProvisionUser(ctx context.Context, userID string) error
+	// A usable Entry refinement: owned by the user and a child of exactly the
+	// Entry's Category.
+	SubcategoryIsUsable(ctx context.Context, arg SubcategoryIsUsableParams) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

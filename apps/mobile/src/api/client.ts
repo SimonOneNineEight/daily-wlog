@@ -10,6 +10,8 @@ export type Entry = paths['/entries']['post']['responses']['201']['content']['ap
 type EntryList = paths['/entries']['get']['responses']['200']['content']['application/json'];
 export type MonthDots =
   paths['/months/{month}']['get']['responses']['200']['content']['application/json'];
+export type CreateCategoryBody =
+  paths['/categories']['post']['requestBody']['content']['application/json'];
 
 async function request<T>(
   accessToken: string,
@@ -45,4 +47,8 @@ export function listEntries(accessToken: string, date: string): Promise<EntryLis
 
 export function getMonth(accessToken: string, month: string): Promise<MonthDots> {
   return request<MonthDots>(accessToken, `/months/${month}`);
+}
+
+export function createCategory(accessToken: string, body: CreateCategoryBody): Promise<Category> {
+  return request<Category>(accessToken, '/categories', { method: 'POST', body });
 }

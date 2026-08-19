@@ -36,7 +36,7 @@ func (q *Queries) CategoryIsUsable(ctx context.Context, arg CategoryIsUsablePara
 }
 
 const insertEntry = `-- name: InsertEntry :one
-insert into entries (journal_id, author_id, entry_date, position, category_id, content)
+insert into entries (journal_id, author_id, entry_date, position, category_id, subcategory_id, content)
 values (
     $1::uuid,
     $2::uuid,
@@ -47,17 +47,19 @@ values (
         where journal_id = $1::uuid and entry_date = $3::date
     ),
     $4::uuid,
-    $5
+    $5::uuid,
+    $6
 )
 returning id, position
 `
 
 type InsertEntryParams struct {
-	JournalID  string
-	AuthorID   string
-	EntryDate  pgtype.Date
-	CategoryID string
-	Content    []byte
+	JournalID     string
+	AuthorID      string
+	EntryDate     pgtype.Date
+	CategoryID    string
+	SubcategoryID *string
+	Content       []byte
 }
 
 type InsertEntryRow struct {
@@ -73,6 +75,7 @@ func (q *Queries) InsertEntry(ctx context.Context, arg InsertEntryParams) (Inser
 		arg.AuthorID,
 		arg.EntryDate,
 		arg.CategoryID,
+		arg.SubcategoryID,
 		arg.Content,
 	)
 	var i InsertEntryRow
@@ -86,6 +89,7 @@ select
     to_char(entry_date, 'YYYY-MM-DD') as entry_date,
     position,
     category_id,
+    subcategory_id,
     author_id,
     content
 from entries
@@ -99,12 +103,13 @@ type ListEntriesByDateParams struct {
 }
 
 type ListEntriesByDateRow struct {
-	ID         string
-	EntryDate  string
-	Position   int32
-	CategoryID string
-	AuthorID   string
-	Content    []byte
+	ID            string
+	EntryDate     string
+	Position      int32
+	CategoryID    string
+	SubcategoryID *string
+	AuthorID      string
+	Content       []byte
 }
 
 func (q *Queries) ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error) {
@@ -121,6 +126,7 @@ func (q *Queries) ListEntriesByDate(ctx context.Context, arg ListEntriesByDatePa
 			&i.EntryDate,
 			&i.Position,
 			&i.CategoryID,
+			&i.SubcategoryID,
 			&i.AuthorID,
 			&i.Content,
 		); err != nil {

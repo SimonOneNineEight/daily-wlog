@@ -59,6 +59,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a Category or Subcategory
+         * @description Creates a category for the signed-in User with the auto-assigned 'tag' icon (editable later in category management). With parentId it creates a Subcategory of that top-level Category; two levels is the maximum. Names are unique per (User, parent).
+         */
+        post: operations["createCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/months/{month}": {
         parameters: {
             query?: never;
@@ -97,11 +117,20 @@ export interface components {
             parentId?: string;
             position: number;
         };
+        CreateCategory: {
+            name: string;
+            /** @description Hex color. Presets come from the category palette; custom values are free per the ratified color decision. Subcategories store their parent's color but always render through the parent. */
+            color: string;
+            /** @description When present, creates a Subcategory of this Category. */
+            parentId?: string;
+        };
         CreateEntry: {
             /** @description The Entry date, YYYY-MM-DD. */
             date: string;
             /** @description A top-level Category owned by the signed-in User. */
             categoryId: string;
+            /** @description Optional refinement; must be a child of categoryId. */
+            subcategoryId?: string;
             /** @description Opaque versioned blob holding the Entry's title and note. The server stores and returns it verbatim and never parses it (ADR-0004); the title requirement is enforced by the client. Capped at 64 KiB. */
             content: string;
         };
@@ -110,6 +139,7 @@ export interface components {
             date: string;
             position: number;
             categoryId: string;
+            subcategoryId?: string;
             authorId: string;
             content: string;
         };
@@ -300,6 +330,66 @@ export interface operations {
                 };
             };
             /** @description Creating the Entry failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategory"];
+            };
+        };
+        responses: {
+            /** @description The created Category, positioned after its siblings. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Category"];
+                };
+            };
+            /** @description Invalid name, color, or parent. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A sibling with this name already exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Creating the category failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

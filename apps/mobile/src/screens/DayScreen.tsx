@@ -19,11 +19,12 @@ type Props = {
   onBack?: () => void;
   /** Called after an Entry is saved from this screen. */
   onEntrySaved?: () => void;
+  onCategoriesChanged?: () => void;
 };
 
 // The minimal day list (#5), reached from the month view (#6) for any
 // tapped date. The real day view (cards, reorder, edit) is #7.
-export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved }: Props) {
+export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved, onCategoriesChanged }: Props) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -54,6 +55,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved 
         accessToken={accessToken}
         date={date}
         categories={categories}
+        onCategoriesChanged={onCategoriesChanged}
         onDone={(saved) => {
           setComposing(false);
           if (saved) {

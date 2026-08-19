@@ -29,6 +29,11 @@ func (h handlers) CreateEntry(ctx context.Context, request apigen.CreateEntryReq
 	if _, err := uuid.Parse(body.CategoryId); err != nil {
 		return apigen.CreateEntry400JSONResponse{Message: "categoryId must be a UUID"}, nil
 	}
+	if body.SubcategoryId != nil {
+		if _, err := uuid.Parse(*body.SubcategoryId); err != nil {
+			return apigen.CreateEntry400JSONResponse{Message: "subcategoryId must be a UUID"}, nil
+		}
+	}
 	if body.Content == "" {
 		return apigen.CreateEntry400JSONResponse{Message: "content is required"}, nil
 	}
@@ -51,23 +56,39 @@ func (h handlers) CreateEntry(ctx context.Context, request apigen.CreateEntryReq
 	if !usable {
 		return apigen.CreateEntry400JSONResponse{Message: "category not found"}, nil
 	}
+	if body.SubcategoryId != nil {
+		// A refinement must be a child of exactly this Entry's Category.
+		subUsable, err := h.queries.SubcategoryIsUsable(ctx, dbgen.SubcategoryIsUsableParams{
+			SubcategoryID: *body.SubcategoryId,
+			UserID:        userID,
+			CategoryID:    body.CategoryId,
+		})
+		if err != nil {
+			return apigen.CreateEntry500JSONResponse(h.failure(ctx, "creating the entry failed", err)), nil
+		}
+		if !subUsable {
+			return apigen.CreateEntry400JSONResponse{Message: "subcategory not found"}, nil
+		}
+	}
 	row, err := h.queries.InsertEntry(ctx, dbgen.InsertEntryParams{
-		JournalID:  journalID,
-		AuthorID:   userID,
-		EntryDate:  pgtype.Date{Time: entryDate, Valid: true},
-		CategoryID: body.CategoryId,
-		Content:    []byte(body.Content),
+		JournalID:     journalID,
+		AuthorID:      userID,
+		EntryDate:     pgtype.Date{Time: entryDate, Valid: true},
+		CategoryID:    body.CategoryId,
+		SubcategoryID: body.SubcategoryId,
+		Content:       []byte(body.Content),
 	})
 	if err != nil {
 		return apigen.CreateEntry500JSONResponse(h.failure(ctx, "creating the entry failed", err)), nil
 	}
 	return apigen.CreateEntry201JSONResponse{
-		Id:         row.ID,
-		Date:       body.Date,
-		Position:   int(row.Position),
-		CategoryId: body.CategoryId,
-		AuthorId:   userID,
-		Content:    body.Content,
+		Id:            row.ID,
+		Date:          body.Date,
+		Position:      int(row.Position),
+		CategoryId:    body.CategoryId,
+		SubcategoryId: body.SubcategoryId,
+		AuthorId:      userID,
+		Content:       body.Content,
 	}, nil
 }
 
@@ -91,12 +112,13 @@ func (h handlers) ListEntries(ctx context.Context, request apigen.ListEntriesReq
 	entries := make([]apigen.Entry, len(rows))
 	for i, row := range rows {
 		entries[i] = apigen.Entry{
-			Id:         row.ID,
-			Date:       row.EntryDate,
-			Position:   int(row.Position),
-			CategoryId: row.CategoryID,
-			AuthorId:   row.AuthorID,
-			Content:    string(row.Content),
+			Id:            row.ID,
+			Date:          row.EntryDate,
+			Position:      int(row.Position),
+			CategoryId:    row.CategoryID,
+			SubcategoryId: row.SubcategoryID,
+			AuthorId:      row.AuthorID,
+			Content:       string(row.Content),
 		}
 	}
 	return apigen.ListEntries200JSONResponse{Entries: entries}, nil

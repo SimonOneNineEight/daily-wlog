@@ -15,6 +15,7 @@ import { MonthScreen } from './MonthScreen';
 type Props = {
   accessToken: string;
   categories: Category[];
+  onCategoriesChanged?: () => void;
 };
 
 type Route = { name: 'month' } | { name: 'day'; date: string } | { name: 'form'; date: string };
@@ -22,7 +23,7 @@ type Route = { name: 'month' } | { name: 'day'; date: string } | { name: 'form';
 // Home lands on the month view (#6); the day list and entry form are routes
 // behind it. Real navigation infrastructure can replace this switch when the
 // screen graph outgrows it. Sign-out moves into settings with #15.
-export function HomeScreen({ accessToken, categories }: Props) {
+export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Props) {
   const [route, setRoute] = useState<Route>({ name: 'month' });
   const [monthRefresh, setMonthRefresh] = useState(0);
   const bumpMonth = () => setMonthRefresh((n) => n + 1);
@@ -35,6 +36,7 @@ export function HomeScreen({ accessToken, categories }: Props) {
         date={route.date}
         onBack={() => setRoute({ name: 'month' })}
         onEntrySaved={bumpMonth}
+        onCategoriesChanged={onCategoriesChanged}
       />
     );
   }
@@ -44,6 +46,7 @@ export function HomeScreen({ accessToken, categories }: Props) {
         accessToken={accessToken}
         date={route.date}
         categories={categories}
+        onCategoriesChanged={onCategoriesChanged}
         onDone={(saved) => {
           if (saved) bumpMonth();
           setRoute({ name: 'month' });
