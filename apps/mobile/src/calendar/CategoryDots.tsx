@@ -24,11 +24,9 @@ export function CategoryDots({ colors }: Props) {
       ))}
       {overflow > 0 ? (
         <View testID="dot-overflow" style={styles.overflow}>
-          <Plus
-            size={theme.dot.size + theme.spacing.space1}
-            color={theme.colors.textTertiary}
-            strokeWidth={2.5}
-          />
+          {/* Exactly dot-sized: matching bounds is what makes it read as
+              one line — a taller glyph "sticks out" even when centered. */}
+          <Plus size={theme.dot.size} color={theme.colors.textTertiary} strokeWidth={3} />
         </View>
       ) : null}
     </View>
@@ -50,7 +48,13 @@ const styles = createStyles((t) => ({
     height: t.dot.size,
     borderRadius: t.radius.pill,
   },
+  // Full row height + self-centering: the icon must not depend on the
+  // row's cross-axis alignment, which has proven unreliable for Svg
+  // children on iOS.
   overflow: {
+    height: t.typography.dotOverflow.lineHeight,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginLeft: t.spacing.space1,
   },
 }));

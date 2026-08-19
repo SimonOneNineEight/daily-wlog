@@ -43,11 +43,7 @@ export function SpecimenScreen() {
               <View key={index} style={[styles.dot, { backgroundColor: colors.base }]} />
             ))}
         </View>
-        <Plus
-          size={theme.dot.size + theme.spacing.space1}
-          color={theme.colors.textTertiary}
-          strokeWidth={2.5}
-        />
+        <Plus size={theme.dot.size} color={theme.colors.textTertiary} strokeWidth={3} />
         <View style={styles.yearBox}>
           <Text style={styles.yearNumeral}>{strings.specimen.yearBoxNumeral}</Text>
         </View>
