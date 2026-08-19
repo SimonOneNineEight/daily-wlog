@@ -258,6 +258,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /categories:
+    post:
+      operationId: createCategory
+      summary: Create a Category or Subcategory
+      description: >
+        Creates a category for the signed-in User with the auto-assigned
+        'tag' icon (editable later in category management). With parentId it
+        creates a Subcategory of that top-level Category; two levels is the
+        maximum. Names are unique per (User, parent).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategory"
+      responses:
+        "201":
+          description: The created Category, positioned after its siblings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          description: Invalid name, color, or parent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A sibling with this name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Creating the category failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /months/{month}:
     get:
       operationId: getMonth
@@ -365,6 +413,9 @@ components:
             server stores and returns it verbatim and never parses it
             (ADR-0004); the title requirement is enforced by the client.
             Capped at 64 KiB.
+        subcategoryId:
+          type: string
+          description: Optional refinement; must be a child of categoryId.
     UpdateEntry:
       type: object
       required:
@@ -374,6 +425,9 @@ components:
         categoryId:
           type: string
           description: A top-level Category owned by the signed-in User.
+        subcategoryId:
+          type: string
+          description: Optional refinement; must be a child of categoryId.
         content:
           type: string
           description: The full replacement content blob (opaque, ADR-0004).
@@ -387,6 +441,23 @@ components:
           items:
             type: string
           description: Every Entry id of the date, once, in the new order.
+    CreateCategory:
+      type: object
+      required:
+        - name
+        - color
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+          description: >
+            Hex color. Presets come from the category palette; custom values
+            are free per the ratified color decision. Subcategories store
+            their parent's color but always render through the parent.
+        parentId:
+          type: string
+          description: When present, creates a Subcategory of this Category.
     Entry:
       type: object
       required:
@@ -404,6 +475,8 @@ components:
         position:
           type: integer
         categoryId:
+          type: string
+        subcategoryId:
           type: string
         authorId:
           type: string

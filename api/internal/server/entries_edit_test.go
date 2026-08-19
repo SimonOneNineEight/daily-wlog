@@ -293,3 +293,62 @@ func TestEntryEditingRequiresAToken(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateEntrySubcategory(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	me := decodeMe(t, postMe(t, ts, token))
+	work, sport := me.Categories[0].ID, me.Categories[1].ID
+
+	subResp := createCategory(t, ts, token, map[string]string{
+		"name": "健身房", "color": "#73B062", "parentId": sport,
+	})
+	if subResp.StatusCode != http.StatusCreated {
+		t.Fatalf("create subcategory: status %d", subResp.StatusCode)
+	}
+	var sub struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(subResp.Body).Decode(&sub); err != nil {
+		t.Fatalf("decode subcategory: %v", err)
+	}
+	subResp.Body.Close()
+
+	created := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-05-10", "categoryId": work, "content": "x",
+	}))
+
+	// Refine into sport + its subcategory.
+	resp := patchEntry(t, ts, token, created.ID, map[string]string{
+		"categoryId": sport, "subcategoryId": sub.ID, "content": "x",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	updated := decodeEntry(t, resp)
+	if updated.SubcategoryID == nil || *updated.SubcategoryID != sub.ID {
+		t.Errorf("subcategoryId = %v, want %s", updated.SubcategoryID, sub.ID)
+	}
+
+	// Editing without the refinement clears it (full replacement semantics).
+	cleared := decodeEntry(t, patchEntry(t, ts, token, created.ID, map[string]string{
+		"categoryId": sport, "content": "x",
+	}))
+	if cleared.SubcategoryID != nil {
+		t.Errorf("subcategoryId = %v, want cleared", cleared.SubcategoryID)
+	}
+
+	// A refinement must be a child of exactly the entry's category.
+	for name, body := range map[string]map[string]string{
+		"subcategory of another category": {"categoryId": work, "subcategoryId": sub.ID, "content": "x"},
+		"malformed subcategory":           {"categoryId": sport, "subcategoryId": "nope", "content": "x"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			resp := patchEntry(t, ts, token, created.ID, body)
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400", resp.StatusCode)
+			}
+		})
+	}
+}

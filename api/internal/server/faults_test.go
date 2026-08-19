@@ -29,6 +29,8 @@ type failingQuerier struct {
 	deleteErr      error
 	listIDsErr     error
 	reorderErr     error
+	insertCatErr   error
+	subcategoryErr error
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
@@ -62,6 +64,12 @@ func (f failingQuerier) ListEntryIDs(context.Context, dbgen.ListEntryIDsParams) 
 }
 func (f failingQuerier) ReorderEntries(context.Context, dbgen.ReorderEntriesParams) error {
 	return f.reorderErr
+}
+func (f failingQuerier) InsertCategory(context.Context, dbgen.InsertCategoryParams) (dbgen.InsertCategoryRow, error) {
+	return dbgen.InsertCategoryRow{ID: "category-id", Position: 1}, f.insertCatErr
+}
+func (f failingQuerier) SubcategoryIsUsable(context.Context, dbgen.SubcategoryIsUsableParams) (bool, error) {
+	return true, f.subcategoryErr
 }
 
 func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
@@ -110,6 +118,9 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 		"update category fails": {failingQuerier{categoryErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
 			checkStatus(t, patchEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a", map[string]string{"categoryId": "7f000000-0000-4000-8000-000000000000", "content": "x"}), 500)
 		}},
+		"update subcategory check fails": {failingQuerier{subcategoryErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, patchEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a", map[string]string{"categoryId": "7f000000-0000-4000-8000-000000000000", "subcategoryId": "7f000000-0000-4000-8000-000000000001", "content": "x"}), 500)
+		}},
 		"update fails": {failingQuerier{updateErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
 			checkStatus(t, patchEntry(t, ts, token, "7f000000-0000-4000-8000-00000000000a", map[string]string{"categoryId": "7f000000-0000-4000-8000-000000000000", "content": "x"}), 500)
 		}},
@@ -139,6 +150,24 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			c.run(t, ts)
 		})
 	}
+	subCases := map[string]failingQuerier{
+		"subcategory check fails": {subcategoryErr: errors.New("boom")},
+	}
+	for name, querier := range subCases {
+		t.Run("create/"+name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL())))
+			defer ts.Close()
+			withSub := map[string]string{
+				"date": "2026-08-19", "categoryId": "7f000000-0000-4000-8000-000000000000",
+				"content": "x", "subcategoryId": "7f000000-0000-4000-8000-000000000001",
+			}
+			resp := createEntry(t, ts, token, withSub)
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", resp.StatusCode)
+			}
+		})
+	}
 	monthCases := map[string]failingQuerier{
 		"journal read fails": {journalErr: errors.New("boom")},
 		"month dots fail":    {monthDotsErr: errors.New("boom")},
@@ -148,6 +177,35 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL())))
 			defer ts.Close()
 			resp := getMonth(t, ts, token, "2026-08")
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", resp.StatusCode)
+			}
+		})
+	}
+}
+
+func TestCategoriesFailClosedOnDatabaseErrors(t *testing.T) {
+	token := signUpTestUser(t)
+	parentID := "7f000000-0000-4000-8000-000000000000"
+	cases := map[string]struct {
+		querier failingQuerier
+		body    map[string]string
+	}{
+		"parent check fails": {
+			querier: failingQuerier{categoryErr: errors.New("boom")},
+			body:    map[string]string{"name": "x", "color": "#111111", "parentId": parentID},
+		},
+		"insert fails": {
+			querier: failingQuerier{insertCatErr: errors.New("boom")},
+			body:    map[string]string{"name": "x", "color": "#111111"},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), tc.querier, auth.NewVerifier(testJWKSURL())))
+			defer ts.Close()
+			resp := createCategory(t, ts, token, tc.body)
 			resp.Body.Close()
 			if resp.StatusCode != http.StatusInternalServerError {
 				t.Fatalf("status = %d, want 500", resp.StatusCode)

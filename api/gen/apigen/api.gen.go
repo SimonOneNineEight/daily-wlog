@@ -41,6 +41,16 @@ type Category struct {
 	Position int     `json:"position"`
 }
 
+// CreateCategory defines model for CreateCategory.
+type CreateCategory struct {
+	// Color Hex color. Presets come from the category palette; custom values are free per the ratified color decision. Subcategories store their parent's color but always render through the parent.
+	Color string `json:"color"`
+	Name  string `json:"name"`
+
+	// ParentId When present, creates a Subcategory of this Category.
+	ParentId *string `json:"parentId,omitempty"`
+}
+
 // CreateEntry defines model for CreateEntry.
 type CreateEntry struct {
 	// CategoryId A top-level Category owned by the signed-in User.
@@ -51,16 +61,20 @@ type CreateEntry struct {
 
 	// Date The Entry date, YYYY-MM-DD.
 	Date string `json:"date"`
+
+	// SubcategoryId Optional refinement; must be a child of categoryId.
+	SubcategoryId *string `json:"subcategoryId,omitempty"`
 }
 
 // Entry defines model for Entry.
 type Entry struct {
-	AuthorId   string `json:"authorId"`
-	CategoryId string `json:"categoryId"`
-	Content    string `json:"content"`
-	Date       string `json:"date"`
-	Id         string `json:"id"`
-	Position   int    `json:"position"`
+	AuthorId      string  `json:"authorId"`
+	CategoryId    string  `json:"categoryId"`
+	Content       string  `json:"content"`
+	Date          string  `json:"date"`
+	Id            string  `json:"id"`
+	Position      int     `json:"position"`
+	SubcategoryId *string `json:"subcategoryId,omitempty"`
 }
 
 // EntryList defines model for EntryList.
@@ -115,6 +129,9 @@ type UpdateEntry struct {
 
 	// Content The full replacement content blob (opaque, ADR-0004).
 	Content string `json:"content"`
+
+	// SubcategoryId Optional refinement; must be a child of categoryId.
+	SubcategoryId *string `json:"subcategoryId,omitempty"`
 }
 
 // ListEntriesParams defines parameters for ListEntries.
@@ -122,6 +139,9 @@ type ListEntriesParams struct {
 	// Date The Entry date, YYYY-MM-DD.
 	Date string `form:"date" json:"date"`
 }
+
+// CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
+type CreateCategoryJSONRequestBody = CreateCategory
 
 // ReorderDayJSONRequestBody defines body for ReorderDay for application/json ContentType.
 type ReorderDayJSONRequestBody = ReorderDay
@@ -134,6 +154,9 @@ type UpdateEntryJSONRequestBody = UpdateEntry
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// CreateCategory Create a Category or Subcategory
+	// (POST /categories)
+	CreateCategory(w http.ResponseWriter, r *http.Request)
 	// ReorderDay Reorder a date's Entries
 	// (PUT /days/{date}/order)
 	ReorderDay(w http.ResponseWriter, r *http.Request, date string)
@@ -163,6 +186,12 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// CreateCategory Create a Category or Subcategory
+// (POST /categories)
+func (_ Unimplemented) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // ReorderDay Reorder a date's Entries
 // (PUT /days/{date}/order)
@@ -220,6 +249,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// CreateCategory operation middleware
+func (siw *ServerInterfaceWrapper) CreateCategory(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCategory(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ReorderDay operation middleware
 func (siw *ServerInterfaceWrapper) ReorderDay(w http.ResponseWriter, r *http.Request) {
@@ -535,10 +578,91 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/days/{date}/order", wrapper.ReorderDay)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/categories", wrapper.CreateCategory)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/months/{month}", wrapper.GetMonth)
 	})
 
 	return r
+}
+
+type CreateCategoryRequestObject struct {
+	Body *CreateCategoryJSONRequestBody
+}
+
+type CreateCategoryResponseObject interface {
+	VisitCreateCategoryResponse(w http.ResponseWriter) error
+}
+
+type CreateCategory201JSONResponse Category
+
+func (response CreateCategory201JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCategory400JSONResponse Error
+
+func (response CreateCategory400JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCategory401JSONResponse Error
+
+func (response CreateCategory401JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCategory409JSONResponse Error
+
+func (response CreateCategory409JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCategory500JSONResponse Error
+
+func (response CreateCategory500JSONResponse) VisitCreateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ReorderDayRequestObject struct {
@@ -1021,6 +1145,9 @@ func (response GetMonth500JSONResponse) VisitGetMonthResponse(w http.ResponseWri
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// CreateCategory Create a Category or Subcategory
+	// (POST /categories)
+	CreateCategory(ctx context.Context, request CreateCategoryRequestObject) (CreateCategoryResponseObject, error)
 	// ReorderDay Reorder a date's Entries
 	// (PUT /days/{date}/order)
 	ReorderDay(ctx context.Context, request ReorderDayRequestObject) (ReorderDayResponseObject, error)
@@ -1084,6 +1211,37 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// CreateCategory operation middleware
+func (sh *strictHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	var request CreateCategoryRequestObject
+
+	var body CreateCategoryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCategory(ctx, request.(CreateCategoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCategory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCategoryResponseObject); ok {
+		if err := validResponse.VisitCreateCategoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ReorderDay operation middleware

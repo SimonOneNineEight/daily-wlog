@@ -10,6 +10,8 @@ export type Entry = paths['/entries']['post']['responses']['201']['content']['ap
 type EntryList = paths['/entries']['get']['responses']['200']['content']['application/json'];
 export type MonthDots =
   paths['/months/{month}']['get']['responses']['200']['content']['application/json'];
+export type CreateCategoryBody =
+  paths['/categories']['post']['requestBody']['content']['application/json'];
 
 async function request<T>(
   accessToken: string,
@@ -63,4 +65,8 @@ export function deleteEntry(accessToken: string, id: string): Promise<void> {
 
 export function reorderDay(accessToken: string, date: string, entryIds: string[]): Promise<EntryList> {
   return request<EntryList>(accessToken, `/days/${date}/order`, { method: 'PUT', body: { entryIds } });
+}
+
+export function createCategory(accessToken: string, body: CreateCategoryBody): Promise<Category> {
+  return request<Category>(accessToken, '/categories', { method: 'POST', body });
 }

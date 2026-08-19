@@ -22,11 +22,12 @@ type Props = {
   onBack?: () => void;
   /** Called after an Entry changes here (save, edit, delete, reorder). */
   onEntrySaved?: () => void;
+  onCategoriesChanged?: () => void;
 };
 
 // The day view (#7): the date's Entries as cards; long-press drag reorders
 // and persists, tap edits, the form's 刪除紀錄 deletes.
-export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved }: Props) {
+export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved, onCategoriesChanged }: Props) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -64,6 +65,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved 
         date={date}
         categories={categories}
         entry={editing ?? undefined}
+        onCategoriesChanged={onCategoriesChanged}
         onDone={(saved) => {
           setComposing(false);
           setEditing(null);

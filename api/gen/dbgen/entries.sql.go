@@ -54,7 +54,7 @@ func (q *Queries) DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64
 }
 
 const insertEntry = `-- name: InsertEntry :one
-insert into entries (journal_id, author_id, entry_date, position, category_id, content)
+insert into entries (journal_id, author_id, entry_date, position, category_id, subcategory_id, content)
 values (
     $1::uuid,
     $2::uuid,
@@ -65,17 +65,19 @@ values (
         where journal_id = $1::uuid and entry_date = $3::date
     ),
     $4::uuid,
-    $5
+    $5::uuid,
+    $6
 )
 returning id, position
 `
 
 type InsertEntryParams struct {
-	JournalID  string
-	AuthorID   string
-	EntryDate  pgtype.Date
-	CategoryID string
-	Content    []byte
+	JournalID     string
+	AuthorID      string
+	EntryDate     pgtype.Date
+	CategoryID    string
+	SubcategoryID *string
+	Content       []byte
 }
 
 type InsertEntryRow struct {
@@ -91,6 +93,7 @@ func (q *Queries) InsertEntry(ctx context.Context, arg InsertEntryParams) (Inser
 		arg.AuthorID,
 		arg.EntryDate,
 		arg.CategoryID,
+		arg.SubcategoryID,
 		arg.Content,
 	)
 	var i InsertEntryRow
@@ -104,6 +107,7 @@ select
     to_char(entry_date, 'YYYY-MM-DD') as entry_date,
     position,
     category_id,
+    subcategory_id,
     author_id,
     content
 from entries
@@ -117,12 +121,13 @@ type ListEntriesByDateParams struct {
 }
 
 type ListEntriesByDateRow struct {
-	ID         string
-	EntryDate  string
-	Position   int32
-	CategoryID string
-	AuthorID   string
-	Content    []byte
+	ID            string
+	EntryDate     string
+	Position      int32
+	CategoryID    string
+	SubcategoryID *string
+	AuthorID      string
+	Content       []byte
 }
 
 func (q *Queries) ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error) {
@@ -139,6 +144,7 @@ func (q *Queries) ListEntriesByDate(ctx context.Context, arg ListEntriesByDatePa
 			&i.EntryDate,
 			&i.Position,
 			&i.CategoryID,
+			&i.SubcategoryID,
 			&i.AuthorID,
 			&i.Content,
 		); err != nil {
@@ -213,32 +219,36 @@ func (q *Queries) ReorderEntries(ctx context.Context, arg ReorderEntriesParams) 
 const updateEntry = `-- name: UpdateEntry :one
 update entries
 set category_id = $1::uuid,
-    content = $2,
+    subcategory_id = $2::uuid,
+    content = $3,
     updated_at = now()
-where id = $3::uuid and journal_id = $4::uuid
+where id = $4::uuid and journal_id = $5::uuid
 returning
     id,
     to_char(entry_date, 'YYYY-MM-DD') as entry_date,
     position,
     category_id,
+    subcategory_id,
     author_id,
     content
 `
 
 type UpdateEntryParams struct {
-	CategoryID string
-	Content    []byte
-	ID         string
-	JournalID  string
+	CategoryID    string
+	SubcategoryID *string
+	Content       []byte
+	ID            string
+	JournalID     string
 }
 
 type UpdateEntryRow struct {
-	ID         string
-	EntryDate  string
-	Position   int32
-	CategoryID string
-	AuthorID   string
-	Content    []byte
+	ID            string
+	EntryDate     string
+	Position      int32
+	CategoryID    string
+	SubcategoryID *string
+	AuthorID      string
+	Content       []byte
 }
 
 // Full replacement of the editable fields; journal_id scoping means a User
@@ -246,6 +256,7 @@ type UpdateEntryRow struct {
 func (q *Queries) UpdateEntry(ctx context.Context, arg UpdateEntryParams) (UpdateEntryRow, error) {
 	row := q.db.QueryRow(ctx, updateEntry,
 		arg.CategoryID,
+		arg.SubcategoryID,
 		arg.Content,
 		arg.ID,
 		arg.JournalID,
@@ -256,6 +267,7 @@ func (q *Queries) UpdateEntry(ctx context.Context, arg UpdateEntryParams) (Updat
 		&i.EntryDate,
 		&i.Position,
 		&i.CategoryID,
+		&i.SubcategoryID,
 		&i.AuthorID,
 		&i.Content,
 	)

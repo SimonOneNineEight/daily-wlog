@@ -15,6 +15,8 @@ export function AppRoot() {
   const accessToken = session?.access_token;
   const userId = session?.user.id;
   const [world, setWorld] = useState<{ userId: string; me: Me } | null>(null);
+  // Bumped when the form creates a category, so /me is refetched.
+  const [worldVersion, setWorldVersion] = useState(0);
 
   useEffect(() => {
     if (!accessToken || !userId) return;
@@ -29,7 +31,7 @@ export function AppRoot() {
     return () => {
       active = false;
     };
-  }, [accessToken, userId]);
+  }, [accessToken, userId, worldVersion]);
 
   // Staleness is keyed by user, not token: a routine token refresh keeps the
   // provisioned world, while signing in as a different user discards it.
@@ -41,5 +43,11 @@ export function AppRoot() {
   if (!session) {
     return <SignInScreen />;
   }
-  return <HomeScreen accessToken={session.access_token} categories={me?.categories ?? []} />;
+  return (
+    <HomeScreen
+      accessToken={session.access_token}
+      categories={me?.categories ?? []}
+      onCategoriesChanged={() => setWorldVersion((v) => v + 1)}
+    />
+  );
 }

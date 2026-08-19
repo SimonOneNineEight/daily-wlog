@@ -15,6 +15,10 @@ type Querier interface {
 	DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error)
 	GetJournal(ctx context.Context, userID string) (string, error)
 	GetSchemaVersion(ctx context.Context) (int32, error)
+	// Position lands after existing siblings (same parent level). Name
+	// uniqueness per (user, parent) is enforced by the table's UNIQUE NULLS NOT
+	// DISTINCT constraint; the handler maps that violation to 409.
+	InsertCategory(ctx context.Context, arg InsertCategoryParams) (InsertCategoryRow, error)
 	// Position is assigned at the end of the date's existing order in the same
 	// statement, so multiple Entries per day stack in creation order.
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
@@ -34,6 +38,9 @@ type Querier interface {
 	// One statement assigning every entry its new 1..n position; the deferred
 	// unique constraint validates the final order at commit.
 	ReorderEntries(ctx context.Context, arg ReorderEntriesParams) error
+	// A usable Entry refinement: owned by the user and a child of exactly the
+	// Entry's Category.
+	SubcategoryIsUsable(ctx context.Context, arg SubcategoryIsUsableParams) (bool, error)
 	// Full replacement of the editable fields; journal_id scoping means a User
 	// can only ever touch their own Entries (no rows = not found).
 	UpdateEntry(ctx context.Context, arg UpdateEntryParams) (UpdateEntryRow, error)

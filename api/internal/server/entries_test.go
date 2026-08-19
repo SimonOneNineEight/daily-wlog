@@ -75,12 +75,13 @@ func listEntries(t *testing.T, ts *httptest.Server, token, date string) *http.Re
 }
 
 type entryBody struct {
-	ID         string `json:"id"`
-	Date       string `json:"date"`
-	Position   int    `json:"position"`
-	CategoryID string `json:"categoryId"`
-	AuthorID   string `json:"authorId"`
-	Content    string `json:"content"`
+	ID            string  `json:"id"`
+	Date          string  `json:"date"`
+	Position      int     `json:"position"`
+	CategoryID    string  `json:"categoryId"`
+	SubcategoryID *string `json:"subcategoryId"`
+	AuthorID      string  `json:"authorId"`
+	Content       string  `json:"content"`
 }
 
 func decodeEntry(t *testing.T, resp *http.Response) entryBody {

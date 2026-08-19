@@ -12,7 +12,7 @@ select exists (
 -- name: InsertEntry :one
 -- Position is assigned at the end of the date's existing order in the same
 -- statement, so multiple Entries per day stack in creation order.
-insert into entries (journal_id, author_id, entry_date, position, category_id, content)
+insert into entries (journal_id, author_id, entry_date, position, category_id, subcategory_id, content)
 values (
     @journal_id::uuid,
     @author_id::uuid,
@@ -23,6 +23,7 @@ values (
         where journal_id = @journal_id::uuid and entry_date = @entry_date::date
     ),
     @category_id::uuid,
+    sqlc.narg(subcategory_id)::uuid,
     @content
 )
 returning id, position;
@@ -32,6 +33,7 @@ returning id, position;
 -- can only ever touch their own Entries (no rows = not found).
 update entries
 set category_id = @category_id::uuid,
+    subcategory_id = sqlc.narg(subcategory_id)::uuid,
     content = @content,
     updated_at = now()
 where id = @id::uuid and journal_id = @journal_id::uuid
@@ -40,6 +42,7 @@ returning
     to_char(entry_date, 'YYYY-MM-DD') as entry_date,
     position,
     category_id,
+    subcategory_id,
     author_id,
     content;
 
@@ -73,6 +76,7 @@ select
     to_char(entry_date, 'YYYY-MM-DD') as entry_date,
     position,
     category_id,
+    subcategory_id,
     author_id,
     content
 from entries
