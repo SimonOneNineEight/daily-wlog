@@ -30,6 +30,7 @@ const zhTW = {
     back: '返回',
     empty: '今天還沒有紀錄',
     loadFailed: '無法載入紀錄',
+    reorderFailed: '排序失敗，請再試一次',
     unreadable: '（無法讀取的紀錄）',
   },
   entryForm: {

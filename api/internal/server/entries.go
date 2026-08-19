@@ -20,25 +20,64 @@ const maxContentBytes = 64 * 1024
 
 const dateLayout = "2006-01-02"
 
+// validateEntryInput returns the 400 message for a bad entry payload, or ""
+// when the payload is well-formed. Shared by create and update.
+func validateEntryInput(categoryID string, subcategoryID *string, content string) string {
+	if _, err := uuid.Parse(categoryID); err != nil {
+		return "categoryId must be a UUID"
+	}
+	if subcategoryID != nil {
+		if _, err := uuid.Parse(*subcategoryID); err != nil {
+			return "subcategoryId must be a UUID"
+		}
+	}
+	if content == "" {
+		return "content is required"
+	}
+	if len(content) > maxContentBytes {
+		return "content exceeds 64 KiB"
+	}
+	return ""
+}
+
+// checkEntryCategories verifies the category is usable and, when given, the
+// subcategory is a child of exactly that category. It returns the 400
+// message, or an error for the 500 path.
+func (h handlers) checkEntryCategories(ctx context.Context, userID, categoryID string, subcategoryID *string) (string, error) {
+	usable, err := h.queries.CategoryIsUsable(ctx, dbgen.CategoryIsUsableParams{
+		CategoryID: categoryID,
+		UserID:     userID,
+	})
+	if err != nil {
+		return "", err
+	}
+	if !usable {
+		return "category not found", nil
+	}
+	if subcategoryID != nil {
+		subUsable, err := h.queries.SubcategoryIsUsable(ctx, dbgen.SubcategoryIsUsableParams{
+			SubcategoryID: *subcategoryID,
+			UserID:        userID,
+			CategoryID:    categoryID,
+		})
+		if err != nil {
+			return "", err
+		}
+		if !subUsable {
+			return "subcategory not found", nil
+		}
+	}
+	return "", nil
+}
+
 func (h handlers) CreateEntry(ctx context.Context, request apigen.CreateEntryRequestObject) (apigen.CreateEntryResponseObject, error) {
 	body := request.Body
 	entryDate, err := time.Parse(dateLayout, body.Date)
 	if err != nil {
 		return apigen.CreateEntry400JSONResponse{Message: "date must be YYYY-MM-DD"}, nil
 	}
-	if _, err := uuid.Parse(body.CategoryId); err != nil {
-		return apigen.CreateEntry400JSONResponse{Message: "categoryId must be a UUID"}, nil
-	}
-	if body.SubcategoryId != nil {
-		if _, err := uuid.Parse(*body.SubcategoryId); err != nil {
-			return apigen.CreateEntry400JSONResponse{Message: "subcategoryId must be a UUID"}, nil
-		}
-	}
-	if body.Content == "" {
-		return apigen.CreateEntry400JSONResponse{Message: "content is required"}, nil
-	}
-	if len(body.Content) > maxContentBytes {
-		return apigen.CreateEntry400JSONResponse{Message: "content exceeds 64 KiB"}, nil
+	if msg := validateEntryInput(body.CategoryId, body.SubcategoryId, body.Content); msg != "" {
+		return apigen.CreateEntry400JSONResponse{Message: msg}, nil
 	}
 
 	userID := auth.UserID(ctx)
@@ -46,29 +85,12 @@ func (h handlers) CreateEntry(ctx context.Context, request apigen.CreateEntryReq
 	if err != nil {
 		return apigen.CreateEntry500JSONResponse(h.failure(ctx, "creating the entry failed", err)), nil
 	}
-	usable, err := h.queries.CategoryIsUsable(ctx, dbgen.CategoryIsUsableParams{
-		CategoryID: body.CategoryId,
-		UserID:     userID,
-	})
+	badCategory, err := h.checkEntryCategories(ctx, userID, body.CategoryId, body.SubcategoryId)
 	if err != nil {
 		return apigen.CreateEntry500JSONResponse(h.failure(ctx, "creating the entry failed", err)), nil
 	}
-	if !usable {
-		return apigen.CreateEntry400JSONResponse{Message: "category not found"}, nil
-	}
-	if body.SubcategoryId != nil {
-		// A refinement must be a child of exactly this Entry's Category.
-		subUsable, err := h.queries.SubcategoryIsUsable(ctx, dbgen.SubcategoryIsUsableParams{
-			SubcategoryID: *body.SubcategoryId,
-			UserID:        userID,
-			CategoryID:    body.CategoryId,
-		})
-		if err != nil {
-			return apigen.CreateEntry500JSONResponse(h.failure(ctx, "creating the entry failed", err)), nil
-		}
-		if !subUsable {
-			return apigen.CreateEntry400JSONResponse{Message: "subcategory not found"}, nil
-		}
+	if badCategory != "" {
+		return apigen.CreateEntry400JSONResponse{Message: badCategory}, nil
 	}
 	row, err := h.queries.InsertEntry(ctx, dbgen.InsertEntryParams{
 		JournalID:     journalID,

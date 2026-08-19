@@ -9,6 +9,7 @@ type Props = {
   categoryName: string;
   categoryColor: string;
   categoryIcon: string;
+  subcategoryName?: string;
   note?: string;
   dragging?: boolean;
   onPress: () => void;
@@ -16,19 +17,20 @@ type Props = {
 };
 
 // Day-view entry card per the canvas EntryCard: category icon, title, the
-// category line, note preview, and a grip. The subcategory suffix joins the
-// category line with #9, the photo grid with #8, and the card shadow when
-// elevation tokens land.
+// category · subcategory line, note preview, and a grip. The photo grid
+// arrives with #8, the card shadow when elevation tokens land.
 export function EntryCard({
   title,
   categoryName,
   categoryColor,
   categoryIcon,
+  subcategoryName,
   note,
   dragging,
   onPress,
   onLongPress,
 }: Props) {
+  const categoryLine = subcategoryName ? `${categoryName} · ${subcategoryName}` : categoryName;
   return (
     <Pressable
       accessibilityRole="button"
@@ -44,7 +46,7 @@ export function EntryCard({
             {title}
           </Text>
           <Text style={styles.categoryLine} numberOfLines={1}>
-            {categoryName}
+            {categoryLine}
           </Text>
         </View>
         <GripHorizontal size={18} color={theme.colors.textQuaternary} strokeWidth={2} />

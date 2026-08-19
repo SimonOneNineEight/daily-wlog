@@ -19,19 +19,8 @@ func (h handlers) UpdateEntry(ctx context.Context, request apigen.UpdateEntryReq
 		return apigen.UpdateEntry404JSONResponse{Message: "entry not found"}, nil
 	}
 	body := request.Body
-	if _, err := uuid.Parse(body.CategoryId); err != nil {
-		return apigen.UpdateEntry400JSONResponse{Message: "categoryId must be a UUID"}, nil
-	}
-	if body.SubcategoryId != nil {
-		if _, err := uuid.Parse(*body.SubcategoryId); err != nil {
-			return apigen.UpdateEntry400JSONResponse{Message: "subcategoryId must be a UUID"}, nil
-		}
-	}
-	if body.Content == "" {
-		return apigen.UpdateEntry400JSONResponse{Message: "content is required"}, nil
-	}
-	if len(body.Content) > maxContentBytes {
-		return apigen.UpdateEntry400JSONResponse{Message: "content exceeds 64 KiB"}, nil
+	if msg := validateEntryInput(body.CategoryId, body.SubcategoryId, body.Content); msg != "" {
+		return apigen.UpdateEntry400JSONResponse{Message: msg}, nil
 	}
 
 	userID := auth.UserID(ctx)
@@ -39,29 +28,12 @@ func (h handlers) UpdateEntry(ctx context.Context, request apigen.UpdateEntryReq
 	if err != nil {
 		return apigen.UpdateEntry500JSONResponse(h.failure(ctx, "updating the entry failed", err)), nil
 	}
-	usable, err := h.queries.CategoryIsUsable(ctx, dbgen.CategoryIsUsableParams{
-		CategoryID: body.CategoryId,
-		UserID:     userID,
-	})
+	badCategory, err := h.checkEntryCategories(ctx, userID, body.CategoryId, body.SubcategoryId)
 	if err != nil {
 		return apigen.UpdateEntry500JSONResponse(h.failure(ctx, "updating the entry failed", err)), nil
 	}
-	if !usable {
-		return apigen.UpdateEntry400JSONResponse{Message: "category not found"}, nil
-	}
-	if body.SubcategoryId != nil {
-		// A refinement must be a child of exactly this Entry's Category.
-		subUsable, err := h.queries.SubcategoryIsUsable(ctx, dbgen.SubcategoryIsUsableParams{
-			SubcategoryID: *body.SubcategoryId,
-			UserID:        userID,
-			CategoryID:    body.CategoryId,
-		})
-		if err != nil {
-			return apigen.UpdateEntry500JSONResponse(h.failure(ctx, "updating the entry failed", err)), nil
-		}
-		if !subUsable {
-			return apigen.UpdateEntry400JSONResponse{Message: "subcategory not found"}, nil
-		}
+	if badCategory != "" {
+		return apigen.UpdateEntry400JSONResponse{Message: badCategory}, nil
 	}
 	row, err := h.queries.UpdateEntry(ctx, dbgen.UpdateEntryParams{
 		ID:            request.Id,

@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Plus } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry } from '../api/client';
 import { listEntries, reorderDay } from '../api/client';
+import { dateHeading } from '../calendar/dateLabel';
 import { decodeContent } from '../entries/content';
 import { EntryCard } from '../entries/EntryCard';
 import { strings } from '../i18n/strings';
@@ -30,6 +31,7 @@ type Props = {
 export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved, onCategoriesChanged }: Props) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [reorderFailed, setReorderFailed] = useState(false);
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
 
@@ -79,19 +81,20 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
     try {
       const result = await reorderDay(accessToken, date, ordered.map((e) => e.id));
       setEntries(result.entries);
+      setReorderFailed(false);
       onEntrySaved?.();
     } catch {
-      // The optimistic order stays on screen; the next load restores truth.
-      setFailed(true);
+      // Roll the optimistic order back to server truth and say what failed.
+      setReorderFailed(true);
+      setRefresh((n) => n + 1);
     }
   };
 
-  const [, monthPart, dayPart] = date.split('-').map(Number);
-  const weekday = strings.month.weekdaysFull[new Date(`${date}T00:00:00`).getDay()];
-  const heading = strings.month.dateLabel(monthPart, dayPart, weekday);
+  const heading = dateHeading(date);
 
   const renderCard = ({ item, drag, isActive }: RenderItemParams<Entry>) => {
     const category = categories.find((c) => c.id === item.categoryId);
+    const subcategory = categories.find((c) => c.id === item.subcategoryId);
     const content = decodeContent(item.content);
     return (
       <View style={styles.cardHolder}>
@@ -100,6 +103,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
           categoryName={category?.name ?? ''}
           categoryColor={category?.color ?? theme.colors.iconMuted}
           categoryIcon={category?.icon ?? 'tag'}
+          subcategoryName={subcategory?.name}
           note={content?.note || undefined}
           dragging={isActive}
           onPress={() => setEditing(item)}
@@ -125,6 +129,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
         <Text style={styles.heading}>{heading}</Text>
       </View>
       {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
+      {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
       {entries !== null && entries.length === 0 && !failed ? (
         <Text style={styles.muted}>{strings.day.empty}</Text>
       ) : null}
@@ -144,6 +149,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
         style={styles.addButton}
         onPress={() => setComposing(true)}
       >
+        <Plus size={17} color={theme.colors.controlGhostFg} strokeWidth={2} />
         <Text style={styles.addLabel}>{strings.day.addEntry}</Text>
       </Pressable>
     </SafeAreaView>
@@ -186,17 +192,18 @@ const styles = createStyles((t) => ({
   cardHolder: {
     marginBottom: 0,
   },
+  // Ghost + per the canvas day screen; the solid FAB stays a month-view
+  // affordance.
   addButton: {
-    alignSelf: 'center',
-    backgroundColor: t.colors.controlPrimaryBg,
-    borderRadius: t.radius.pill,
-    paddingHorizontal: t.spacing.space8,
-    height: t.spacing.rowHeight,
-    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.space3,
+    paddingVertical: t.spacing.space4,
     marginBottom: t.spacing.space6,
   },
   addLabel: {
     ...t.typography.entryTitle,
-    color: t.colors.controlPrimaryFg,
+    color: t.colors.controlGhostFg,
   },
 }));

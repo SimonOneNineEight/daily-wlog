@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Category, Entry } from '../api/client';
 import { createCategory, createEntry, deleteEntry, updateEntry } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
+import { dateHeading } from '../calendar/dateLabel';
 import { ColorPresetPicker } from '../categories/ColorPresetPicker';
 import { decodeContent, encodeContent } from '../entries/content';
 import { strings } from '../i18n/strings';
@@ -71,9 +72,7 @@ export function EntryFormScreen({
 
   const canSave = !saving && category !== null && title.trim() !== '';
 
-  const [, monthPart, dayPart] = date.split('-').map(Number);
-  const weekday = strings.month.weekdaysFull[new Date(`${date}T00:00:00`).getDay()];
-  const dateLabel = strings.month.dateLabel(monthPart, dayPart, weekday);
+  const dateLabel = dateHeading(date);
 
   const save = async () => {
     if (!canSave || category === null) return;
@@ -197,7 +196,10 @@ export function EntryFormScreen({
               <Pressable
                 accessibilityRole="button"
                 style={styles.ghostButton}
-                onPress={() => setCreating(null)}
+                onPress={() => {
+                  setCreating(null);
+                  setFailed(false);
+                }}
               >
                 <Text style={styles.ghostLabel}>{strings.entryForm.createBack}</Text>
               </Pressable>
@@ -246,7 +248,6 @@ export function EntryFormScreen({
                     style={styles.subInput}
                     placeholder={strings.entryForm.subcategoryPlaceholder}
                     placeholderTextColor={styles.placeholder.color}
-                    maxLength={20}
                     autoFocus
                     value={subName}
                     onChangeText={setSubName}
@@ -322,6 +323,7 @@ export function EntryFormScreen({
                   onPress={() => {
                     setCategory(c);
                     setSubcategory(null);
+                    setFailed(false);
                   }}
                 >
                   <CategoryIcon icon={c.icon} color={c.color} />

@@ -68,13 +68,15 @@ afterEach(() => {
 
 it('renders the day entries with decoded titles, in order', async () => {
   listedEntries = [
-    { id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', authorId: 'u1', content: encodeContent({ title: '晨跑', note: '' }) },
+    { id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', subcategoryId: 'c-gym', authorId: 'u1', content: encodeContent({ title: '晨跑', note: '' }) },
     { id: 'e2', date: '2026-08-19', position: 2, categoryId: 'c-food', authorId: 'u1', content: encodeContent({ title: '午餐吃了拉麵', note: '' }) },
   ];
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   expect(await screen.findByText('晨跑')).toBeTruthy();
   expect(screen.getByText('午餐吃了拉麵')).toBeTruthy();
+  // The card's category line carries the refinement: 分類 · 子分類.
+  expect(screen.getByText('運動 · 健身房')).toBeTruthy();
 });
 
 it('shows the empty state when the day has no entries', async () => {
@@ -271,4 +273,32 @@ it('creates a subcategory inline under the picked category', async () => {
   expect(body.name).toBe('晨跑');
   expect(body.parentId).toBe('c-sport');
   expect(body.color).toBe('#73B062');
+});
+
+it('rolls back and reports when persisting a reorder fails', async () => {
+  listedEntries = dayEntriesFixture();
+  const okFetch = globalThis.fetch as jest.Mock;
+  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+    if (init?.method === 'PUT') {
+      return { ok: false, status: 500, json: async () => ({ message: 'boom' }) };
+    }
+    return okFetch(url, init);
+  }) as jest.Mock;
+
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+  await screen.findByText('晨跑');
+  const gets = () =>
+    (globalThis.fetch as jest.Mock).mock.calls.filter(
+      ([u, init]) => (init?.method ?? 'GET') === 'GET' && String(u).includes('/entries'),
+    ).length;
+  const before = gets();
+
+  const mockDragState = (globalThis as { __mockDragState?: { onDragEnd?: (p: { data: object[] }) => void } })
+    .__mockDragState!;
+  await act(async () => {
+    mockDragState.onDragEnd?.({ data: [listedEntries[1], listedEntries[0]] });
+  });
+
+  expect(await screen.findByText('排序失敗，請再試一次')).toBeTruthy();
+  expect(gets()).toBeGreaterThan(before); // rolled back to server truth
 });
