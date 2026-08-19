@@ -151,3 +151,12 @@ it('opens the day view from the panel and the form from the +', async () => {
   fireEvent.press(screen.getByLabelText('新增紀錄'));
   expect(onAddEntry).toHaveBeenCalled();
 });
+
+it('opens category management from the nav bar', async () => {
+  const onOpenCategories = jest.fn();
+  renderMonth({ onOpenCategories });
+  await screen.findByText('8月');
+
+  fireEvent.press(screen.getByLabelText('類別'));
+  expect(onOpenCategories).toHaveBeenCalled();
+});

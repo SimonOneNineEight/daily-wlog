@@ -53,13 +53,16 @@ func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestOb
 	}
 	categories := make([]apigen.Category, len(rows))
 	for i, row := range rows {
+		inUse, hasChildren := row.InUse, row.HasChildren
 		categories[i] = apigen.Category{
-			Id:       row.ID,
-			Name:     row.Name,
-			Color:    row.Color,
-			Icon:     row.Icon,
-			ParentId: row.ParentID,
-			Position: int(row.Position),
+			Id:          row.ID,
+			Name:        row.Name,
+			Color:       row.Color,
+			Icon:        row.Icon,
+			ParentId:    row.ParentID,
+			Position:    int(row.Position),
+			InUse:       &inUse,
+			HasChildren: &hasChildren,
 		}
 	}
 	return apigen.ProvisionMe200JSONResponse{UserId: userID, JournalId: journalID, Categories: categories}, nil

@@ -31,6 +31,12 @@ type failingQuerier struct {
 	reorderErr     error
 	insertCatErr   error
 	subcategoryErr error
+	catParentErr   error
+	updateCatErr   error
+	cascadeErr     error
+	usageErr       error
+	deleteCatErr   error
+	deleteCatZero  bool
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
@@ -70,6 +76,24 @@ func (f failingQuerier) InsertCategory(context.Context, dbgen.InsertCategoryPara
 }
 func (f failingQuerier) SubcategoryIsUsable(context.Context, dbgen.SubcategoryIsUsableParams) (bool, error) {
 	return true, f.subcategoryErr
+}
+func (f failingQuerier) GetCategoryParent(context.Context, dbgen.GetCategoryParentParams) (*string, error) {
+	return nil, f.catParentErr
+}
+func (f failingQuerier) UpdateCategory(context.Context, dbgen.UpdateCategoryParams) (dbgen.UpdateCategoryRow, error) {
+	return dbgen.UpdateCategoryRow{ID: "category-id", Name: "x", Color: "#111111", Icon: "tag", Position: 1}, f.updateCatErr
+}
+func (f failingQuerier) CascadeChildColors(context.Context, dbgen.CascadeChildColorsParams) error {
+	return f.cascadeErr
+}
+func (f failingQuerier) CategoryUsage(context.Context, string) (dbgen.CategoryUsageRow, error) {
+	return dbgen.CategoryUsageRow{}, f.usageErr
+}
+func (f failingQuerier) DeleteCategory(context.Context, dbgen.DeleteCategoryParams) (int64, error) {
+	if f.deleteCatZero {
+		return 0, nil
+	}
+	return 1, f.deleteCatErr
 }
 
 func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
@@ -210,6 +234,44 @@ func TestCategoriesFailClosedOnDatabaseErrors(t *testing.T) {
 			if resp.StatusCode != http.StatusInternalServerError {
 				t.Fatalf("status = %d, want 500", resp.StatusCode)
 			}
+		})
+	}
+}
+
+func TestCategoryEditsFailClosedOnDatabaseErrors(t *testing.T) {
+	token := signUpTestUser(t)
+	id := "7f000000-0000-4000-8000-00000000000b"
+	cases := map[string]struct {
+		querier failingQuerier
+		run     func(t *testing.T, ts *httptest.Server)
+	}{
+		"patch gate fails": {failingQuerier{catParentErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, patchCategory(t, ts, token, id, map[string]string{"name": "x"}), 500)
+		}},
+		"patch update fails": {failingQuerier{updateCatErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, patchCategory(t, ts, token, id, map[string]string{"name": "x"}), 500)
+		}},
+		"patch cascade fails": {failingQuerier{cascadeErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, patchCategory(t, ts, token, id, map[string]string{"color": "#333333"}), 500)
+		}},
+		"delete gate fails": {failingQuerier{catParentErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, deleteCategory(t, ts, token, id), 500)
+		}},
+		"delete usage fails": {failingQuerier{usageErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, deleteCategory(t, ts, token, id), 500)
+		}},
+		"delete fails": {failingQuerier{deleteCatErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, deleteCategory(t, ts, token, id), 500)
+		}},
+		"delete races to zero rows": {failingQuerier{deleteCatZero: true}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, deleteCategory(t, ts, token, id), 404)
+		}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), c.querier, auth.NewVerifier(testJWKSURL())))
+			defer ts.Close()
+			c.run(t, ts)
 		})
 	}
 }

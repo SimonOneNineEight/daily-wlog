@@ -8,6 +8,7 @@ import { localDateString } from '../calendar/monthMath';
 import { strings } from '../i18n/strings';
 import { createStyles } from '../theme';
 
+import { CategoriesScreen } from './CategoriesScreen';
 import { DayScreen } from './DayScreen';
 import { EntryFormScreen } from './EntryFormScreen';
 import { MonthScreen } from './MonthScreen';
@@ -18,7 +19,11 @@ type Props = {
   onCategoriesChanged?: () => void;
 };
 
-type Route = { name: 'month' } | { name: 'day'; date: string } | { name: 'form'; date: string };
+type Route =
+  | { name: 'month' }
+  | { name: 'day'; date: string }
+  | { name: 'form'; date: string }
+  | { name: 'categories' };
 
 // Home lands on the month view (#6); the day list and entry form are routes
 // behind it. Real navigation infrastructure can replace this switch when the
@@ -37,6 +42,16 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
         onBack={() => setRoute({ name: 'month' })}
         onEntrySaved={bumpMonth}
         onCategoriesChanged={onCategoriesChanged}
+      />
+    );
+  }
+  if (route.name === 'categories') {
+    return (
+      <CategoriesScreen
+        accessToken={accessToken}
+        categories={categories}
+        onBack={() => setRoute({ name: 'month' })}
+        onCategoriesChanged={() => onCategoriesChanged?.()}
       />
     );
   }
@@ -63,6 +78,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
           refresh={monthRefresh}
           onOpenDay={(date) => setRoute({ name: 'day', date })}
           onAddEntry={() => setRoute({ name: 'form', date: localDateString(new Date()) })}
+          onOpenCategories={() => setRoute({ name: 'categories' })}
         />
       </View>
       <Pressable

@@ -70,3 +70,18 @@ export function reorderDay(accessToken: string, date: string, entryIds: string[]
 export function createCategory(accessToken: string, body: CreateCategoryBody): Promise<Category> {
   return request<Category>(accessToken, '/categories', { method: 'POST', body });
 }
+
+type UpdateCategoryBody =
+  paths['/categories/{id}']['patch']['requestBody']['content']['application/json'];
+
+export function updateCategory(
+  accessToken: string,
+  id: string,
+  body: UpdateCategoryBody,
+): Promise<Category> {
+  return request<Category>(accessToken, `/categories/${id}`, { method: 'PATCH', body });
+}
+
+export function deleteCategory(accessToken: string, id: string): Promise<void> {
+  return request<void>(accessToken, `/categories/${id}`, { method: 'DELETE' });
+}

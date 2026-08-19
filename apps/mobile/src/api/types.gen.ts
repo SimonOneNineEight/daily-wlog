@@ -80,6 +80,30 @@ export interface paths {
         patch: operations["updateEntry"];
         trace?: never;
     };
+    "/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an unused Category
+         * @description Apple Calendar model: only unused categories delete. A Category referenced by any Entry (as category or refinement) answers 409 with the stable message "category in use"; one that still has Subcategories answers 409 with "category has children". The app renders its own catalog copy for these codes.
+         */
+        delete: operations["deleteCategory"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename or restyle a Category
+         * @description Rename is always free — Entries reference categories by id, so they follow automatically. color and icon are top-level-only: Subcategories inherit both from their parent. Changing a parent's color also rewrites its Subcategories' stored colors, keeping the denormalized copies honest. At least one field must be present.
+         */
+        patch: operations["updateCategory"];
+        trace?: never;
+    };
     "/days/{date}/order": {
         parameters: {
             query?: never;
@@ -157,6 +181,10 @@ export interface components {
             icon: string;
             parentId?: string;
             position: number;
+            /** @description Whether any Entry references it, as category or refinement. */
+            inUse?: boolean;
+            /** @description Whether any Subcategory points at it. */
+            hasChildren?: boolean;
         };
         CreateEntry: {
             /** @description The Entry date, YYYY-MM-DD. */
@@ -179,6 +207,13 @@ export interface components {
         ReorderDay: {
             /** @description Every Entry id of the date, once, in the new order. */
             entryIds: string[];
+        };
+        UpdateCategory: {
+            name?: string;
+            /** @description Top-level categories only; Subcategories inherit. */
+            color?: string;
+            /** @description Top-level categories only; Subcategories inherit. */
+            icon?: string;
         };
         CreateCategory: {
             name: string;
@@ -492,6 +527,133 @@ export interface operations {
                 };
             };
             /** @description Updating the Entry failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such Category for the signed-in User. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The Category is in use or still has Subcategories. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Deleting the Category failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    updateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCategory"];
+            };
+        };
+        responses: {
+            /** @description The updated Category. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Category"];
+                };
+            };
+            /** @description Empty patch, empty name, or color/icon on a Subcategory. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such Category for the signed-in User. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A sibling with this name already exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Updating the Category failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

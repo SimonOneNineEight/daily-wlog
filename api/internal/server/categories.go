@@ -65,12 +65,15 @@ func (h handlers) CreateCategory(ctx context.Context, request apigen.CreateCateg
 		}
 		return apigen.CreateCategory500JSONResponse(h.failure(ctx, "creating the category failed", err)), nil
 	}
+	fresh := false
 	return apigen.CreateCategory201JSONResponse{
-		Id:       row.ID,
-		Name:     name,
-		Color:    body.Color,
-		Icon:     autoAssignedIcon,
-		ParentId: body.ParentId,
-		Position: int(row.Position),
+		Id:          row.ID,
+		Name:        name,
+		Color:       body.Color,
+		Icon:        autoAssignedIcon,
+		ParentId:    body.ParentId,
+		Position:    int(row.Position),
+		InUse:       &fresh,
+		HasChildren: &fresh,
 	}, nil
 }
