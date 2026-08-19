@@ -87,7 +87,7 @@ it('shows the empty state when the day has no entries', async () => {
 
 it('does not save until a category is picked and a title is typed', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
-  fireEvent.press(await screen.findByText('新增紀錄'));
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
 
   fireEvent.press(screen.getByText('儲存'));
   const posts = () =>
@@ -101,7 +101,7 @@ it('does not save until a category is picked and a title is typed', async () => 
 
 it('saves an entry as an encoded blob and returns to the list', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
-  fireEvent.press(await screen.findByText('新增紀錄'));
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
 
   fireEvent.press(screen.getByText('運動'));
   fireEvent.changeText(screen.getByPlaceholderText('標題'), '晚上打籃球');
@@ -122,7 +122,7 @@ it('saves an entry as an encoded blob and returns to the list', async () => {
 
 it('filters the category picker by search', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
-  fireEvent.press(await screen.findByText('新增紀錄'));
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
 
   fireEvent.changeText(screen.getByPlaceholderText('類別'), '美');
   expect(screen.queryByText('運動')).toBeNull();
@@ -205,7 +205,7 @@ it('deletes an entry after confirmation', async () => {
 
 it('keeps the picker to top-level categories', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
-  fireEvent.press(await screen.findByText('新增紀錄'));
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
 
   expect(screen.getByText('運動')).toBeTruthy();
   expect(screen.queryByText('健身房')).toBeNull();
@@ -213,7 +213,7 @@ it('keeps the picker to top-level categories', async () => {
 
 it('creates a category inline from an unmatched search', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
-  fireEvent.press(await screen.findByText('新增紀錄'));
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
 
   fireEvent.changeText(screen.getByPlaceholderText('類別'), '園藝');
   await act(async () => {
@@ -239,7 +239,7 @@ it('creates a category inline from an unmatched search', async () => {
 
 it('links an optional subcategory into the saved entry', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
-  fireEvent.press(await screen.findByText('新增紀錄'));
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
 
   fireEvent.press(screen.getByText('運動'));
   fireEvent.press(screen.getByText('健身房'));
@@ -257,7 +257,7 @@ it('links an optional subcategory into the saved entry', async () => {
 
 it('creates a subcategory inline under the picked category', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
-  fireEvent.press(await screen.findByText('新增紀錄'));
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
 
   fireEvent.press(screen.getByText('運動'));
   fireEvent.press(screen.getByLabelText('新增子類別'));

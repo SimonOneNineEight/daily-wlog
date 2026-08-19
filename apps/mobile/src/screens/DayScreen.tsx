@@ -146,11 +146,11 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
       />
       <Pressable
         accessibilityRole="button"
-        style={styles.addButton}
+        accessibilityLabel={strings.day.addEntry}
+        style={styles.fab}
         onPress={() => setComposing(true)}
       >
-        <Plus size={17} color={theme.colors.controlGhostFg} strokeWidth={2} />
-        <Text style={styles.addLabel}>{strings.day.addEntry}</Text>
+        <Plus size={24} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
       </Pressable>
     </SafeAreaView>
   );
@@ -192,18 +192,17 @@ const styles = createStyles((t) => ({
   cardHolder: {
     marginBottom: 0,
   },
-  // Ghost + per the canvas day screen; the solid FAB stays a month-view
-  // affordance.
-  addButton: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
+  // The same black + as the month view (Simon's ruling, 2026-08-19,
+  // replacing the canvas's inline ghost button); it adds to the viewed day.
+  fab: {
+    position: 'absolute',
+    right: t.spacing.fabInset,
+    bottom: t.spacing.fabInset,
+    width: t.spacing.fabSize,
+    height: t.spacing.fabSize,
+    borderRadius: t.radius.pill,
+    backgroundColor: t.colors.controlPrimaryBg,
     alignItems: 'center',
-    gap: t.spacing.space3,
-    paddingVertical: t.spacing.space4,
-    marginBottom: t.spacing.space6,
-  },
-  addLabel: {
-    ...t.typography.entryTitle,
-    color: t.colors.controlGhostFg,
+    justifyContent: 'center',
   },
 }));

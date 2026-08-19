@@ -40,7 +40,11 @@ export function EntryCard({
       delayLongPress={200}
     >
       <View style={styles.headerRow}>
-        <CategoryIcon icon={categoryIcon} color={categoryColor} />
+        {/* Centered on the title's line box, so icon and title glyphs sit on
+            one visual line (the line box carries leading above the glyph). */}
+        <View style={styles.iconHolder}>
+          <CategoryIcon icon={categoryIcon} color={categoryColor} />
+        </View>
         <View style={styles.headerText}>
           <Text style={styles.title} numberOfLines={1}>
             {title}
@@ -75,6 +79,10 @@ const styles = createStyles((t) => ({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: t.spacing.space5,
+  },
+  iconHolder: {
+    height: t.typography.entryTitle.lineHeight,
+    justifyContent: 'center',
   },
   headerText: {
     flex: 1,
