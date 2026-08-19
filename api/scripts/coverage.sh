@@ -3,13 +3,14 @@
 # packages. cmd/api/main.go is excluded: it is a logic-free shim (see its
 # package comment); all behavior lives in internal/ where this gate sees it.
 #
-# If this reports phantom uncovered lines right after editing covered files
-# (duplicate shifted blocks in cover.out), it is a Go build-cache artifact:
-# run `go clean -cache -testcache` and rerun. CI builds cold and never hits it.
+# -count=1 is load-bearing: cached test results replay coverage profiles that
+# were instrumented against OLD source, and merging them with fresh profiles
+# yields phantom uncovered blocks (locally after edits, on CI via setup-go's
+# restored build cache). Forcing a rerun keeps every profile current.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-go test -coverprofile=cover.out -coverpkg=./internal/... ./...
+go test -count=1 -coverprofile=cover.out -coverpkg=./internal/... ./...
 
 total=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}')
 if [ "$total" != "100.0%" ]; then
