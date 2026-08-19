@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
 
 import { strings } from '../i18n/strings';
@@ -42,7 +43,11 @@ export function SpecimenScreen() {
               <View key={index} style={[styles.dot, { backgroundColor: colors.base }]} />
             ))}
         </View>
-        <Text style={styles.overflowLabel}>{strings.month.dotOverflow}</Text>
+        <Plus
+          size={theme.dot.size + theme.spacing.space1}
+          color={theme.colors.textTertiary}
+          strokeWidth={2.5}
+        />
         <View style={styles.yearBox}>
           <Text style={styles.yearNumeral}>{strings.specimen.yearBoxNumeral}</Text>
         </View>
@@ -113,10 +118,6 @@ const styles = createStyles((t) => ({
   },
   chipLabel: {
     ...t.typography.meta,
-  },
-  overflowLabel: {
-    ...t.typography.weekday,
-    color: t.colors.textTertiary,
   },
   yearBox: {
     width: t.yearBox.size,

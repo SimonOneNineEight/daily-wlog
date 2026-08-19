@@ -67,7 +67,7 @@ it('collapses a day with more than four entries into a plain +', async () => {
     },
   ];
   renderMonth();
-  expect(await screen.findByText('+')).toBeTruthy();
+  expect(await screen.findByTestId('dot-overflow')).toBeTruthy();
 });
 
 it("shows today's entries in the panel by default and the empty line otherwise", async () => {

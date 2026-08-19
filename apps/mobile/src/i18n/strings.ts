@@ -18,7 +18,6 @@ const zhTW = {
     title: (month: number) => `${month}月`,
     yearLabel: (year: number) => `${year}年`,
     prevMonth: '上一個月',
-    dotOverflow: '+',
     nextMonth: '下一個月',
     emptyDay: '這天沒有紀錄',
     dateLabel: (month: number, day: number, weekday: string) => `${month}月${day}日 ${weekday}`,
