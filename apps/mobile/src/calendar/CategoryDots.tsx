@@ -23,12 +23,15 @@ export function CategoryDots({ colors }: Props) {
 }
 
 const styles = createStyles((t) => ({
+  // Fixed to dot height: the 「+」 label's taller line box must center around
+  // the dots without pushing the whole row (and every dot) lower than on
+  // days that have no overflow.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.dot.gap,
-    minHeight: t.dot.size,
+    height: t.dot.size,
   },
   dot: {
     width: t.dot.size,
