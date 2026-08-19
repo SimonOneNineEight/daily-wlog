@@ -21,7 +21,7 @@ A mobile-first personal life journal. Aesthetic family: **Apple Calendar's airin
 - Primary colors of the app: white, grey, black. Chrome (backgrounds, bars, buttons, grid lines) is neutral only — **no brand accent color exists**. The "+" button and today's marker carry weight through shape, fill, and depth, never through hue.
 - Category colors are the only saturated colors on screen. **Preset palette of 10 muted, dusty mid-tones** that harmonize with the neutral chrome — no neon, no pastel — with lightness deliberately varied across the ten so all remain mutually distinguishable at dot size (6–8px) on white. Exact values are chosen in the design session on the real month-view mock, plus a custom color picker for users.
 - Dots may run a point or two larger than saturated equivalents would, compensating for the muted palette.
-- A day cell shows up to 4 dots in entry order; overflow is a "+n", never a fifth dot.
+- A day cell shows up to 4 dots in entry order; overflow is a plain "+" with no count (amended 2026-08-19 from "+n"), never a fifth dot.
 - Year view: a day with entries gets a rounded box in the day's FIRST entry's category color, rendered as a solid fill with the day numeral punched out in white. One color per day, never stripes.
 
 ## Theming

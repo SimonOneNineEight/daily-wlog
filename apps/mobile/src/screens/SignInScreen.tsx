@@ -1,6 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '../auth/supabase';
 import { strings } from '../i18n/strings';
@@ -94,7 +95,7 @@ export function SignInScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.brand}>
         <Text style={styles.wordmark}>{strings.signIn.wordmark}</Text>
         <Text style={styles.promise}>{strings.signIn.promise}</Text>
@@ -119,7 +120,7 @@ export function SignInScreen() {
         ) : null}
         {failed ? <Text style={styles.error}>{strings.signIn.error}</Text> : null}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

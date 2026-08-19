@@ -59,7 +59,7 @@ it('renders the month title and the weekday header', async () => {
   }
 });
 
-it('collapses a day with more than four entries into +n', async () => {
+it('collapses a day with more than four entries into a plain +', async () => {
   monthDays = [
     {
       date: '2026-08-12',
@@ -67,7 +67,7 @@ it('collapses a day with more than four entries into +n', async () => {
     },
   ];
   renderMonth();
-  expect(await screen.findByText('+2')).toBeTruthy();
+  expect(await screen.findByText('+')).toBeTruthy();
 });
 
 it("shows today's entries in the panel by default and the empty line otherwise", async () => {

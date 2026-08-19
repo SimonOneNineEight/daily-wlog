@@ -90,3 +90,12 @@ it('saves an entry as an encoded blob and returns to the list', async () => {
   // Back on the list: the form's placeholder is gone.
   expect(screen.queryByPlaceholderText('標題')).toBeNull();
 });
+
+it('filters the category picker by search', async () => {
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+  fireEvent.press(await screen.findByText('新增紀錄'));
+
+  fireEvent.changeText(screen.getByPlaceholderText('類別'), '美');
+  expect(screen.queryByText('運動')).toBeNull();
+  expect(screen.getByText('美食')).toBeTruthy();
+});

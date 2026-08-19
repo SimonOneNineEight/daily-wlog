@@ -42,7 +42,7 @@ export function SpecimenScreen() {
               <View key={index} style={[styles.dot, { backgroundColor: colors.base }]} />
             ))}
         </View>
-        <Text style={styles.overflowLabel}>{strings.specimen.dotOverflow(2)}</Text>
+        <Text style={styles.overflowLabel}>{strings.month.dotOverflow}</Text>
         <View style={styles.yearBox}>
           <Text style={styles.yearNumeral}>{strings.specimen.yearBoxNumeral}</Text>
         </View>

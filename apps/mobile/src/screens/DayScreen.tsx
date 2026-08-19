@@ -1,6 +1,7 @@
 import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry } from '../api/client';
 import { listEntries } from '../api/client';
@@ -69,7 +70,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved 
   const heading = strings.month.dateLabel(monthPart, dayPart, weekday);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.headerRow}>
         {onBack ? (
           <Pressable
@@ -108,7 +109,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved 
       >
         <Text style={styles.addLabel}>{strings.day.addEntry}</Text>
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 

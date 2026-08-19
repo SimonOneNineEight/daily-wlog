@@ -18,6 +18,7 @@ const zhTW = {
     title: (month: number) => `${month}月`,
     yearLabel: (year: number) => `${year}年`,
     prevMonth: '上一個月',
+    dotOverflow: '+',
     nextMonth: '下一個月',
     emptyDay: '這天沒有紀錄',
     dateLabel: (month: number, day: number, weekday: string) => `${month}月${day}日 ${weekday}`,
@@ -34,6 +35,7 @@ const zhTW = {
   entryForm: {
     cancel: '取消',
     save: '儲存',
+    categoryPlaceholder: '類別',
     titlePlaceholder: '標題',
     notePlaceholder: '備註（選填）',
     saveFailed: '儲存失敗，請再試一次',
@@ -51,7 +53,6 @@ const zhTW = {
     typeRoles: '文字樣式',
     dotGeometry: '圓點與年曆方塊',
     typeSample: '週末去河濱公園騎車,傍晚和朋友吃了火鍋',
-    dotOverflow: (count: number) => `+${count}`,
     yearBoxNumeral: '8',
   },
 } as const;

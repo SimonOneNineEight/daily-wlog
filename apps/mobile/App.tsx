@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppRoot } from './src/AppRoot';
 import { HealthScreen } from './src/screens/HealthScreen';
@@ -23,10 +24,10 @@ const DevScreen = devScreens[process.env.EXPO_PUBLIC_SCREEN ?? ''];
 
 export default Sentry.wrap(function App() {
   return (
-    <>
+    <SafeAreaProvider>
       {DevScreen ? <DevScreen /> : <AppRoot />}
       {/* Light-only MVP on a light background: status bar content is dark. */}
       <StatusBar style="dark" />
-    </>
+    </SafeAreaProvider>
   );
 });

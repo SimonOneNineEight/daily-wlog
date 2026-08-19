@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 
+import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
 import { dayDots } from './monthMath';
@@ -8,7 +9,7 @@ type Props = {
   colors: string[];
 };
 
-/** Up to four dots in entry order, touching (0px gap); overflow becomes 「+n」. */
+/** Up to four dots in entry order, touching (0px gap); overflow becomes a plain 「+」. */
 export function CategoryDots({ colors }: Props) {
   const { shown, overflow } = dayDots(colors, theme.dot.maxPerDay);
   return (
@@ -16,7 +17,7 @@ export function CategoryDots({ colors }: Props) {
       {shown.map((color, index) => (
         <View key={index} style={[styles.dot, { backgroundColor: color }]} />
       ))}
-      {overflow > 0 ? <Text style={styles.overflow}>{`+${overflow}`}</Text> : null}
+      {overflow > 0 ? <Text style={styles.overflow}>{strings.month.dotOverflow}</Text> : null}
     </View>
   );
 }

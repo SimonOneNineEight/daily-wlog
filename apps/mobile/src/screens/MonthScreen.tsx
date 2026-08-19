@@ -156,6 +156,7 @@ export function MonthScreen({
       <ScrollView
         ref={pagerRef}
         testID="month-pager"
+        style={styles.pager}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -237,6 +238,9 @@ const styles = createStyles((t) => ({
   navActions: {
     flexDirection: 'row',
     gap: t.spacing.space4,
+  },
+  pager: {
+    flexGrow: 0,
   },
   navButton: {
     width: t.spacing.hitMin,

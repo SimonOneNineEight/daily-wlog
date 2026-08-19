@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
 import { supabase } from '../auth/supabase';
@@ -51,7 +52,7 @@ export function HomeScreen({ accessToken, categories }: Props) {
     );
   }
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.body}>
         <MonthScreen
           accessToken={accessToken}
@@ -70,7 +71,7 @@ export function HomeScreen({ accessToken, categories }: Props) {
       >
         <Text style={styles.signOutLabel}>{strings.home.signOut}</Text>
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 
