@@ -89,7 +89,10 @@ const styles = createStyles((t) => ({
   cell: {
     flex: 1,
     alignItems: 'center',
-    gap: t.spacing.space3,
+    // Tighter than the canvas's 6px: native text metrics leave more air
+    // under the numeral than the web mock, so 2px restores the design's
+    // snug numeral-over-dots look (Simon, 2026-08-19).
+    gap: t.spacing.space1,
     height: t.spacing.gridCellHeight,
     paddingTop: t.spacing.space3,
   },
