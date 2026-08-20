@@ -61,11 +61,18 @@ const zhTW = {
   categories: {
     title: '類別',
     add: '新增類別',
-    create: '建立',
+    editTitle: '編輯類別',
+    save: '儲存',
+    // The color drawer's confirm.
     done: '完成',
     namePlaceholder: '名稱',
-    parentHeader: '上層類別',
+    // Canvas parent section: the collapsible 上層分類 row and its hints.
+    parentHeader: '上層分類（選填）',
     noParent: '無',
+    parentHintTop: '獨立類別',
+    parentHintSub: '子類別',
+    inheritHint: '子類別沿用上層分類的圖示與顏色。',
+    colorHeader: '顏色',
     iconHeader: '圖示',
     subcategoriesHeader: '子類別',
     addSubcategory: '新增子類別',

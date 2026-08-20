@@ -33,33 +33,36 @@ export function ColorPresetPicker({ value, onChange, accessToken, existingColors
       {Object.entries(theme.categories).map(([name, preset]) => {
         const selected = value === preset.base;
         return (
-          <Pressable
-            key={name}
-            accessibilityRole="button"
-            accessibilityLabel={name}
-            style={[styles.ring, selected && styles.ringSelected]}
-            onPress={() => onChange(preset.base)}
-          >
-            <View style={[styles.swatch, { backgroundColor: preset.base }]} />
-          </Pressable>
+          <View key={name} style={styles.cell}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={name}
+              style={[styles.ring, selected && styles.ringSelected]}
+              onPress={() => onChange(preset.base)}
+            >
+              <View style={[styles.swatch, { backgroundColor: preset.base }]} />
+            </Pressable>
+          </View>
         );
       })}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={strings.colorDrawer.custom}
-        style={[styles.ring, !isPreset && styles.ringSelected]}
-        onPress={() => setDrawerOpen(true)}
-      >
-        {isPreset ? (
-          // No custom color chosen yet: the design component's affordance is
-          // a dashed ring around a palette glyph.
-          <View style={styles.customAffordance}>
-            <Palette size={16} color={theme.colors.iconDefault} strokeWidth={2} />
-          </View>
-        ) : (
-          <View style={[styles.swatch, { backgroundColor: value }]} />
-        )}
-      </Pressable>
+      <View style={styles.cell}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={strings.colorDrawer.custom}
+          style={[styles.ring, !isPreset && styles.ringSelected]}
+          onPress={() => setDrawerOpen(true)}
+        >
+          {isPreset ? (
+            // No custom color chosen yet: the design component's affordance
+            // is a dashed ring around a palette glyph.
+            <View style={styles.customAffordance}>
+              <Palette size={16} color={theme.colors.iconDefault} strokeWidth={2} />
+            </View>
+          ) : (
+            <View style={[styles.swatch, { backgroundColor: value }]} />
+          )}
+        </Pressable>
+      </View>
       {drawerOpen ? (
         <ColorDrawer
           accessToken={accessToken}
@@ -80,10 +83,15 @@ export function ColorPresetPicker({ value, onChange, accessToken, existingColors
 // 34px swatches per the canvas; selection is the canvas's 2px surface gap
 // inside a 2px textPrimary ring.
 const styles = createStyles((t) => ({
+  // The canvas's 6-column swatch grid.
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: t.spacing.space5,
+    rowGap: t.spacing.space5,
+  },
+  cell: {
+    width: `${100 / 6}%`,
+    alignItems: 'center',
   },
   ring: {
     width: 42,

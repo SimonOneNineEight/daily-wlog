@@ -63,22 +63,25 @@ function renderScreen(overrides: Partial<React.ComponentProps<typeof CategoriesS
   );
 }
 
-it('lists top-level categories with their subcategories as tappable rows', () => {
+it('lists parents with subcategories as a subtitle line, per the canvas', () => {
   renderScreen();
   expect(screen.getByText('工作')).toBeTruthy();
   expect(screen.getByText('運動')).toBeTruthy();
-  // The child is its own row: tapping it opens its editor directly.
-  fireEvent.press(screen.getByText('健身房'));
-  expect(screen.getByDisplayValue('健身房')).toBeTruthy();
+  // The child rides its parent's row as subtitle text, not its own row.
+  expect(screen.getByText('健身房')).toBeTruthy();
+  fireEvent.press(screen.getByText('運動'));
+  expect(screen.getByDisplayValue('運動')).toBeTruthy();
 });
 
-it('shows inherited icon/color sections disabled for a subcategory', () => {
+it('edits a subcategory through the parent sheet with sections disabled', () => {
   renderScreen();
-  fireEvent.press(screen.getByText('健身房'));
-  // The sections are present (not hidden) so inheritance reads as disabled.
-  expect(screen.getByText('圖示')).toBeTruthy();
-  // Editing keeps parenthood fixed: no parent picker on edit.
-  expect(screen.queryByText('上層類別')).toBeNull();
+  fireEvent.press(screen.getByText('運動'));
+  // The parent sheet's inline sub list opens the child's editor.
+  fireEvent.press(screen.getAllByText('健身房')[screen.getAllByText('健身房').length - 1]);
+  expect(screen.getByDisplayValue('健身房')).toBeTruthy();
+  // Icon/color sections stay present (disabled) and the inherit hint shows.
+  expect(screen.getAllByText('圖示').length).toBeGreaterThan(0);
+  expect(screen.getByText('子類別沿用上層分類的圖示與顏色。')).toBeTruthy();
 });
 
 it('renames a category through the editor', async () => {
@@ -88,7 +91,7 @@ it('renames a category through the editor', async () => {
   fireEvent.press(screen.getByText('運動'));
   fireEvent.changeText(screen.getByDisplayValue('運動'), '健身');
   await act(async () => {
-    fireEvent.press(screen.getByText('完成'));
+    fireEvent.press(screen.getByText('儲存'));
   });
 
   const patch = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PATCH');
@@ -132,7 +135,7 @@ it('creates a subcategory from inside the parent editor', async () => {
   fireEvent.press(screen.getByText('新增子類別'));
   fireEvent.changeText(screen.getByPlaceholderText('名稱'), '游泳');
   await act(async () => {
-    fireEvent.press(screen.getByText('建立'));
+    fireEvent.press(screen.getByText('儲存'));
   });
 
   const post = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');
@@ -147,7 +150,7 @@ it('creates a top-level category with its icon in one call', async () => {
   fireEvent.press(screen.getByLabelText('新增類別'));
   fireEvent.changeText(screen.getByPlaceholderText('名稱'), '園藝');
   await act(async () => {
-    fireEvent.press(screen.getByText('建立'));
+    fireEvent.press(screen.getByText('儲存'));
   });
 
   const post = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');
@@ -166,9 +169,7 @@ it('saves a custom color to the recents only once the category persists', async 
   fireEvent.press(screen.getByLabelText('自訂顏色'));
   fireEvent.press(await screen.findByLabelText('#123456'));
   await act(async () => {
-    // The drawer's 完成 renders after the editor's.
-    const confirms = screen.getAllByText('完成');
-    fireEvent.press(confirms[confirms.length - 1]);
+    fireEvent.press(screen.getByText('完成')); // drawer confirm
   });
   // Drawer confirmed, sheet not saved yet: no recent recorded.
   expect(
@@ -178,7 +179,7 @@ it('saves a custom color to the recents only once the category persists', async 
   ).toBeUndefined();
 
   await act(async () => {
-    fireEvent.press(screen.getAllByText('完成')[0]);
+    fireEvent.press(screen.getByText('儲存'));
   });
   const put = (globalThis.fetch as jest.Mock).mock.calls.find(
     ([url, init]) => String(url).includes('/color-recents') && init?.method === 'PUT',
@@ -192,11 +193,13 @@ it('creates a subcategory by picking a parent in the create sheet', async () => 
 
   fireEvent.press(screen.getByLabelText('新增類別'));
   fireEvent.changeText(screen.getByPlaceholderText('名稱'), '游泳');
-  // The list row and the parent chip share the label; the chip renders last.
+  // Expand the 上層分類 row, then pick 運動 (the option row renders last;
+  // the month list behind the sheet shares the label).
+  fireEvent.press(screen.getByText('無'));
   const options = screen.getAllByText('運動');
   fireEvent.press(options[options.length - 1]);
   await act(async () => {
-    fireEvent.press(screen.getByText('建立'));
+    fireEvent.press(screen.getByText('儲存'));
   });
 
   const post = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');

@@ -11,6 +11,11 @@ function pascalCase(kebab: string): string {
     .join('');
 }
 
+/** The lucide component for a kebab-case glyph name; Tag when unknown. */
+export function glyphFor(icon: string): LucideIcon {
+  return (lucide as unknown as Record<string, LucideIcon>)[pascalCase(icon)] ?? lucide.Tag;
+}
+
 type Props = {
   icon: string;
   color: string;
