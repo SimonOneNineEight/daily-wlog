@@ -128,3 +128,15 @@ export function updateCategory(
 export function deleteCategory(accessToken: string, id: string): Promise<void> {
   return request<void>(accessToken, `/categories/${id}`, { method: 'DELETE' });
 }
+
+type ColorRecents = paths['/color-recents']['get']['responses']['200']['content']['application/json'];
+
+/** Saved custom colors, most-recent first (the color drawer's recents row). */
+export function listColorRecents(accessToken: string): Promise<ColorRecents> {
+  return request<ColorRecents>(accessToken, '/color-recents');
+}
+
+/** LRU save: an existing color moves to the front; the cap evicts the oldest. */
+export function saveColorRecent(accessToken: string, color: string): Promise<ColorRecents> {
+  return request<ColorRecents>(accessToken, '/color-recents', { method: 'PUT', body: { color } });
+}

@@ -1,0 +1,143 @@
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+
+import { theme } from '../theme';
+
+import { ColorPresetPicker } from './ColorPresetPicker';
+
+const clay = theme.categories.clay.base;
+const existingColors = ['#4A93C4', '#73B062', '#D3AE40'];
+
+const realFetch = globalThis.fetch;
+
+beforeEach(() => {
+  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+    const u = String(url);
+    if (u.includes('/color-recents') && init?.method === 'PUT') {
+      const body = JSON.parse(init.body ?? '{}');
+      return { ok: true, json: async () => ({ colors: [body.color, '#123456', '#654321'] }) };
+    }
+    if (u.includes('/color-recents')) {
+      return { ok: true, json: async () => ({ colors: ['#123456', '#654321'] }) };
+    }
+    throw new Error(`unexpected fetch ${u}`);
+  }) as jest.Mock;
+});
+
+afterEach(() => {
+  globalThis.fetch = realFetch;
+});
+
+function renderPicker(value: string = clay) {
+  const onChange = jest.fn();
+  render(
+    <ColorPresetPicker
+      value={value}
+      onChange={onChange}
+      accessToken="tok"
+      existingColors={existingColors}
+    />,
+  );
+  return onChange;
+}
+
+function backgroundOf(element: { props: { style?: unknown } }): string | undefined {
+  return (StyleSheet.flatten(element.props.style) as { backgroundColor?: string }).backgroundColor;
+}
+
+it('opens the drawer from the custom swatch and lists the saved recents', async () => {
+  renderPicker();
+
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+
+  // Presets reference row (by hex label) and the server-loaded recents row.
+  expect(screen.getByText('預設顏色')).toBeTruthy();
+  expect(await screen.findByText('最近使用')).toBeTruthy();
+  expect(screen.getByLabelText('#123456')).toBeTruthy();
+  expect(screen.getByLabelText('#654321')).toBeTruthy();
+});
+
+it('previews the chosen color as a dot beside the existing category colors', async () => {
+  renderPicker();
+
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+  fireEvent.press(await screen.findByLabelText('#123456'));
+
+  const chosen = screen.getAllByTestId('preview-dot-chosen');
+  expect(chosen.length).toBeGreaterThan(0);
+  for (const dot of chosen) {
+    expect(backgroundOf(dot)).toBe('#123456');
+  }
+  const existing = screen.getAllByTestId('preview-dot-existing');
+  expect(existing.length).toBeGreaterThan(0);
+  for (const dot of existing) {
+    expect(existingColors).toContain(backgroundOf(dot));
+  }
+});
+
+it('commits a custom color through onChange and saves it to the recents', async () => {
+  const onChange = renderPicker();
+
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+  fireEvent.press(await screen.findByLabelText('#123456'));
+  await act(async () => {
+    fireEvent.press(screen.getByText('完成'));
+  });
+
+  expect(onChange).toHaveBeenCalledWith('#123456');
+  const put = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PUT');
+  expect(put).toBeTruthy();
+  expect(JSON.parse(put?.[1]?.body ?? '{}')).toEqual({ color: '#123456' });
+});
+
+it('does not save preset picks to the recents', async () => {
+  const onChange = renderPicker();
+
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+  // The blue preset by its hex label on the drawer's reference row.
+  fireEvent.press(await screen.findByLabelText(theme.categories.blue.base));
+  await act(async () => {
+    fireEvent.press(screen.getByText('完成'));
+  });
+
+  expect(onChange).toHaveBeenCalledWith(theme.categories.blue.base);
+  const put = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PUT');
+  expect(put).toBeUndefined();
+});
+
+it('changes the color through the slider accessibility actions', async () => {
+  const onChange = renderPicker();
+
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+  await act(async () => {});
+  fireEvent(screen.getByLabelText('亮度'), 'accessibilityAction', {
+    nativeEvent: { actionName: 'increment' },
+  });
+  await act(async () => {
+    fireEvent.press(screen.getByText('完成'));
+  });
+
+  expect(onChange).toHaveBeenCalledTimes(1);
+  const committed = onChange.mock.calls[0][0] as string;
+  expect(committed).toMatch(/^#[0-9A-F]{6}$/);
+  expect(committed).not.toBe(clay);
+});
+
+it('cancels without committing anything', async () => {
+  const onChange = renderPicker();
+
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+  await act(async () => {});
+  fireEvent.press(screen.getByText('取消'));
+
+  expect(onChange).not.toHaveBeenCalled();
+  expect((globalThis.fetch as jest.Mock).mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(0);
+  expect(screen.queryByText('色相')).toBeNull();
+});
+
+it('shows the current custom color on the custom swatch', () => {
+  renderPicker('#123456');
+  // A non-preset value marks the custom swatch as the selection.
+  const custom = screen.getByLabelText('自訂顏色');
+  expect(backgroundOf(custom.children[0] as never)).toBe('#123456');
+});

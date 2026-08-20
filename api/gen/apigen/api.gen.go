@@ -47,6 +47,12 @@ type Category struct {
 	Position int     `json:"position"`
 }
 
+// ColorRecents defines model for ColorRecents.
+type ColorRecents struct {
+	// Colors Saved custom colors, most-recent first, capped at 12.
+	Colors []string `json:"colors"`
+}
+
 // CreateCategory defines model for CreateCategory.
 type CreateCategory struct {
 	// Color Hex color. Presets come from the category palette; custom values are free per the ratified color decision. Subcategories store their parent's color but always render through the parent.
@@ -187,6 +193,12 @@ type ReorderPhotos struct {
 	PhotoIds []string `json:"photoIds"`
 }
 
+// SaveColorRecent defines model for SaveColorRecent.
+type SaveColorRecent struct {
+	// Color Hex color (#RRGGBB) the User committed from the color drawer. Fully free per the ratified color decision; preset picks are not saved (the presets row is always visible anyway).
+	Color string `json:"color"`
+}
+
 // UpdateCategory defines model for UpdateCategory.
 type UpdateCategory struct {
 	// Color Top-level categories only; Subcategories inherit.
@@ -236,6 +248,9 @@ type CreateCategoryJSONRequestBody = CreateCategory
 // UpdateCategoryJSONRequestBody defines body for UpdateCategory for application/json ContentType.
 type UpdateCategoryJSONRequestBody = UpdateCategory
 
+// SaveColorRecentJSONRequestBody defines body for SaveColorRecent for application/json ContentType.
+type SaveColorRecentJSONRequestBody = SaveColorRecent
+
 // ReorderDayJSONRequestBody defines body for ReorderDay for application/json ContentType.
 type ReorderDayJSONRequestBody = ReorderDay
 
@@ -265,6 +280,12 @@ type ServerInterface interface {
 	// UpdateCategory Rename or restyle a Category
 	// (PATCH /categories/{id})
 	UpdateCategory(w http.ResponseWriter, r *http.Request, id string)
+	// ListColorRecents The signed-in User's saved custom colors
+	// (GET /color-recents)
+	ListColorRecents(w http.ResponseWriter, r *http.Request)
+	// SaveColorRecent Save a custom color as most recently used
+	// (PUT /color-recents)
+	SaveColorRecent(w http.ResponseWriter, r *http.Request)
 	// ReorderDay Reorder a date's Entries
 	// (PUT /days/{date}/order)
 	ReorderDay(w http.ResponseWriter, r *http.Request, date string)
@@ -325,6 +346,18 @@ func (_ Unimplemented) DeleteCategory(w http.ResponseWriter, r *http.Request, id
 // UpdateCategory Rename or restyle a Category
 // (PATCH /categories/{id})
 func (_ Unimplemented) UpdateCategory(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListColorRecents The signed-in User's saved custom colors
+// (GET /color-recents)
+func (_ Unimplemented) ListColorRecents(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SaveColorRecent Save a custom color as most recently used
+// (PUT /color-recents)
+func (_ Unimplemented) SaveColorRecent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -472,6 +505,34 @@ func (siw *ServerInterfaceWrapper) UpdateCategory(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateCategory(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListColorRecents operation middleware
+func (siw *ServerInterfaceWrapper) ListColorRecents(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListColorRecents(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SaveColorRecent operation middleware
+func (siw *ServerInterfaceWrapper) SaveColorRecent(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SaveColorRecent(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -951,6 +1012,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/years/{year}", wrapper.GetYear)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/color-recents", wrapper.ListColorRecents)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/color-recents", wrapper.SaveColorRecent)
+	})
 
 	return r
 }
@@ -1187,6 +1254,119 @@ func (response UpdateCategory409JSONResponse) VisitUpdateCategoryResponse(w http
 type UpdateCategory500JSONResponse Error
 
 func (response UpdateCategory500JSONResponse) VisitUpdateCategoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListColorRecentsRequestObject struct {
+}
+
+type ListColorRecentsResponseObject interface {
+	VisitListColorRecentsResponse(w http.ResponseWriter) error
+}
+
+type ListColorRecents200JSONResponse ColorRecents
+
+func (response ListColorRecents200JSONResponse) VisitListColorRecentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListColorRecents401JSONResponse Error
+
+func (response ListColorRecents401JSONResponse) VisitListColorRecentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListColorRecents500JSONResponse Error
+
+func (response ListColorRecents500JSONResponse) VisitListColorRecentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveColorRecentRequestObject struct {
+	Body *SaveColorRecentJSONRequestBody
+}
+
+type SaveColorRecentResponseObject interface {
+	VisitSaveColorRecentResponse(w http.ResponseWriter) error
+}
+
+type SaveColorRecent200JSONResponse ColorRecents
+
+func (response SaveColorRecent200JSONResponse) VisitSaveColorRecentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveColorRecent400JSONResponse Error
+
+func (response SaveColorRecent400JSONResponse) VisitSaveColorRecentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveColorRecent401JSONResponse Error
+
+func (response SaveColorRecent401JSONResponse) VisitSaveColorRecentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SaveColorRecent500JSONResponse Error
+
+func (response SaveColorRecent500JSONResponse) VisitSaveColorRecentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2046,6 +2226,12 @@ type StrictServerInterface interface {
 	// UpdateCategory Rename or restyle a Category
 	// (PATCH /categories/{id})
 	UpdateCategory(ctx context.Context, request UpdateCategoryRequestObject) (UpdateCategoryResponseObject, error)
+	// ListColorRecents The signed-in User's saved custom colors
+	// (GET /color-recents)
+	ListColorRecents(ctx context.Context, request ListColorRecentsRequestObject) (ListColorRecentsResponseObject, error)
+	// SaveColorRecent Save a custom color as most recently used
+	// (PUT /color-recents)
+	SaveColorRecent(ctx context.Context, request SaveColorRecentRequestObject) (SaveColorRecentResponseObject, error)
 	// ReorderDay Reorder a date's Entries
 	// (PUT /days/{date}/order)
 	ReorderDay(ctx context.Context, request ReorderDayRequestObject) (ReorderDayResponseObject, error)
@@ -2209,6 +2395,61 @@ func (sh *strictHandler) UpdateCategory(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateCategoryResponseObject); ok {
 		if err := validResponse.VisitUpdateCategoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListColorRecents operation middleware
+func (sh *strictHandler) ListColorRecents(w http.ResponseWriter, r *http.Request) {
+	var request ListColorRecentsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListColorRecents(ctx, request.(ListColorRecentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListColorRecents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListColorRecentsResponseObject); ok {
+		if err := validResponse.VisitListColorRecentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SaveColorRecent operation middleware
+func (sh *strictHandler) SaveColorRecent(w http.ResponseWriter, r *http.Request) {
+	var request SaveColorRecentRequestObject
+
+	var body SaveColorRecentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SaveColorRecent(ctx, request.(SaveColorRecentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SaveColorRecent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SaveColorRecentResponseObject); ok {
+		if err := validResponse.VisitSaveColorRecentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

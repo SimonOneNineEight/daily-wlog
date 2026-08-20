@@ -261,6 +261,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/color-recents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in User's saved custom colors
+         * @description The color drawer's saved-colors row: custom colors the User has committed, most-recent first, capped at 12.
+         */
+        get: operations["listColorRecents"];
+        /**
+         * Save a custom color as most recently used
+         * @description LRU semantics: saving a color already on the list moves it to the front; a new color joins at the front and the oldest beyond the 12-color cap drops off. Colors normalize to uppercase #RRGGBB, so case variants are the same color.
+         */
+        put: operations["saveColorRecent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -394,6 +418,14 @@ export interface components {
             status: "ok";
             /** @description Version read from the app_info migration baseline. */
             schemaVersion: number;
+        };
+        SaveColorRecent: {
+            /** @description Hex color (#RRGGBB) the User committed from the color drawer. Fully free per the ratified color decision; preset picks are not saved (the presets row is always visible anyway). */
+            color: string;
+        };
+        ColorRecents: {
+            /** @description Saved custom colors, most-recent first, capped at 12. */
+            colors: string[];
         };
         Error: {
             message: string;
@@ -1248,6 +1280,95 @@ export interface operations {
                 };
             };
             /** @description Loading the year failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listColorRecents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved custom colors, most-recent first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ColorRecents"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Listing saved colors failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    saveColorRecent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveColorRecent"];
+            };
+        };
+        responses: {
+            /** @description The updated saved-colors list, most-recent first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ColorRecents"];
+                };
+            };
+            /** @description color is not a */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Saving the color failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

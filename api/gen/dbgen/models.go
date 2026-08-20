@@ -24,6 +24,12 @@ type Category struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type ColorRecent struct {
+	UserID  string
+	Color   string
+	UsedSeq int64
+}
+
 type Entry struct {
 	ID            string
 	JournalID     string
