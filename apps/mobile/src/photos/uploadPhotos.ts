@@ -9,7 +9,11 @@ async function uploadFile(uri: string, uploadUrl: string): Promise<void> {
   const response = await fetch(uploadUrl, {
     method: 'PUT',
     headers: { 'Content-Type': 'image/jpeg' },
-    body: bytes,
+    // React Native derives the wire Content-Type from the blob's own type
+    // (the explicit header above is overridden), and a blob read from a
+    // file URI arrives untyped — storage then rejects the bare media type,
+    // so retype it here.
+    body: new Blob([bytes], { type: 'image/jpeg' }),
   });
   if (!response.ok) {
     throw new Error(`photo upload responded ${response.status}`);

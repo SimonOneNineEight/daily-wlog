@@ -7,10 +7,15 @@ afterEach(() => {
 });
 
 it('presigns, uploads bytes to storage, then registers metadata in order', async () => {
-  const calls: { url: string; method: string; body?: string }[] = [];
+  const calls: { url: string; method: string; body?: string; blobType?: string }[] = [];
   globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: unknown }) => {
     const u = String(url);
-    calls.push({ url: u, method: init?.method ?? 'GET', body: typeof init?.body === 'string' ? init.body : undefined });
+    calls.push({
+      url: u,
+      method: init?.method ?? 'GET',
+      body: typeof init?.body === 'string' ? init.body : undefined,
+      blobType: init?.body instanceof Blob ? init.body.type : undefined,
+    });
     if (u.endsWith('/photos/presign')) {
       return {
         ok: true,
@@ -48,6 +53,9 @@ it('presigns, uploads bytes to storage, then registers metadata in order', async
     'https://store/up/b',
     'https://store/up/bt',
   ]);
+  // RN puts the blob's own type on the wire as Content-Type; an untyped
+  // blob got uploads rejected by the bucket's MIME allowlist (415).
+  expect(puts.map((c) => c.blobType)).toEqual(Array(4).fill('image/jpeg'));
   // Registration carries the presigned paths and the capture time.
   const register = calls.find((c) => c.url.endsWith('/photos') && c.method === 'POST');
   const body = JSON.parse(register?.body ?? '{}');
