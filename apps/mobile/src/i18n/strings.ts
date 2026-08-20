@@ -11,8 +11,17 @@ const zhTW = {
     devLogin: '以測試帳號登入（開發用）',
     error: '登入失敗，請再試一次',
   },
-  home: {
+  settings: {
+    title: '設定',
+    open: '設定',
+    accountHeader: '帳號',
     signOut: '登出',
+    deleteAccount: '刪除帳號',
+    deleteConfirmTitle: '刪除帳號？',
+    // The 30-day grace (#15), plainly stated per the content rules.
+    deleteConfirmBody: '30天內重新登入即可復原。之後所有紀錄、照片與類別將永久刪除。',
+    deleteConfirm: '刪除',
+    deleteFailed: '刪除失敗，請再試一次',
   },
   month: {
     title: (month: number) => `${month}月`,

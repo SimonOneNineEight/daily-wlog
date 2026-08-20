@@ -32,10 +32,14 @@ export interface paths {
         put?: never;
         /**
          * Provision and return the signed-in User's world
-         * @description Idempotent. On first sign-in it atomically creates the User, their Journal, and the five seeded categories; on every later call it returns the same world unchanged.
+         * @description Idempotent. On first sign-in it atomically creates the User, their Journal, and the five seeded categories; on every later call it returns the same world unchanged. Signing in on a deactivated account before its purge reactivates it (#15) — every other route answers 403 while deactivated.
          */
         post: operations["provisionMe"];
-        delete?: never;
+        /**
+         * Deactivate the signed-in User's account
+         * @description Leaving is a right (#15). Deactivation is immediate — every route except POST /me answers 403 from here on — and the permanent purge follows after a 30-day grace, cascading through Entries, Categories, and stored photo files. Signing in again before the purge reactivates the account intact. Idempotent.
+         */
+        delete: operations["deactivateMe"];
         options?: never;
         head?: never;
         patch?: never;
@@ -496,6 +500,42 @@ export interface operations {
                 };
             };
             /** @description Provisioning failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deactivateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account is deactivated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Deactivation failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

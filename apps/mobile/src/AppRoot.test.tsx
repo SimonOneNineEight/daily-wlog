@@ -84,13 +84,14 @@ it('shows the app and provisions the world when a session exists', async () => {
   expect(meCall?.[1]?.headers?.Authorization).toBe('Bearer token-1');
 });
 
-it('returns to the sign-in screen on sign-out', async () => {
+it('returns to the sign-in screen on sign-out through settings', async () => {
   mockAuthState.session = { access_token: 'token-1', user: { id: 'u1' } };
   render(<AppRoot />);
-  expect(await screen.findByText('登出')).toBeTruthy();
 
+  // Sign-out lives in 設定 (#15), behind the month nav's gear.
+  fireEvent.press(await screen.findByLabelText('設定'));
   await act(async () => {
-    fireEvent.press(screen.getByText('登出'));
+    fireEvent.press(await screen.findByText('登出'));
   });
 
   expect(await screen.findByText('每天五分鐘，留下你的生活')).toBeTruthy();

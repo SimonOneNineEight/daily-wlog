@@ -331,6 +331,9 @@ type ServerInterface interface {
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// DeactivateMe Deactivate the signed-in User's account
+	// (DELETE /me)
+	DeactivateMe(w http.ResponseWriter, r *http.Request)
 	// ProvisionMe Provision and return the signed-in User's world
 	// (POST /me)
 	ProvisionMe(w http.ResponseWriter, r *http.Request)
@@ -430,6 +433,12 @@ func (_ Unimplemented) PresignPhotos(w http.ResponseWriter, r *http.Request, id 
 // GetHealth Liveness and database health
 // (GET /healthz)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeactivateMe Deactivate the signed-in User's account
+// (DELETE /me)
+func (_ Unimplemented) DeactivateMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -777,6 +786,20 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// DeactivateMe operation middleware
+func (siw *ServerInterfaceWrapper) DeactivateMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeactivateMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ProvisionMe operation middleware
 func (siw *ServerInterfaceWrapper) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 
@@ -1042,6 +1065,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.GetHealth)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/me", wrapper.DeactivateMe)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/me", wrapper.ProvisionMe)
@@ -2056,6 +2082,49 @@ func (response GetHealth503JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	return err
 }
 
+type DeactivateMeRequestObject struct {
+}
+
+type DeactivateMeResponseObject interface {
+	VisitDeactivateMeResponse(w http.ResponseWriter) error
+}
+
+type DeactivateMe204Response struct {
+}
+
+func (response DeactivateMe204Response) VisitDeactivateMeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeactivateMe401JSONResponse Error
+
+func (response DeactivateMe401JSONResponse) VisitDeactivateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeactivateMe500JSONResponse Error
+
+func (response DeactivateMe500JSONResponse) VisitDeactivateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ProvisionMeRequestObject struct {
 }
 
@@ -2337,6 +2406,9 @@ type StrictServerInterface interface {
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
+	// DeactivateMe Deactivate the signed-in User's account
+	// (DELETE /me)
+	DeactivateMe(ctx context.Context, request DeactivateMeRequestObject) (DeactivateMeResponseObject, error)
 	// ProvisionMe Provision and return the signed-in User's world
 	// (POST /me)
 	ProvisionMe(ctx context.Context, request ProvisionMeRequestObject) (ProvisionMeResponseObject, error)
@@ -2800,6 +2872,30 @@ func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
 		if err := validResponse.VisitGetHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeactivateMe operation middleware
+func (sh *strictHandler) DeactivateMe(w http.ResponseWriter, r *http.Request) {
+	var request DeactivateMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeactivateMe(ctx, request.(DeactivateMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeactivateMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeactivateMeResponseObject); ok {
+		if err := validResponse.VisitDeactivateMeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

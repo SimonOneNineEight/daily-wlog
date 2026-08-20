@@ -54,6 +54,20 @@ func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestOb
 	if err := h.queries.ProvisionUser(ctx, userID); err != nil {
 		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
 	}
+	// Signing in on a deactivated account before its purge reactivates it
+	// (#15); the audit trail records the return.
+	reactivated, err := h.queries.ReactivateAccount(ctx, userID)
+	if err != nil {
+		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
+	}
+	if reactivated > 0 {
+		if err := h.queries.InsertAccountAudit(ctx, dbgen.InsertAccountAuditParams{
+			UserID: userID,
+			Event:  "reactivated",
+		}); err != nil {
+			return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
+		}
+	}
 	journalID, err := h.queries.GetJournal(ctx, userID)
 	if err != nil {
 		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
@@ -107,6 +121,7 @@ func NewWithQuerier(logger *slog.Logger, queries dbgen.Querier, verifier *auth.V
 	router.Use(middleware.Recoverer)
 	router.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
 	router.Use(auth.Middleware(verifier, map[string]bool{"/healthz": true}))
+	router.Use(deactivationGate(queries))
 	h := handlers{logger: logger, queries: queries, store: store}
 	return apigen.HandlerFromMux(apigen.NewStrictHandler(h, nil), router)
 }

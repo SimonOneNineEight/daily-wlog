@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/SimonOneNineEight/daily-wlog/api/gen/dbgen"
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/auth"
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/server"
@@ -53,9 +56,50 @@ type failingQuerier struct {
 	saveColorErr      error
 	trimColorErr      error
 	listColorsErr     error
+	statusErr         error
+	statusDeleted     bool
+	deactivateErr     error
+	reactivateErr     error
+	reactivateRows    bool
+	auditErr          error
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
+func (f failingQuerier) GetAccountStatus(context.Context, string) (pgtype.Timestamptz, error) {
+	if f.statusDeleted {
+		return pgtype.Timestamptz{Time: time.Now(), Valid: true}, nil
+	}
+	return pgtype.Timestamptz{}, f.statusErr
+}
+func (f failingQuerier) DeactivateAccount(context.Context, string) (int64, error) {
+	return 1, f.deactivateErr
+}
+func (f failingQuerier) ReactivateAccount(context.Context, string) (int64, error) {
+	if f.reactivateRows {
+		return 1, f.reactivateErr
+	}
+	return 0, f.reactivateErr
+}
+func (f failingQuerier) InsertAccountAudit(context.Context, dbgen.InsertAccountAuditParams) error {
+	return f.auditErr
+}
+func (f failingQuerier) ListAccountAudit(context.Context, string) ([]dbgen.ListAccountAuditRow, error) {
+	return nil, nil
+}
+func (f failingQuerier) ListPurgeDue(context.Context, pgtype.Timestamptz) ([]string, error) {
+	return nil, nil
+}
+func (f failingQuerier) ListUserPhotoPaths(context.Context, string) ([]dbgen.ListUserPhotoPathsRow, error) {
+	return nil, nil
+}
+func (f failingQuerier) PurgeUserEntries(context.Context, string) (int64, error)         { return 0, nil }
+func (f failingQuerier) PurgeUserChildCategories(context.Context, string) (int64, error) { return 0, nil }
+func (f failingQuerier) PurgeUserParentCategories(context.Context, string) (int64, error) {
+	return 0, nil
+}
+func (f failingQuerier) PurgeUserColorRecents(context.Context, string) (int64, error) { return 0, nil }
+func (f failingQuerier) PurgeUserJournal(context.Context, string) (int64, error)      { return 0, nil }
+func (f failingQuerier) PurgeUserRow(context.Context, string) (int64, error)          { return 0, nil }
 func (f failingQuerier) ProvisionUser(context.Context, string) error     { return f.provisionErr }
 func (f failingQuerier) GetJournal(context.Context, string) (string, error) {
 	return "journal-id", f.journalErr
@@ -437,6 +481,53 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			if resp.StatusCode != http.StatusInternalServerError {
 				t.Fatalf("status = %d, want 500", resp.StatusCode)
 			}
+		})
+	}
+	accountCases := map[string]struct {
+		querier failingQuerier
+		run     func(t *testing.T, ts *httptest.Server)
+	}{
+		"deactivate fails": {failingQuerier{deactivateErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			resp := deactivate(t, ts, token)
+			resp.Body.Close()
+			checkStatus(t, resp, 500)
+		}},
+		"deactivate audit fails": {failingQuerier{auditErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			resp := deactivate(t, ts, token)
+			resp.Body.Close()
+			checkStatus(t, resp, 500)
+		}},
+		"reactivate fails": {failingQuerier{reactivateErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			resp := postMe(t, ts, token)
+			resp.Body.Close()
+			checkStatus(t, resp, 500)
+		}},
+		"reactivate audit fails": {failingQuerier{reactivateRows: true, auditErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			resp := postMe(t, ts, token)
+			resp.Body.Close()
+			checkStatus(t, resp, 500)
+		}},
+		"gate check fails": {failingQuerier{statusErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			resp := getMonth(t, ts, token, "2026-08")
+			resp.Body.Close()
+			checkStatus(t, resp, 500)
+		}},
+		"gate passes the unprovisioned": {failingQuerier{statusErr: pgx.ErrNoRows}, func(t *testing.T, ts *httptest.Server) {
+			resp := getMonth(t, ts, token, "2026-08")
+			resp.Body.Close()
+			checkStatus(t, resp, 200)
+		}},
+		"gate blocks the deactivated": {failingQuerier{statusDeleted: true}, func(t *testing.T, ts *httptest.Server) {
+			resp := getMonth(t, ts, token, "2026-08")
+			resp.Body.Close()
+			checkStatus(t, resp, 403)
+		}},
+	}
+	for name, c := range accountCases {
+		t.Run("account/"+name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), c.querier, auth.NewVerifier(testJWKSURL()), &fakeStore{}))
+			defer ts.Close()
+			c.run(t, ts)
 		})
 	}
 	yearCases := map[string]failingQuerier{

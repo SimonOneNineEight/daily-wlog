@@ -152,13 +152,13 @@ it('opens the day view from the panel and the form from the +', async () => {
   expect(onAddEntry).toHaveBeenCalled();
 });
 
-it('opens category management from the nav bar', async () => {
-  const onOpenCategories = jest.fn();
-  renderMonth({ onOpenCategories });
+it('opens settings from the nav bar gear', async () => {
+  const onOpenSettings = jest.fn();
+  renderMonth({ onOpenSettings });
   await screen.findByText('8月');
 
-  fireEvent.press(screen.getByLabelText('類別'));
-  expect(onOpenCategories).toHaveBeenCalled();
+  fireEvent.press(screen.getByLabelText('設定'));
+  expect(onOpenSettings).toHaveBeenCalled();
 });
 
 describe('calendar filter (#13)', () => {

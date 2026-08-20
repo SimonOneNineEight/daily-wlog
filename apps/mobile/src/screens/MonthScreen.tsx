@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Funnel, List, Plus, Tags } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Funnel, List, Plus, Settings } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -24,8 +24,8 @@ type Props = {
   today?: Date;
   onOpenDay: (date: string) => void;
   onAddEntry: () => void;
-  /** Opens category management (#10); #15's settings may rehome this. */
-  onOpenCategories?: () => void;
+  /** Opens settings (#15), which hosts category management. */
+  onOpenSettings?: () => void;
   /** Opens the year view (#12). */
   onOpenYear?: () => void;
   /** Land on this month instead of today's (year view tap-through, #12). */
@@ -49,7 +49,7 @@ export function MonthScreen({
   today = new Date(),
   onOpenDay,
   onAddEntry,
-  onOpenCategories,
+  onOpenSettings,
   onOpenYear,
   initialMonth,
   filter = emptyFilter,
@@ -169,14 +169,14 @@ export function MonthScreen({
               <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
-          {onOpenCategories ? (
+          {onOpenSettings ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={strings.categories.title}
+              accessibilityLabel={strings.settings.open}
               style={styles.navButton}
-              onPress={onOpenCategories}
+              onPress={onOpenSettings}
             >
-              <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+              <Settings size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
           <Pressable

@@ -8,6 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AccountAudit struct {
+	ID     string
+	UserID string
+	Event  string
+	At     pgtype.Timestamptz
+	Scope  []byte
+}
+
 type AppInfo struct {
 	OnlyRow       bool
 	SchemaVersion int32
@@ -62,4 +70,5 @@ type Photo struct {
 type User struct {
 	ID        string
 	CreatedAt pgtype.Timestamptz
+	DeletedAt pgtype.Timestamptz
 }

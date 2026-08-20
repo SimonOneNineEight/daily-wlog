@@ -40,6 +40,11 @@ export function provisionMe(accessToken: string): Promise<Me> {
   return request<Me>(accessToken, '/me', { method: 'POST' });
 }
 
+/** Deactivates the account (#15); the permanent purge follows 30 days later. */
+export function deactivateMe(accessToken: string): Promise<void> {
+  return request<void>(accessToken, '/me', { method: 'DELETE' });
+}
+
 export function createEntry(accessToken: string, body: CreateEntryBody): Promise<Entry> {
   return request<Entry>(accessToken, '/entries', { method: 'POST', body });
 }

@@ -6,6 +6,8 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -20,17 +22,20 @@ type Querier interface {
 	CategoryUsage(ctx context.Context, id string) (CategoryUsageRow, error)
 	CountPhotos(ctx context.Context, entryID string) (int64, error)
 	CountYearEntries(ctx context.Context, arg CountYearEntriesParams) (int64, error)
+	DeactivateAccount(ctx context.Context, userID string) (int64, error)
 	DeleteCategory(ctx context.Context, arg DeleteCategoryParams) (int64, error)
 	DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error)
 	// Ownership travels through the Entry's Journal; returns the storage paths
 	// for best-effort object cleanup.
 	DeletePhoto(ctx context.Context, arg DeletePhotoParams) (DeletePhotoRow, error)
+	GetAccountStatus(ctx context.Context, userID string) (pgtype.Timestamptz, error)
 	// Ownership gate for edits: no rows means not yours or not there (404).
 	GetCategoryParent(ctx context.Context, arg GetCategoryParentParams) (*string, error)
 	GetJournal(ctx context.Context, userID string) (string, error)
 	// The Entry, if it belongs to the signed-in User's Journal.
 	GetOwnedEntry(ctx context.Context, arg GetOwnedEntryParams) (string, error)
 	GetSchemaVersion(ctx context.Context) (int32, error)
+	InsertAccountAudit(ctx context.Context, arg InsertAccountAuditParams) error
 	// Position lands after existing siblings (same parent level). Name
 	// uniqueness per (user, parent) is enforced by the table's UNIQUE NULLS NOT
 	// DISTINCT constraint; the handler maps that violation to 409.
@@ -42,6 +47,7 @@ type Querier interface {
 	// re-checked inside it: under a concurrent register the count subquery sees
 	// the committed rows, the guard fails, and zero rows come back.
 	InsertPhotos(ctx context.Context, arg InsertPhotosParams) ([]string, error)
+	ListAccountAudit(ctx context.Context, userID string) ([]ListAccountAuditRow, error)
 	// Usage flags ride along so the management screen can offer delete only
 	// where the lifecycle model allows it.
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)
@@ -57,6 +63,8 @@ type Querier interface {
 	ListMonthDots(ctx context.Context, arg ListMonthDotsParams) ([]ListMonthDotsRow, error)
 	ListPhotoIDs(ctx context.Context, entryID string) ([]string, error)
 	ListPhotosForEntries(ctx context.Context, entryIds []string) ([]ListPhotosForEntriesRow, error)
+	ListPurgeDue(ctx context.Context, cutoff pgtype.Timestamptz) ([]string, error)
+	ListUserPhotoPaths(ctx context.Context, userID string) ([]ListUserPhotoPathsRow, error)
 	// One row per recorded day: the FIRST Entry's category by entry order
 	// (distinct on keeps the first row of each date's position ordering).
 	// Only structure leaves the database — never content (ADR-0004).
@@ -69,6 +77,16 @@ type Querier interface {
 	// CTE chaining (each part reads the_user) forces execution order; FK checks
 	// fire at end of statement, when the user row exists.
 	ProvisionUser(ctx context.Context, userID string) error
+	PurgeUserChildCategories(ctx context.Context, userID string) (int64, error)
+	PurgeUserColorRecents(ctx context.Context, userID string) (int64, error)
+	// The purge cascade (#15) runs child-to-parent because the schema's FKs do
+	// not cascade (photos excepted). Each step is idempotent, so a purge
+	// interrupted midway finishes on the next run.
+	PurgeUserEntries(ctx context.Context, userID string) (int64, error)
+	PurgeUserJournal(ctx context.Context, userID string) (int64, error)
+	PurgeUserParentCategories(ctx context.Context, userID string) (int64, error)
+	PurgeUserRow(ctx context.Context, userID string) (int64, error)
+	ReactivateAccount(ctx context.Context, userID string) (int64, error)
 	// One statement assigning every entry its new 1..n position; the deferred
 	// unique constraint validates the final order at commit.
 	ReorderEntries(ctx context.Context, arg ReorderEntriesParams) error
