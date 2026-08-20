@@ -1,7 +1,16 @@
 import { ChevronDown, Plus, Search } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActionSheetIOS, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+  ActionSheetIOS,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry, Photo } from '../api/client';
@@ -13,7 +22,7 @@ import {
   reorderPhotos,
   updateEntry,
 } from '../api/client';
-import { PhotoGrid } from '../entries/PhotoGrid';
+import { MAX_PHOTOS, PhotoGrid } from '../entries/PhotoGrid';
 import type { ProcessedPhoto } from '../photos/processPhoto';
 import { processPhoto } from '../photos/processPhoto';
 import { uploadPhotos } from '../photos/uploadPhotos';
@@ -130,6 +139,14 @@ export function EntryFormScreen({
   const photoCount = existingPhotos.length + stagedPhotos.length;
 
   const addPhotos = () => {
+    if (Platform.OS !== 'ios') {
+      Alert.alert(strings.photos.addPhoto, undefined, [
+        { text: strings.photos.takePhoto, onPress: () => void pickPhotos('camera') },
+        { text: strings.photos.fromLibrary, onPress: () => void pickPhotos('library') },
+        { text: strings.entryForm.cancel, style: 'cancel' },
+      ]);
+      return;
+    }
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options: [strings.photos.takePhoto, strings.photos.fromLibrary, strings.entryForm.cancel],
@@ -143,7 +160,7 @@ export function EntryFormScreen({
   };
 
   const pickPhotos = async (source: 'camera' | 'library') => {
-    const remaining = 10 - photoCount;
+    const remaining = MAX_PHOTOS - photoCount;
     if (remaining < 1) return;
     let result: ImagePicker.ImagePickerResult;
     if (source === 'camera') {

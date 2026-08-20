@@ -71,40 +71,59 @@ func (q *Queries) GetOwnedEntry(ctx context.Context, arg GetOwnedEntryParams) (s
 	return id, err
 }
 
-const insertPhoto = `-- name: InsertPhoto :one
+const insertPhotos = `-- name: InsertPhotos :many
 insert into photos (entry_id, position, object_path, thumb_path, taken_at)
-values (
+select
     $1::uuid,
-    (select coalesce(max(position), 0) + 1 from photos where entry_id = $1::uuid),
-    $2,
-    $3,
-    $4::timestamptz
-)
-returning id, position
+    (select coalesce(max(position), 0) from photos where entry_id = $1::uuid) + u.ord,
+    u.object_path,
+    u.thumb_path,
+    u.taken_at
+from (
+    select
+        generate_subscripts($2::text[], 1) as ord,
+        unnest($2::text[]) as object_path,
+        unnest($3::text[]) as thumb_path,
+        unnest($4::timestamptz[]) as taken_at
+) as u
+where (select count(*) from photos where entry_id = $1::uuid)
+    + cardinality($2::text[]) <= 10
+returning id
 `
 
-type InsertPhotoParams struct {
-	EntryID    string
-	ObjectPath string
-	ThumbPath  string
-	TakenAt    pgtype.Timestamptz
+type InsertPhotosParams struct {
+	EntryID     string
+	ObjectPaths []string
+	ThumbPaths  []string
+	TakenAts    []pgtype.Timestamptz
 }
 
-type InsertPhotoRow struct {
-	ID       string
-	Position int32
-}
-
-func (q *Queries) InsertPhoto(ctx context.Context, arg InsertPhotoParams) (InsertPhotoRow, error) {
-	row := q.db.QueryRow(ctx, insertPhoto,
+// One statement so a batch registers all-or-nothing, with the 10-photo cap
+// re-checked inside it: under a concurrent register the count subquery sees
+// the committed rows, the guard fails, and zero rows come back.
+func (q *Queries) InsertPhotos(ctx context.Context, arg InsertPhotosParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, insertPhotos,
 		arg.EntryID,
-		arg.ObjectPath,
-		arg.ThumbPath,
-		arg.TakenAt,
+		arg.ObjectPaths,
+		arg.ThumbPaths,
+		arg.TakenAts,
 	)
-	var i InsertPhotoRow
-	err := row.Scan(&i.ID, &i.Position)
-	return i, err
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPhotoIDs = `-- name: ListPhotoIDs :many

@@ -51,7 +51,10 @@ type Category struct {
 type CreateCategory struct {
 	// Color Hex color. Presets come from the category palette; custom values are free per the ratified color decision. Subcategories store their parent's color but always render through the parent.
 	Color string `json:"color"`
-	Name  string `json:"name"`
+
+	// Icon Glyph name from the drawn set. Defaults to the auto-assigned glyph when absent (the in-form quick step never picks one).
+	Icon *string `json:"icon,omitempty"`
+	Name string  `json:"name"`
 
 	// ParentId When present, creates a Subcategory of this Category.
 	ParentId *string `json:"parentId,omitempty"`

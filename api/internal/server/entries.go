@@ -131,13 +131,23 @@ func (h handlers) ListEntries(ctx context.Context, request apigen.ListEntriesReq
 	if err != nil {
 		return apigen.ListEntries500JSONResponse(h.failure(ctx, "listing entries failed", err)), nil
 	}
+	entries, err := h.entriesWithPhotos(ctx, rows)
+	if err != nil {
+		return apigen.ListEntries500JSONResponse(h.failure(ctx, "listing entries failed", err)), nil
+	}
+	return apigen.ListEntries200JSONResponse{Entries: entries}, nil
+}
+
+// entriesWithPhotos serializes a day's rows, attaching each entry's signed
+// photos (empty slice when none, so clients always see an array).
+func (h handlers) entriesWithPhotos(ctx context.Context, rows []dbgen.ListEntriesByDateRow) ([]apigen.Entry, error) {
 	entryIDs := make([]string, len(rows))
 	for i, row := range rows {
 		entryIDs[i] = row.ID
 	}
 	photosByEntry, err := h.photosByEntry(ctx, entryIDs)
 	if err != nil {
-		return apigen.ListEntries500JSONResponse(h.failure(ctx, "listing entries failed", err)), nil
+		return nil, err
 	}
 	entries := make([]apigen.Entry, len(rows))
 	for i, row := range rows {
@@ -156,5 +166,5 @@ func (h handlers) ListEntries(ctx context.Context, request apigen.ListEntriesReq
 			Photos:        &photos,
 		}
 	}
-	return apigen.ListEntries200JSONResponse{Entries: entries}, nil
+	return entries, nil
 }

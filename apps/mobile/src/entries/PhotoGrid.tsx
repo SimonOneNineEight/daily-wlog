@@ -27,10 +27,13 @@ type Props = {
 const COLUMNS = 4;
 const ADD_KEY = '__add__';
 
+/** Client-side mirror of the server's per-entry photo cap. */
+export const MAX_PHOTOS = 10;
+
 // Photo grid per the canvas: up to 10 square tiles, 4 columns, never a
 // carousel. Editing: tap a tile to remove it (the ✕ chip is the visual),
 // long-press-drag to reorder, and the dashed tile adds (camera + n/10).
-export function PhotoGrid({ photos, max = 10, editable, width }: Props) {
+export function PhotoGrid({ photos, max = MAX_PHOTOS, editable, width }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   const gridWidth = width ?? windowWidth - theme.spacing.screenGutter * 2;
   const tile = (gridWidth - theme.spacing.photoGridGap * (COLUMNS - 1)) / COLUMNS;

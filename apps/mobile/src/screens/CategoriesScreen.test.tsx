@@ -57,12 +57,22 @@ function renderScreen(overrides: Partial<React.ComponentProps<typeof CategoriesS
   );
 }
 
-it('lists top-level categories with their subcategories underneath', () => {
+it('lists top-level categories with their subcategories as tappable rows', () => {
   renderScreen();
   expect(screen.getByText('工作')).toBeTruthy();
   expect(screen.getByText('運動')).toBeTruthy();
-  // The child appears as the parent's subtitle, not as its own row.
-  expect(screen.getByText('健身房')).toBeTruthy();
+  // The child is its own row: tapping it opens its editor directly.
+  fireEvent.press(screen.getByText('健身房'));
+  expect(screen.getByDisplayValue('健身房')).toBeTruthy();
+});
+
+it('shows inherited icon/color sections disabled for a subcategory', () => {
+  renderScreen();
+  fireEvent.press(screen.getByText('健身房'));
+  // The sections are present (not hidden) so inheritance reads as disabled.
+  expect(screen.getByText('圖示')).toBeTruthy();
+  // Editing keeps parenthood fixed: no parent picker on edit.
+  expect(screen.queryByText('上層類別')).toBeNull();
 });
 
 it('renames a category through the editor', async () => {
@@ -125,7 +135,7 @@ it('creates a subcategory from inside the parent editor', async () => {
   expect(body).toEqual({ name: '游泳', color: '#73B062', parentId: 'c-sport' });
 });
 
-it('creates a top-level category with a picked icon via a follow-up patch', async () => {
+it('creates a top-level category with its icon in one call', async () => {
   renderScreen();
 
   fireEvent.press(screen.getByLabelText('新增類別'));
@@ -136,5 +146,30 @@ it('creates a top-level category with a picked icon via a follow-up patch', asyn
 
   const post = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');
   expect(post).toBeTruthy();
-  expect(JSON.parse(post?.[1]?.body ?? '{}').name).toBe('園藝');
+  const body = JSON.parse(post?.[1]?.body ?? '{}');
+  expect(body.name).toBe('園藝');
+  expect(body.icon).toBe('tag');
+  const patch = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PATCH');
+  expect(patch).toBeUndefined();
+});
+
+it('creates a subcategory by picking a parent in the create sheet', async () => {
+  renderScreen();
+
+  fireEvent.press(screen.getByLabelText('新增類別'));
+  fireEvent.changeText(screen.getByPlaceholderText('名稱'), '游泳');
+  // The list row and the parent chip share the label; the chip renders last.
+  const options = screen.getAllByText('運動');
+  fireEvent.press(options[options.length - 1]);
+  await act(async () => {
+    fireEvent.press(screen.getByText('建立'));
+  });
+
+  const post = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'POST');
+  expect(post).toBeTruthy();
+  expect(JSON.parse(post?.[1]?.body ?? '{}')).toEqual({
+    name: '游泳',
+    color: '#73B062',
+    parentId: 'c-sport',
+  });
 });

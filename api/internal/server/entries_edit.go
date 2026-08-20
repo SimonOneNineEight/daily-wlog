@@ -122,30 +122,9 @@ func (h handlers) ReorderDay(ctx context.Context, request apigen.ReorderDayReque
 	if err != nil {
 		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
 	}
-	entryIDs := make([]string, len(rows))
-	for i, row := range rows {
-		entryIDs[i] = row.ID
-	}
-	photosByEntry, err := h.photosByEntry(ctx, entryIDs)
+	entries, err := h.entriesWithPhotos(ctx, rows)
 	if err != nil {
 		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
-	}
-	entries := make([]apigen.Entry, len(rows))
-	for i, row := range rows {
-		photos := photosByEntry[row.ID]
-		if photos == nil {
-			photos = []apigen.Photo{}
-		}
-		entries[i] = apigen.Entry{
-			Id:            row.ID,
-			Date:          row.EntryDate,
-			Position:      int(row.Position),
-			CategoryId:    row.CategoryID,
-			SubcategoryId: row.SubcategoryID,
-			AuthorId:      row.AuthorID,
-			Content:       string(row.Content),
-			Photos:        &photos,
-		}
 	}
 	return apigen.ReorderDay200JSONResponse{Entries: entries}, nil
 }

@@ -19,32 +19,35 @@ import (
 // provisioning calls). Behavior tests never mock the platform; this exists
 // only to prove /me fails closed on each step.
 type failingQuerier struct {
-	provisionErr     error
-	journalErr       error
-	categoriesErr    error
-	categoryErr      error
-	insertErr        error
-	listEntriesErr   error
-	monthDotsErr     error
-	updateErr        error
-	deleteErr        error
-	listIDsErr       error
-	reorderErr       error
-	insertCatErr     error
-	subcategoryErr   error
-	catParentErr     error
-	updateCatErr     error
-	cascadeErr       error
-	usageErr         error
-	deleteCatErr     error
-	deleteCatZero    bool
-	ownedEntryErr    error
-	countPhotosErr   error
-	insertPhotoErr   error
-	listPhotosErr    error
-	deletePhotoErr   error
-	listPhotoIDsErr  error
-	reorderPhotosErr error
+	provisionErr   error
+	journalErr     error
+	categoriesErr  error
+	categoryErr    error
+	insertErr      error
+	listEntriesErr error
+	monthDotsErr   error
+	updateErr      error
+	deleteErr      error
+	listIDsErr     error
+	reorderErr     error
+	insertCatErr   error
+	subcategoryErr error
+	catParentErr   error
+	updateCatErr   error
+	cascadeErr     error
+	usageErr       error
+	deleteCatErr   error
+	deleteCatZero  bool
+	ownedEntryErr  error
+	countPhotosErr error
+	insertPhotoErr error
+	// insertPhotosEmpty simulates the in-statement cap guard firing under a
+	// concurrent register: no error, zero rows inserted.
+	insertPhotosEmpty bool
+	listPhotosErr     error
+	deletePhotoErr    error
+	listPhotoIDsErr   error
+	reorderPhotosErr  error
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
@@ -85,8 +88,11 @@ func (f failingQuerier) GetOwnedEntry(context.Context, dbgen.GetOwnedEntryParams
 func (f failingQuerier) CountPhotos(context.Context, string) (int64, error) {
 	return 0, f.countPhotosErr
 }
-func (f failingQuerier) InsertPhoto(context.Context, dbgen.InsertPhotoParams) (dbgen.InsertPhotoRow, error) {
-	return dbgen.InsertPhotoRow{ID: "photo-id", Position: 1}, f.insertPhotoErr
+func (f failingQuerier) InsertPhotos(context.Context, dbgen.InsertPhotosParams) ([]string, error) {
+	if f.insertPhotosEmpty {
+		return nil, nil
+	}
+	return []string{"photo-id"}, f.insertPhotoErr
 }
 func (f failingQuerier) ListPhotosForEntries(context.Context, []string) ([]dbgen.ListPhotosForEntriesRow, error) {
 	if f.listPhotosErr != nil {
@@ -290,6 +296,13 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			checkStatus(t, registerPhotos(t, ts, token, "7f000000-0000-4000-8000-00000000000a", []map[string]string{
 				{"objectPath": prefix + "a.jpg", "thumbPath": prefix + "a_thumb.jpg"},
 			}), 500)
+		}},
+		"register cap raced": {failingQuerier{insertPhotosEmpty: true}, &fakeStore{}, func(t *testing.T, ts *httptest.Server) {
+			sub := tokenSub(t, token)
+			prefix := sub + "/7f000000-0000-4000-8000-00000000000a/"
+			checkStatus(t, registerPhotos(t, ts, token, "7f000000-0000-4000-8000-00000000000a", []map[string]string{
+				{"objectPath": prefix + "a.jpg", "thumbPath": prefix + "a_thumb.jpg"},
+			}), 400)
 		}},
 		"register relist-sign fails": {failingQuerier{}, &fakeStore{signDownloadErr: errors.New("boom"), signDownloadOKCalls: 1}, func(t *testing.T, ts *httptest.Server) {
 			sub := tokenSub(t, token)

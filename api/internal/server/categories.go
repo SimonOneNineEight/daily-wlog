@@ -35,6 +35,14 @@ func (h handlers) CreateCategory(ctx context.Context, request apigen.CreateCateg
 		}
 	}
 
+	icon := autoAssignedIcon
+	if body.Icon != nil {
+		if strings.TrimSpace(*body.Icon) == "" {
+			return apigen.CreateCategory400JSONResponse{Message: "icon must not be blank"}, nil
+		}
+		icon = *body.Icon
+	}
+
 	userID := auth.UserID(ctx)
 	if body.ParentId != nil {
 		// The parent must be the user's own top-level Category: two levels
@@ -56,7 +64,7 @@ func (h handlers) CreateCategory(ctx context.Context, request apigen.CreateCateg
 		ParentID: body.ParentId,
 		Name:     name,
 		Color:    body.Color,
-		Icon:     autoAssignedIcon,
+		Icon:     icon,
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -70,7 +78,7 @@ func (h handlers) CreateCategory(ctx context.Context, request apigen.CreateCateg
 		Id:          row.ID,
 		Name:        name,
 		Color:       body.Color,
-		Icon:        autoAssignedIcon,
+		Icon:        icon,
 		ParentId:    body.ParentId,
 		Position:    int(row.Position),
 		InUse:       &fresh,

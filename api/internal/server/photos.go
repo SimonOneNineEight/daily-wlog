@@ -107,6 +107,8 @@ func (h handlers) RegisterPhotos(ctx context.Context, request apigen.RegisterPho
 	}
 	prefix := photoPathPrefix(userID, entryID)
 	newPaths := make([]string, 0, len(photos)*2)
+	objectPaths := make([]string, len(photos))
+	thumbPaths := make([]string, len(photos))
 	takenAts := make([]pgtype.Timestamptz, len(photos))
 	for i, p := range photos {
 		if !strings.HasPrefix(p.ObjectPath, prefix) || !strings.HasPrefix(p.ThumbPath, prefix) {
@@ -119,26 +121,32 @@ func (h handlers) RegisterPhotos(ctx context.Context, request apigen.RegisterPho
 			}
 			takenAts[i] = pgtype.Timestamptz{Time: t, Valid: true}
 		}
+		objectPaths[i] = p.ObjectPath
+		thumbPaths[i] = p.ThumbPath
 		newPaths = append(newPaths, p.ObjectPath, p.ThumbPath)
 	}
 	// Uploads must exist before any row lands: a signable object is the
-	// proof, and checking first keeps registration all-or-nothing.
+	// proof. The insert itself is one statement, so a batch registers
+	// all-or-nothing and the cap holds even under a concurrent register.
 	if _, err := h.store.SignDownloads(ctx, newPaths, time.Minute); err != nil {
 		return apigen.RegisterPhotos400JSONResponse{Message: "photos must be uploaded before registering"}, nil
 	}
-	for i, p := range photos {
-		if _, err := h.queries.InsertPhoto(ctx, dbgen.InsertPhotoParams{
-			EntryID:    entryID,
-			ObjectPath: p.ObjectPath,
-			ThumbPath:  p.ThumbPath,
-			TakenAt:    takenAts[i],
-		}); err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-				return apigen.RegisterPhotos400JSONResponse{Message: "photo already registered"}, nil
-			}
-			return apigen.RegisterPhotos500JSONResponse(h.failure(ctx, "recording photos failed", err)), nil
+	inserted, err := h.queries.InsertPhotos(ctx, dbgen.InsertPhotosParams{
+		EntryID:     entryID,
+		ObjectPaths: objectPaths,
+		ThumbPaths:  thumbPaths,
+		TakenAts:    takenAts,
+	})
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
+			return apigen.RegisterPhotos400JSONResponse{Message: "photo already registered"}, nil
 		}
+		return apigen.RegisterPhotos500JSONResponse(h.failure(ctx, "recording photos failed", err)), nil
+	}
+	if len(inserted) == 0 {
+		// The in-statement cap guard fired: another register won the race.
+		return apigen.RegisterPhotos400JSONResponse{Message: "an entry holds at most 10 photos"}, nil
 	}
 	byEntry, err := h.photosByEntry(ctx, []string{entryID})
 	if err != nil {

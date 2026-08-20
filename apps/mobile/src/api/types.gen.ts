@@ -298,6 +298,8 @@ export interface components {
             color: string;
             /** @description When present, creates a Subcategory of this Category. */
             parentId?: string;
+            /** @description Glyph name from the drawn set. Defaults to the auto-assigned glyph when absent (the in-form quick step never picks one). */
+            icon?: string;
         };
         Entry: {
             id: string;

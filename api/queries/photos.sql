@@ -8,16 +8,27 @@ where e.id = @entry_id::uuid and j.owner_id = @user_id::uuid;
 -- name: CountPhotos :one
 select count(*) from photos where entry_id = @entry_id::uuid;
 
--- name: InsertPhoto :one
+-- name: InsertPhotos :many
+-- One statement so a batch registers all-or-nothing, with the 10-photo cap
+-- re-checked inside it: under a concurrent register the count subquery sees
+-- the committed rows, the guard fails, and zero rows come back.
 insert into photos (entry_id, position, object_path, thumb_path, taken_at)
-values (
+select
     @entry_id::uuid,
-    (select coalesce(max(position), 0) + 1 from photos where entry_id = @entry_id::uuid),
-    @object_path,
-    @thumb_path,
-    sqlc.narg(taken_at)::timestamptz
-)
-returning id, position;
+    (select coalesce(max(position), 0) from photos where entry_id = @entry_id::uuid) + u.ord,
+    u.object_path,
+    u.thumb_path,
+    u.taken_at
+from (
+    select
+        generate_subscripts(@object_paths::text[], 1) as ord,
+        unnest(@object_paths::text[]) as object_path,
+        unnest(@thumb_paths::text[]) as thumb_path,
+        unnest(@taken_ats::timestamptz[]) as taken_at
+) as u
+where (select count(*) from photos where entry_id = @entry_id::uuid)
+    + cardinality(@object_paths::text[]) <= 10
+returning id;
 
 -- name: ListPhotosForEntries :many
 select id, entry_id, position, object_path, thumb_path, taken_at

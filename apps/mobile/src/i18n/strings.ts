@@ -33,6 +33,7 @@ const zhTW = {
     unreadable: '（無法讀取的紀錄）',
   },
   photos: {
+    addPhoto: '新增照片',
     takePhoto: '拍照',
     fromLibrary: '從相簿選擇',
     removeConfirmTitle: '移除這張照片？',
@@ -63,6 +64,8 @@ const zhTW = {
     create: '建立',
     done: '完成',
     namePlaceholder: '名稱',
+    parentHeader: '上層類別',
+    noParent: '無',
     iconHeader: '圖示',
     subcategoriesHeader: '子類別',
     addSubcategory: '新增子類別',

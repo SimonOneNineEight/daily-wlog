@@ -37,7 +37,10 @@ type Querier interface {
 	// Position is assigned at the end of the date's existing order in the same
 	// statement, so multiple Entries per day stack in creation order.
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
-	InsertPhoto(ctx context.Context, arg InsertPhotoParams) (InsertPhotoRow, error)
+	// One statement so a batch registers all-or-nothing, with the 10-photo cap
+	// re-checked inside it: under a concurrent register the count subquery sees
+	// the committed rows, the guard fails, and zero rows come back.
+	InsertPhotos(ctx context.Context, arg InsertPhotosParams) ([]string, error)
 	// Usage flags ride along so the management screen can offer delete only
 	// where the lifecycle model allows it.
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)

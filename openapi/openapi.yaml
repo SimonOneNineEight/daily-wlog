@@ -772,6 +772,11 @@ components:
         parentId:
           type: string
           description: When present, creates a Subcategory of this Category.
+        icon:
+          type: string
+          description: >
+            Glyph name from the drawn set. Defaults to the auto-assigned
+            glyph when absent (the in-form quick step never picks one).
     Entry:
       type: object
       required:

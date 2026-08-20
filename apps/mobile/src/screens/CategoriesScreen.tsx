@@ -1,6 +1,6 @@
-import { ChevronLeft, ChevronRight, Pencil, Plus } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
@@ -41,36 +41,17 @@ type Props = {
 type Editing = { mode: 'create'; parent?: Category } | { mode: 'edit'; id: string };
 
 // Category management (#10) per the canvas CategoriesScreen: the two-level
-// list, and one editor serving create and edit. Subcategories are managed
-// from inside their parent's editor; icon and color sections disappear for
-// them (they inherit both).
+// list (every row tappable), and one editor sheet serving create and edit.
+// Creation offers an optional parent; picking one disables the icon/color
+// sections since Subcategories inherit both.
 export function CategoriesScreen({ accessToken, categories, onBack, onCategoriesChanged }: Props) {
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const topLevel = categories.filter((c) => !c.parentId);
   const childrenOf = (id: string) => categories.filter((c) => c.parentId === id);
 
-  if (editing) {
-    const target = editing.mode === 'edit' ? categories.find((c) => c.id === editing.id) : undefined;
-    return (
-      <CategoryEditor
-        key={editing.mode === 'edit' ? editing.id : `create-${editing.parent?.id ?? 'top'}`}
-        accessToken={accessToken}
-        target={target}
-        parent={
-          editing.mode === 'create'
-            ? editing.parent
-            : target?.parentId
-              ? categories.find((c) => c.id === target.parentId)
-              : undefined
-        }
-        childrenOfTarget={target ? childrenOf(target.id) : []}
-        onOpen={(next) => setEditing(next)}
-        onClose={() => setEditing(null)}
-        onCategoriesChanged={onCategoriesChanged}
-      />
-    );
-  }
+  const target =
+    editing?.mode === 'edit' ? categories.find((c) => c.id === editing.id) : undefined;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -97,28 +78,64 @@ export function CategoriesScreen({ accessToken, categories, onBack, onCategories
         <View style={styles.card}>
           {topLevel.map((category, index) => {
             const children = childrenOf(category.id);
+            const lastParent = index === topLevel.length - 1;
             return (
-              <Pressable
-                key={category.id}
-                accessibilityRole="button"
-                style={[styles.row, index < topLevel.length - 1 && styles.rowDivided]}
-                onPress={() => setEditing({ mode: 'edit', id: category.id })}
-              >
-                <CategoryIcon icon={category.icon} color={category.color} />
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>{category.name}</Text>
-                  {children.length > 0 ? (
-                    <Text style={styles.rowSubtitle} numberOfLines={1}>
-                      {children.map((c) => c.name).join('、')}
-                    </Text>
-                  ) : null}
-                </View>
-                <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
-              </Pressable>
+              <View key={category.id}>
+                <Pressable
+                  accessibilityRole="button"
+                  style={[styles.row, (!lastParent || children.length > 0) && styles.rowDivided]}
+                  onPress={() => setEditing({ mode: 'edit', id: category.id })}
+                >
+                  <CategoryIcon icon={category.icon} color={category.color} />
+                  <Text style={[styles.rowTitle, styles.rowText]}>{category.name}</Text>
+                  <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
+                </Pressable>
+                {children.map((child, childIndex) => (
+                  <Pressable
+                    key={child.id}
+                    accessibilityRole="button"
+                    style={[
+                      styles.row,
+                      styles.rowChild,
+                      (!lastParent || childIndex < children.length - 1) && styles.rowDivided,
+                    ]}
+                    onPress={() => setEditing({ mode: 'edit', id: child.id })}
+                  >
+                    <CategoryIcon icon={child.icon} color={child.color} size={20} />
+                    <Text style={[styles.rowTitle, styles.rowText]}>{child.name}</Text>
+                    <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
+                  </Pressable>
+                ))}
+              </View>
             );
           })}
         </View>
       </ScrollView>
+      {editing ? (
+        <Modal
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setEditing(null)}
+        >
+          <CategoryEditor
+            key={editing.mode === 'edit' ? editing.id : `create-${editing.parent?.id ?? 'top'}`}
+            accessToken={accessToken}
+            target={target}
+            parent={
+              editing.mode === 'create'
+                ? editing.parent
+                : target?.parentId
+                  ? categories.find((c) => c.id === target.parentId)
+                  : undefined
+            }
+            parentChoices={topLevel}
+            childrenOfTarget={target ? childrenOf(target.id) : []}
+            onOpen={(next) => setEditing(next)}
+            onClose={() => setEditing(null)}
+            onCategoriesChanged={onCategoriesChanged}
+          />
+        </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -127,8 +144,10 @@ type EditorProps = {
   accessToken: string;
   /** The category being edited; undefined when creating. */
   target?: Category;
-  /** The parent when editing/creating a Subcategory. */
+  /** The parent when editing a Subcategory, or preselected when creating. */
   parent?: Category;
+  /** Top-level categories offered as the optional parent at creation. */
+  parentChoices: Category[];
   childrenOfTarget: Category[];
   onOpen: (editing: Editing) => void;
   onClose: () => void;
@@ -139,17 +158,22 @@ function CategoryEditor({
   accessToken,
   target,
   parent,
+  parentChoices,
   childrenOfTarget,
   onOpen,
   onClose,
   onCategoriesChanged,
 }: EditorProps) {
-  const isSub = parent !== undefined;
   const [name, setName] = useState(target?.name ?? '');
   const [color, setColor] = useState(target?.color ?? firstPreset);
   const [icon, setIcon] = useState(target?.icon ?? 'tag');
+  // Create mode offers the optional parent; editing keeps parenthood fixed.
+  const [chosenParent, setChosenParent] = useState<Category | undefined>(parent);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  const activeParent = target ? parent : chosenParent;
+  const isSub = activeParent !== undefined;
 
   const canSave = !saving && name.trim() !== '';
   const deletable = target !== undefined && target.inUse !== true && target.hasChildren !== true;
@@ -170,16 +194,12 @@ function CategoryEditor({
           onCategoriesChanged();
         }
       } else {
-        const made = await createCategory(accessToken, {
-          name: trimmed,
-          color: isSub ? parent.color : color,
-          ...(isSub ? { parentId: parent.id } : {}),
-        });
-        // The create endpoint auto-assigns the tag glyph; a picked icon is a
-        // follow-up patch (top-level only).
-        if (!isSub && icon !== made.icon) {
-          await updateCategory(accessToken, made.id, { icon });
-        }
+        await createCategory(
+          accessToken,
+          isSub
+            ? { name: trimmed, color: activeParent.color, parentId: activeParent.id }
+            : { name: trimmed, color, icon },
+        );
         onCategoriesChanged();
       }
       onClose();
@@ -209,7 +229,7 @@ function CategoryEditor({
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <View style={styles.navBar}>
         <Pressable
           accessibilityRole="button"
@@ -231,8 +251,8 @@ function CategoryEditor({
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.identityRow}>
           <CategoryIcon
-            icon={isSub ? (parent?.icon ?? 'tag') : icon}
-            color={isSub ? (parent?.color ?? color) : color}
+            icon={isSub ? (activeParent.icon ?? 'tag') : icon}
+            color={isSub ? activeParent.color : color}
             size={36}
           />
           <TextInput
@@ -245,26 +265,55 @@ function CategoryEditor({
           />
         </View>
 
-        {!isSub ? (
-          <>
-            <ColorPresetPicker value={color} onChange={setColor} />
-            <View>
-              <Text style={styles.sectionHeader}>{strings.categories.iconHeader}</Text>
-              <View style={styles.iconGrid}>
-                {ICON_CHOICES.map((choice) => (
-                  <Pressable
-                    key={choice}
-                    accessibilityRole="button"
-                    style={[styles.iconCell, icon === choice && styles.iconCellSelected]}
-                    onPress={() => setIcon(choice)}
-                  >
-                    <CategoryIcon icon={choice} color={color} />
-                  </Pressable>
-                ))}
-              </View>
+        {!target ? (
+          <View>
+            <Text style={styles.sectionHeader}>{strings.categories.parentHeader}</Text>
+            <View style={styles.chipRow}>
+              <Pressable
+                accessibilityRole="button"
+                style={[styles.chip, chosenParent === undefined && styles.chipSelected]}
+                onPress={() => setChosenParent(undefined)}
+              >
+                <Text style={styles.chipLabel}>{strings.categories.noParent}</Text>
+              </Pressable>
+              {parentChoices.map((choice) => (
+                <Pressable
+                  key={choice.id}
+                  accessibilityRole="button"
+                  style={[styles.chip, chosenParent?.id === choice.id && styles.chipSelected]}
+                  onPress={() => setChosenParent(choice)}
+                >
+                  <Text style={styles.chipLabel}>{choice.name}</Text>
+                </Pressable>
+              ))}
             </View>
-          </>
+          </View>
         ) : null}
+
+        {/* Subcategories inherit icon and color: the sections stay visible
+            but disabled, showing the parent's values (AC: inheritance shown
+            by disabling). */}
+        <View style={isSub ? styles.inherited : null} pointerEvents={isSub ? 'none' : 'auto'}>
+          <ColorPresetPicker value={isSub ? activeParent.color : color} onChange={setColor} />
+        </View>
+        <View style={isSub ? styles.inherited : null} pointerEvents={isSub ? 'none' : 'auto'}>
+          <Text style={styles.sectionHeader}>{strings.categories.iconHeader}</Text>
+          <View style={styles.iconGrid}>
+            {ICON_CHOICES.map((choice) => {
+              const selected = isSub ? (activeParent.icon ?? 'tag') === choice : icon === choice;
+              return (
+                <Pressable
+                  key={choice}
+                  accessibilityRole="button"
+                  style={[styles.iconCell, selected && styles.iconCellSelected]}
+                  onPress={() => setIcon(choice)}
+                >
+                  <CategoryIcon icon={choice} color={isSub ? activeParent.color : color} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
         {target && !isSub ? (
           <View>
@@ -277,8 +326,8 @@ function CategoryEditor({
                   style={[styles.row, styles.rowDivided]}
                   onPress={() => onOpen({ mode: 'edit', id: child.id })}
                 >
-                  <Text style={styles.rowTitle}>{child.name}</Text>
-                  <Pencil size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
+                  <Text style={[styles.rowTitle, styles.rowText]}>{child.name}</Text>
+                  <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
                 </Pressable>
               ))}
               <Pressable
@@ -368,6 +417,9 @@ const styles = createStyles((t) => ({
     paddingVertical: t.spacing.rowPaddingY,
     paddingHorizontal: t.spacing.cardPadding,
   },
+  rowChild: {
+    paddingLeft: t.spacing.cardPadding + t.spacing.space8,
+  },
   rowDivided: {
     borderBottomWidth: t.border.hairline,
     borderBottomColor: t.colors.lineSeparator,
@@ -379,11 +431,6 @@ const styles = createStyles((t) => ({
     ...t.typography.entryTitle,
     color: t.colors.textPrimary,
     flexShrink: 1,
-  },
-  rowSubtitle: {
-    ...t.typography.meta,
-    color: t.colors.textTertiary,
-    marginTop: t.spacing.space1,
   },
   identityRow: {
     flexDirection: 'row',
@@ -404,6 +451,29 @@ const styles = createStyles((t) => ({
     color: t.colors.textTertiary,
     marginBottom: t.spacing.space4,
     marginLeft: t.spacing.space1,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: t.spacing.space4,
+  },
+  chip: {
+    minHeight: t.spacing.hitMin,
+    justifyContent: 'center',
+    paddingHorizontal: t.spacing.space5,
+    borderRadius: t.radius.r4,
+    backgroundColor: t.colors.surface,
+  },
+  chipSelected: {
+    borderWidth: 1.5,
+    borderColor: t.colors.focusRing,
+  },
+  chipLabel: {
+    ...t.typography.entryTitle,
+    color: t.colors.textPrimary,
+  },
+  inherited: {
+    opacity: 0.4,
   },
   iconGrid: {
     flexDirection: 'row',

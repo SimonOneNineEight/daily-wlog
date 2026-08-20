@@ -83,6 +83,14 @@ func TestCreateCategoryAndSubcategory(t *testing.T) {
 	if sub.Position != 1 {
 		t.Errorf("subcategory position = %d, want 1", sub.Position)
 	}
+
+	// The management sheet picks an icon at creation: one call, no follow-up.
+	withIcon := decodeCategory(t, createCategory(t, ts, token, map[string]string{
+		"name": "音樂", "color": "#A26FBD", "icon": "music",
+	}))
+	if withIcon.Icon != "music" {
+		t.Errorf("icon = %q, want the picked glyph", withIcon.Icon)
+	}
 }
 
 func TestCreateCategoryValidation(t *testing.T) {
@@ -100,6 +108,7 @@ func TestCreateCategoryValidation(t *testing.T) {
 	badCases := map[string]map[string]string{
 		"blank name":         {"name": "   ", "color": "#73B062"},
 		"missing color":      {"name": "新類別", "color": ""},
+		"blank icon":         {"name": "新類別", "color": "#73B062", "icon": "  "},
 		"malformed parent":   {"name": "新類別", "color": "#73B062", "parentId": "not-a-uuid"},
 		"unknown parent":     {"name": "新類別", "color": "#73B062", "parentId": "7f000000-0000-4000-8000-000000000000"},
 		"stranger's parent":  {"name": "新類別", "color": "#73B062", "parentId": strangerCategory},

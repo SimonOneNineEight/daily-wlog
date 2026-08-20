@@ -1,14 +1,10 @@
 import { GripHorizontal } from 'lucide-react-native';
-import { Dimensions, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { createStyles, theme } from '../theme';
 
 import { PhotoGrid } from './PhotoGrid';
-
-// Card inner width: screen minus the day view's gutters and card padding.
-const cardGridWidth =
-  Dimensions.get('window').width - theme.spacing.screenGutter * 2 - theme.spacing.cardPadding * 2;
 
 type Props = {
   title: string;
@@ -39,6 +35,9 @@ export function EntryCard({
   onLongPress,
 }: Props) {
   const categoryLine = subcategoryName ? `${categoryName} · ${subcategoryName}` : categoryName;
+  // Card inner width: screen minus the day view's gutters and card padding.
+  const cardGridWidth =
+    useWindowDimensions().width - theme.spacing.screenGutter * 2 - theme.spacing.cardPadding * 2;
   return (
     <Pressable
       accessibilityRole="button"
