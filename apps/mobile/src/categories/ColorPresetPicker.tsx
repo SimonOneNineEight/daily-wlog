@@ -14,16 +14,18 @@ export function isPresetColor(hex: string): boolean {
 type Props = {
   value: string;
   onChange: (hex: string) => void;
-  /** For the drawer: loading and saving the user's custom-color recents. */
+  /** For the drawer: loading the user's custom-color recents. */
   accessToken: string;
   /** For the drawer's live preview: the user's current category colors. */
   existingColors: string[];
+  /** For the drawer's side-by-side chip: the edited category's icon. */
+  icon?: string;
 };
 
 // The ten preset swatches plus the 自訂顏色 swatch (canvas ColorPresetPicker):
 // selection is a ring, never a hue change. The custom swatch opens the color
 // drawer (#11) and shows the current custom color once one is chosen.
-export function ColorPresetPicker({ value, onChange, accessToken, existingColors }: Props) {
+export function ColorPresetPicker({ value, onChange, accessToken, existingColors, icon }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isPreset = isPresetColor(value);
   return (
@@ -63,6 +65,7 @@ export function ColorPresetPicker({ value, onChange, accessToken, existingColors
           accessToken={accessToken}
           initialColor={value}
           existingColors={existingColors}
+          icon={icon}
           onCancel={() => setDrawerOpen(false)}
           onConfirm={(hex) => {
             setDrawerOpen(false);

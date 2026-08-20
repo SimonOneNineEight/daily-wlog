@@ -90,11 +90,15 @@ const zhTW = {
   },
   colorDrawer: {
     custom: '自訂顏色',
+    // Canvas labels.
+    saved: '已存的顏色',
+    previewTitle: '在月曆上的樣子',
+    sideBySide: '與現有類別並排',
+    // Accessibility-only labels for the area and hue strip.
     hue: '色相',
-    saturation: '飽和度',
-    lightness: '亮度',
-    presets: '預設顏色',
-    recents: '最近使用',
+    areaLabel: '飽和度與亮度',
+    lighter: '增加亮度',
+    darker: '減少亮度',
   },
   health: {
     loading: '連線中…',

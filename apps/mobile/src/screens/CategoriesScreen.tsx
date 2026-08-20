@@ -306,6 +306,7 @@ function CategoryEditor({
             value={isSub ? activeParent.color : color}
             onChange={setColor}
             accessToken={accessToken}
+            icon={icon}
             existingColors={parentChoices
               .filter((choice) => choice.id !== target?.id)
               .map((choice) => choice.color)}
