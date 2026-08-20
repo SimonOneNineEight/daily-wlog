@@ -21,21 +21,38 @@ func (q *Queries) GetJournal(ctx context.Context, userID string) (string, error)
 }
 
 const listCategories = `-- name: ListCategories :many
-select id, name, color, icon, parent_id, position
-from categories
-where user_id = $1::uuid
-order by position, created_at
+select
+    c.id,
+    c.name,
+    c.color,
+    c.icon,
+    c.parent_id,
+    c.position,
+    exists (
+        select 1 from entries e
+        where e.category_id = c.id or e.subcategory_id = c.id
+    ) as in_use,
+    exists (
+        select 1 from categories k where k.parent_id = c.id
+    ) as has_children
+from categories c
+where c.user_id = $1::uuid
+order by c.position, c.created_at
 `
 
 type ListCategoriesRow struct {
-	ID       string
-	Name     string
-	Color    string
-	Icon     string
-	ParentID *string
-	Position int32
+	ID          string
+	Name        string
+	Color       string
+	Icon        string
+	ParentID    *string
+	Position    int32
+	InUse       bool
+	HasChildren bool
 }
 
+// Usage flags ride along so the management screen can offer delete only
+// where the lifecycle model allows it.
 func (q *Queries) ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error) {
 	rows, err := q.db.Query(ctx, listCategories, userID)
 	if err != nil {
@@ -52,6 +69,8 @@ func (q *Queries) ListCategories(ctx context.Context, userID string) ([]ListCate
 			&i.Icon,
 			&i.ParentID,
 			&i.Position,
+			&i.InUse,
+			&i.HasChildren,
 		); err != nil {
 			return nil, err
 		}

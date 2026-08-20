@@ -57,6 +57,23 @@ const zhTW = {
     notePlaceholder: '備註（選填）',
     saveFailed: '儲存失敗，請再試一次',
   },
+  categories: {
+    title: '類別',
+    add: '新增類別',
+    create: '建立',
+    done: '完成',
+    namePlaceholder: '名稱',
+    iconHeader: '圖示',
+    subcategoriesHeader: '子類別',
+    addSubcategory: '新增子類別',
+    deleteCategory: '刪除類別',
+    deleteConfirmTitle: (name: string) => `刪除「${name}」？`,
+    // The designed lifecycle copy (issue #10 AC).
+    inUseExplanation: '已有紀錄使用這個類別。重新命名會一併帶著走，因此不提供刪除。',
+    // Derived copy: the canvas specifies only the in-use case.
+    hasChildrenExplanation: '請先刪除底下的子類別。',
+    saveFailed: '儲存失敗，請再試一次',
+  },
   health: {
     loading: '連線中…',
     ok: '系統狀態:正常',

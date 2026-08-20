@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Plus, Tags } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -20,6 +20,8 @@ type Props = {
   today?: Date;
   onOpenDay: (date: string) => void;
   onAddEntry: () => void;
+  /** Opens category management (#10); #15's settings may rehome this. */
+  onOpenCategories?: () => void;
   /** Bump to refetch the visible month (after a save elsewhere). */
   refresh?: number;
 };
@@ -36,6 +38,7 @@ export function MonthScreen({
   today = new Date(),
   onOpenDay,
   onAddEntry,
+  onOpenCategories,
   refresh = 0,
 }: Props) {
   const todayParts = {
@@ -135,6 +138,16 @@ export function MonthScreen({
           <Text style={styles.navSubtitle}>{strings.month.yearLabel(visible.year)}</Text>
         </View>
         <View style={styles.navActions}>
+          {onOpenCategories ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.categories.title}
+              style={styles.navButton}
+              onPress={onOpenCategories}
+            >
+              <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={strings.month.prevMonth}

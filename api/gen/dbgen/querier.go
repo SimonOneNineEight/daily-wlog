@@ -9,14 +9,23 @@ import (
 )
 
 type Querier interface {
+	// Subcategories store a denormalized copy of the parent's color (#9);
+	// recoloring the parent rewrites the copies so stored data stays honest.
+	CascadeChildColors(ctx context.Context, arg CascadeChildColorsParams) error
 	// A usable Entry category is owned by the user and top-level: Subcategories
 	// refine an Entry's Category, they never replace it.
 	CategoryIsUsable(ctx context.Context, arg CategoryIsUsableParams) (bool, error)
+	// "In use" per the Apple Calendar lifecycle model: referenced by any Entry
+	// as its category or its refinement. Callers gate ownership first.
+	CategoryUsage(ctx context.Context, id string) (CategoryUsageRow, error)
 	CountPhotos(ctx context.Context, entryID string) (int64, error)
+	DeleteCategory(ctx context.Context, arg DeleteCategoryParams) (int64, error)
 	DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error)
 	// Ownership travels through the Entry's Journal; returns the storage paths
 	// for best-effort object cleanup.
 	DeletePhoto(ctx context.Context, arg DeletePhotoParams) (DeletePhotoRow, error)
+	// Ownership gate for edits: no rows means not yours or not there (404).
+	GetCategoryParent(ctx context.Context, arg GetCategoryParentParams) (*string, error)
 	GetJournal(ctx context.Context, userID string) (string, error)
 	// The Entry, if it belongs to the signed-in User's Journal.
 	GetOwnedEntry(ctx context.Context, arg GetOwnedEntryParams) (string, error)
@@ -29,6 +38,8 @@ type Querier interface {
 	// statement, so multiple Entries per day stack in creation order.
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
 	InsertPhoto(ctx context.Context, arg InsertPhotoParams) (InsertPhotoRow, error)
+	// Usage flags ride along so the management screen can offer delete only
+	// where the lifecycle model allows it.
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)
 	ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error)
 	ListEntryIDs(ctx context.Context, arg ListEntryIDsParams) ([]string, error)
@@ -52,6 +63,7 @@ type Querier interface {
 	// A usable Entry refinement: owned by the user and a child of exactly the
 	// Entry's Category.
 	SubcategoryIsUsable(ctx context.Context, arg SubcategoryIsUsableParams) (bool, error)
+	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error)
 	// Full replacement of the editable fields; journal_id scoping means a User
 	// can only ever touch their own Entries (no rows = not found).
 	UpdateEntry(ctx context.Context, arg UpdateEntryParams) (UpdateEntryRow, error)

@@ -2,7 +2,6 @@ import { Camera, X } from 'lucide-react-native';
 import { Image, Text, View, useWindowDimensions } from 'react-native';
 import DraggableGrid from 'react-native-draggable-grid';
 
-import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
 export type GridPhoto = {

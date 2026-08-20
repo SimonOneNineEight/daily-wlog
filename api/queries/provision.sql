@@ -35,7 +35,22 @@ on conflict do nothing;
 select id from journals where owner_id = @user_id::uuid;
 
 -- name: ListCategories :many
-select id, name, color, icon, parent_id, position
-from categories
-where user_id = @user_id::uuid
-order by position, created_at;
+-- Usage flags ride along so the management screen can offer delete only
+-- where the lifecycle model allows it.
+select
+    c.id,
+    c.name,
+    c.color,
+    c.icon,
+    c.parent_id,
+    c.position,
+    exists (
+        select 1 from entries e
+        where e.category_id = c.id or e.subcategory_id = c.id
+    ) as in_use,
+    exists (
+        select 1 from categories k where k.parent_id = c.id
+    ) as has_children
+from categories c
+where c.user_id = @user_id::uuid
+order by c.position, c.created_at;

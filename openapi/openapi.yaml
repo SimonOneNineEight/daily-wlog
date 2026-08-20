@@ -211,6 +211,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /categories/{id}:
+    patch:
+      operationId: updateCategory
+      summary: Rename or restyle a Category
+      description: >
+        Rename is always free — Entries reference categories by id, so they
+        follow automatically. color and icon are top-level-only: Subcategories
+        inherit both from their parent. Changing a parent's color also
+        rewrites its Subcategories' stored colors, keeping the denormalized
+        copies honest. At least one field must be present.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategory"
+      responses:
+        "200":
+          description: The updated Category.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          description: Empty patch, empty name, or color/icon on a Subcategory.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such Category for the signed-in User.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A sibling with this name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Updating the Category failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteCategory
+      summary: Delete an unused Category
+      description: >
+        Apple Calendar model: only unused categories delete. A Category
+        referenced by any Entry (as category or refinement) answers 409 with
+        the stable message "category in use"; one that still has
+        Subcategories answers 409 with "category has children". The app
+        renders its own catalog copy for these codes.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted.
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such Category for the signed-in User.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The Category is in use or still has Subcategories.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Deleting the Category failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /days/{date}/order:
     put:
       operationId: reorderDay
@@ -585,6 +690,12 @@ components:
           type: string
         position:
           type: integer
+        inUse:
+          type: boolean
+          description: Whether any Entry references it, as category or refinement.
+        hasChildren:
+          type: boolean
+          description: Whether any Subcategory points at it.
     CreateEntry:
       type: object
       required:
@@ -633,6 +744,17 @@ components:
           items:
             type: string
           description: Every Entry id of the date, once, in the new order.
+    UpdateCategory:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+          description: Top-level categories only; Subcategories inherit.
+        icon:
+          type: string
+          description: Top-level categories only; Subcategories inherit.
     CreateCategory:
       type: object
       required:
