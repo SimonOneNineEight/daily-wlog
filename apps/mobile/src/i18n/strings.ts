@@ -84,6 +84,14 @@ const zhTW = {
     hasChildrenExplanation: '請先刪除底下的子類別。',
     saveFailed: '儲存失敗，請再試一次',
   },
+  filter: {
+    title: '篩選',
+    open: '篩選',
+    clearAll: '全部清除',
+    done: '完成',
+    expand: '展開子類別',
+    collapse: '收合子類別',
+  },
   year: {
     title: (year: number) => `${year}年`,
     monthLabel: (month: number) => `${month}月`,

@@ -620,6 +620,30 @@ paths:
           schema:
             type: string
           description: The month, YYYY-MM.
+        - name: categories
+          in: query
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+          description: >
+            Filter (#13): top-level Category ids. An Entry matches when its
+            category is any of these — a parent always includes its children.
+        - name: subcategories
+          in: query
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+          description: >
+            Filter (#13): Subcategory ids, matched against the Entry's
+            subcategory. Union with categories; empty filters mean no lens.
       responses:
         "200":
           description: The month's days that have Entries, in date order.
@@ -662,6 +686,30 @@ paths:
           schema:
             type: string
           description: The year, YYYY.
+        - name: categories
+          in: query
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+          description: >
+            Filter (#13): top-level Category ids. A filtered day takes its
+            first MATCHING Entry's category; days with no match drop out.
+        - name: subcategories
+          in: query
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+          description: >
+            Filter (#13): Subcategory ids. Union with categories; the Entry
+            count follows the same lens.
       responses:
         "200":
           description: The year's recorded days, in date order.

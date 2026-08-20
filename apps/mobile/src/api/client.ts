@@ -48,14 +48,34 @@ export function listEntries(accessToken: string, date: string): Promise<EntryLis
   return request<EntryList>(accessToken, `/entries?date=${date}`);
 }
 
-export function getMonth(accessToken: string, month: string): Promise<MonthDots> {
-  return request<MonthDots>(accessToken, `/months/${month}`);
+export type FilterParams = { categories: string[]; subcategories: string[] };
+
+function filterQuery(filter?: FilterParams): string {
+  if (!filter) return '';
+  const parts: string[] = [];
+  if (filter.categories.length > 0) parts.push(`categories=${filter.categories.join(',')}`);
+  if (filter.subcategories.length > 0) {
+    parts.push(`subcategories=${filter.subcategories.join(',')}`);
+  }
+  return parts.length > 0 ? `?${parts.join('&')}` : '';
+}
+
+export function getMonth(
+  accessToken: string,
+  month: string,
+  filter?: FilterParams,
+): Promise<MonthDots> {
+  return request<MonthDots>(accessToken, `/months/${month}${filterQuery(filter)}`);
 }
 
 export type YearColors = paths['/years/{year}']['get']['responses']['200']['content']['application/json'];
 
-export function getYear(accessToken: string, year: string): Promise<YearColors> {
-  return request<YearColors>(accessToken, `/years/${year}`);
+export function getYear(
+  accessToken: string,
+  year: string,
+  filter?: FilterParams,
+): Promise<YearColors> {
+  return request<YearColors>(accessToken, `/years/${year}${filterQuery(filter)}`);
 }
 
 type UpdateEntryBody =

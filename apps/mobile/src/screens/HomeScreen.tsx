@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
 import { supabase } from '../auth/supabase';
+import type { CalendarFilter } from '../calendar/filter';
+import { emptyFilter } from '../calendar/filter';
 import { localDateString } from '../calendar/monthMath';
 import { strings } from '../i18n/strings';
 import { createStyles } from '../theme';
@@ -33,6 +35,8 @@ type Route =
 export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Props) {
   const [route, setRoute] = useState<Route>({ name: 'month' });
   const [monthRefresh, setMonthRefresh] = useState(0);
+  // One lens across every calendar surface (#13); resets on cold launch.
+  const [filter, setFilter] = useState<CalendarFilter>(emptyFilter);
   const bumpMonth = () => setMonthRefresh((n) => n + 1);
 
   if (route.name === 'day') {
@@ -41,6 +45,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
         accessToken={accessToken}
         categories={categories}
         date={route.date}
+        filter={filter}
         onBack={() => setRoute({ name: 'month' })}
         onEntrySaved={bumpMonth}
         onCategoriesChanged={onCategoriesChanged}
@@ -52,6 +57,8 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
       <YearScreen
         accessToken={accessToken}
         categories={categories}
+        filter={filter}
+        onChangeFilter={setFilter}
         onOpenMonth={(year, month) => setRoute({ name: 'month', focus: { year, month } })}
         onBack={() => setRoute({ name: 'month' })}
       />
@@ -89,6 +96,8 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
           categories={categories}
           refresh={monthRefresh}
           initialMonth={route.focus}
+          filter={filter}
+          onChangeFilter={setFilter}
           onOpenDay={(date) => setRoute({ name: 'day', date })}
           onAddEntry={() => setRoute({ name: 'form', date: localDateString(new Date()) })}
           onOpenCategories={() => setRoute({ name: 'categories' })}

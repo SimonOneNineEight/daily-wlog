@@ -1,10 +1,13 @@
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, ChevronRight, Funnel } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
 import { getYear } from '../api/client';
+import type { CalendarFilter } from '../calendar/filter';
+import { emptyFilter, filterParams } from '../calendar/filter';
+import { FilterSheet } from '../calendar/FilterSheet';
 import { MiniMonth } from '../calendar/MiniMonth';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
@@ -14,6 +17,9 @@ type Props = {
   categories: Category[];
   /** Injectable for tests; defaults to the device's now. */
   today?: Date;
+  /** The shared calendar filter (#13), owned by HomeScreen. */
+  filter?: CalendarFilter;
+  onChangeFilter?: (filter: CalendarFilter) => void;
   onOpenMonth: (year: number, month: number) => void;
   onBack: () => void;
 };
@@ -23,15 +29,24 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 // The year view (#12): twelve mini months, each recorded day a solid box in
 // its first Entry's color — the "look how much life I've captured" screen.
 // One endpoint call delivers the whole year.
-export function YearScreen({ accessToken, categories, today = new Date(), onOpenMonth, onBack }: Props) {
+export function YearScreen({
+  accessToken,
+  categories,
+  today = new Date(),
+  filter = emptyFilter,
+  onChangeFilter,
+  onOpenMonth,
+  onBack,
+}: Props) {
   const [year, setYear] = useState(today.getFullYear());
   const isCurrentYear = year === today.getFullYear();
   const [colorsByMonth, setColorsByMonth] = useState<Record<number, Record<number, string>>>({});
   const [totalEntries, setTotalEntries] = useState(0);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
-    getYear(accessToken, String(year))
+    getYear(accessToken, String(year), filterParams(filter))
       .then((data) => {
         if (!active) return;
         const byMonth: Record<number, Record<number, string>> = {};
@@ -51,7 +66,7 @@ export function YearScreen({ accessToken, categories, today = new Date(), onOpen
     return () => {
       active = false;
     };
-  }, [accessToken, year, categories]);
+  }, [accessToken, year, categories, filter]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -65,6 +80,16 @@ export function YearScreen({ accessToken, categories, today = new Date(), onOpen
           <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
         </Pressable>
         <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
+        {onChangeFilter ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.filter.open}
+            style={styles.navButton}
+            onPress={() => setFilterOpen(true)}
+          >
+            <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.year.prevYear}
@@ -112,6 +137,14 @@ export function YearScreen({ accessToken, categories, today = new Date(), onOpen
             : strings.year.totalLabel(totalEntries)}
         </Text>
       </ScrollView>
+      {filterOpen && onChangeFilter ? (
+        <FilterSheet
+          categories={categories}
+          filter={filter}
+          onChange={onChangeFilter}
+          onClose={() => setFilterOpen(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

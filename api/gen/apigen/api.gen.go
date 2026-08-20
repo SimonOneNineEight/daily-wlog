@@ -242,6 +242,24 @@ type ListEntriesParams struct {
 	Date string `form:"date" json:"date"`
 }
 
+// GetMonthParams defines parameters for GetMonth.
+type GetMonthParams struct {
+	// Categories Filter (#13): top-level Category ids. An Entry matches when its category is any of these — a parent always includes its children.
+	Categories *[]string `form:"categories,omitempty" json:"categories,omitempty"`
+
+	// Subcategories Filter (#13): Subcategory ids, matched against the Entry's subcategory. Union with categories; empty filters mean no lens.
+	Subcategories *[]string `form:"subcategories,omitempty" json:"subcategories,omitempty"`
+}
+
+// GetYearParams defines parameters for GetYear.
+type GetYearParams struct {
+	// Categories Filter (#13): top-level Category ids. A filtered day takes its first MATCHING Entry's category; days with no match drop out.
+	Categories *[]string `form:"categories,omitempty" json:"categories,omitempty"`
+
+	// Subcategories Filter (#13): Subcategory ids. Union with categories; the Entry count follows the same lens.
+	Subcategories *[]string `form:"subcategories,omitempty" json:"subcategories,omitempty"`
+}
+
 // CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
 type CreateCategoryJSONRequestBody = CreateCategory
 
@@ -318,13 +336,13 @@ type ServerInterface interface {
 	ProvisionMe(w http.ResponseWriter, r *http.Request)
 	// GetMonth A month's dot structure in one call
 	// (GET /months/{month})
-	GetMonth(w http.ResponseWriter, r *http.Request, month string)
+	GetMonth(w http.ResponseWriter, r *http.Request, month string, params GetMonthParams)
 	// DeletePhoto Delete a photo
 	// (DELETE /photos/{id})
 	DeletePhoto(w http.ResponseWriter, r *http.Request, id string)
 	// GetYear A year's day colors in one call
 	// (GET /years/{year})
-	GetYear(w http.ResponseWriter, r *http.Request, year string)
+	GetYear(w http.ResponseWriter, r *http.Request, year string, params GetYearParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -423,7 +441,7 @@ func (_ Unimplemented) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 
 // GetMonth A month's dot structure in one call
 // (GET /months/{month})
-func (_ Unimplemented) GetMonth(w http.ResponseWriter, r *http.Request, month string) {
+func (_ Unimplemented) GetMonth(w http.ResponseWriter, r *http.Request, month string, params GetMonthParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -435,7 +453,7 @@ func (_ Unimplemented) DeletePhoto(w http.ResponseWriter, r *http.Request, id st
 
 // GetYear A year's day colors in one call
 // (GET /years/{year})
-func (_ Unimplemented) GetYear(w http.ResponseWriter, r *http.Request, year string) {
+func (_ Unimplemented) GetYear(w http.ResponseWriter, r *http.Request, year string, params GetYearParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -788,8 +806,37 @@ func (siw *ServerInterfaceWrapper) GetMonth(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetMonthParams
+
+	// ------------- Optional query parameter "categories" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "categories", r.URL.Query(), &params.Categories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "categories"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categories", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "subcategories" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "subcategories", r.URL.Query(), &params.Subcategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "subcategories"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subcategories", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetMonth(w, r, month)
+		siw.Handler.GetMonth(w, r, month, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -840,8 +887,37 @@ func (siw *ServerInterfaceWrapper) GetYear(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetYearParams
+
+	// ------------- Optional query parameter "categories" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "categories", r.URL.Query(), &params.Categories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "categories"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categories", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "subcategories" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "subcategories", r.URL.Query(), &params.Subcategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "subcategories"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subcategories", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetYear(w, r, year)
+		siw.Handler.GetYear(w, r, year, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2030,7 +2106,8 @@ func (response ProvisionMe500JSONResponse) VisitProvisionMeResponse(w http.Respo
 }
 
 type GetMonthRequestObject struct {
-	Month string `json:"month"`
+	Month  string `json:"month"`
+	Params GetMonthParams
 }
 
 type GetMonthResponseObject interface {
@@ -2152,7 +2229,8 @@ func (response DeletePhoto500JSONResponse) VisitDeletePhotoResponse(w http.Respo
 }
 
 type GetYearRequestObject struct {
-	Year string `json:"year"`
+	Year   string `json:"year"`
+	Params GetYearParams
 }
 
 type GetYearResponseObject interface {
@@ -2754,10 +2832,11 @@ func (sh *strictHandler) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetMonth operation middleware
-func (sh *strictHandler) GetMonth(w http.ResponseWriter, r *http.Request, month string) {
+func (sh *strictHandler) GetMonth(w http.ResponseWriter, r *http.Request, month string, params GetMonthParams) {
 	var request GetMonthRequestObject
 
 	request.Month = month
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetMonth(ctx, request.(GetMonthRequestObject))
@@ -2806,10 +2885,11 @@ func (sh *strictHandler) DeletePhoto(w http.ResponseWriter, r *http.Request, id 
 }
 
 // GetYear operation middleware
-func (sh *strictHandler) GetYear(w http.ResponseWriter, r *http.Request, year string) {
+func (sh *strictHandler) GetYear(w http.ResponseWriter, r *http.Request, year string, params GetYearParams) {
 	var request GetYearRequestObject
 
 	request.Year = year
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetYear(ctx, request.(GetYearRequestObject))

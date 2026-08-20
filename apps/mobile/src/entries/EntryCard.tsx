@@ -16,7 +16,8 @@ type Props = {
   photos?: { id: string; thumbUrl: string }[];
   dragging?: boolean;
   onPress: () => void;
-  onLongPress: () => void;
+  /** Absent while the calendar filter shows a partial list (#13). */
+  onLongPress?: () => void;
 };
 
 // Day-view entry card per the canvas EntryCard: category icon, title, the

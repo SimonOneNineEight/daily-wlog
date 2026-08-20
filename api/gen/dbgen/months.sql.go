@@ -19,13 +19,20 @@ from entries
 where journal_id = $1::uuid
   and entry_date >= $2::date
   and entry_date < $3::date
+  and (
+    (cardinality($4::uuid[]) = 0 and cardinality($5::uuid[]) = 0)
+    or category_id = any($4::uuid[])
+    or subcategory_id = any($5::uuid[])
+  )
 order by entry_date, position
 `
 
 type ListMonthDotsParams struct {
-	JournalID string
-	FirstDay  pgtype.Date
-	NextMonth pgtype.Date
+	JournalID      string
+	FirstDay       pgtype.Date
+	NextMonth      pgtype.Date
+	CategoryIds    []string
+	SubcategoryIds []string
 }
 
 type ListMonthDotsRow struct {
@@ -36,8 +43,16 @@ type ListMonthDotsRow struct {
 // One row per entry in the month, date-then-position order; the handler
 // groups rows into days. Only structure leaves the database — dots need
 // categories, never content (ADR-0004).
+// The filter (#13) is union semantics: a parent category matches all its
+// entries, a subcategory matches by subcategory; empty arrays mean no lens.
 func (q *Queries) ListMonthDots(ctx context.Context, arg ListMonthDotsParams) ([]ListMonthDotsRow, error) {
-	rows, err := q.db.Query(ctx, listMonthDots, arg.JournalID, arg.FirstDay, arg.NextMonth)
+	rows, err := q.db.Query(ctx, listMonthDots,
+		arg.JournalID,
+		arg.FirstDay,
+		arg.NextMonth,
+		arg.CategoryIds,
+		arg.SubcategoryIds,
+	)
 	if err != nil {
 		return nil, err
 	}

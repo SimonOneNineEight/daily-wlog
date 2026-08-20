@@ -17,16 +17,29 @@ from entries
 where journal_id = $1::uuid
   and entry_date >= $2::date
   and entry_date < $3::date
+  and (
+    (cardinality($4::uuid[]) = 0 and cardinality($5::uuid[]) = 0)
+    or category_id = any($4::uuid[])
+    or subcategory_id = any($5::uuid[])
+  )
 `
 
 type CountYearEntriesParams struct {
-	JournalID string
-	FirstDay  pgtype.Date
-	NextYear  pgtype.Date
+	JournalID      string
+	FirstDay       pgtype.Date
+	NextYear       pgtype.Date
+	CategoryIds    []string
+	SubcategoryIds []string
 }
 
 func (q *Queries) CountYearEntries(ctx context.Context, arg CountYearEntriesParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countYearEntries, arg.JournalID, arg.FirstDay, arg.NextYear)
+	row := q.db.QueryRow(ctx, countYearEntries,
+		arg.JournalID,
+		arg.FirstDay,
+		arg.NextYear,
+		arg.CategoryIds,
+		arg.SubcategoryIds,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -40,13 +53,20 @@ from entries
 where journal_id = $1::uuid
   and entry_date >= $2::date
   and entry_date < $3::date
+  and (
+    (cardinality($4::uuid[]) = 0 and cardinality($5::uuid[]) = 0)
+    or category_id = any($4::uuid[])
+    or subcategory_id = any($5::uuid[])
+  )
 order by entry_date, position
 `
 
 type ListYearFirstCategoriesParams struct {
-	JournalID string
-	FirstDay  pgtype.Date
-	NextYear  pgtype.Date
+	JournalID      string
+	FirstDay       pgtype.Date
+	NextYear       pgtype.Date
+	CategoryIds    []string
+	SubcategoryIds []string
 }
 
 type ListYearFirstCategoriesRow struct {
@@ -57,8 +77,16 @@ type ListYearFirstCategoriesRow struct {
 // One row per recorded day: the FIRST Entry's category by entry order
 // (distinct on keeps the first row of each date's position ordering).
 // Only structure leaves the database — never content (ADR-0004).
+// Under the filter (#13) the distinct-on picks the first MATCHING entry, so
+// a filtered day wears its topmost matching color; no match, no row.
 func (q *Queries) ListYearFirstCategories(ctx context.Context, arg ListYearFirstCategoriesParams) ([]ListYearFirstCategoriesRow, error) {
-	rows, err := q.db.Query(ctx, listYearFirstCategories, arg.JournalID, arg.FirstDay, arg.NextYear)
+	rows, err := q.db.Query(ctx, listYearFirstCategories,
+		arg.JournalID,
+		arg.FirstDay,
+		arg.NextYear,
+		arg.CategoryIds,
+		arg.SubcategoryIds,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry } from '../api/client';
 import { listEntries, reorderDay } from '../api/client';
+import type { CalendarFilter } from '../calendar/filter';
+import { emptyFilter, entryMatchesFilter, hasFilter } from '../calendar/filter';
 import { dateHeading } from '../calendar/dateLabel';
 import { decodeContent } from '../entries/content';
 import { EntryCard } from '../entries/EntryCard';
@@ -24,11 +26,24 @@ type Props = {
   /** Called after an Entry changes here (save, edit, delete, reorder). */
   onEntrySaved?: () => void;
   onCategoriesChanged?: () => void;
+  /**
+   * The shared calendar filter (#13). Non-matching cards hide; drag-reorder
+   * disables under a lens, since ordering a partial view is undefined.
+   */
+  filter?: CalendarFilter;
 };
 
 // The day view (#7): the date's Entries as cards; long-press drag reorders
 // and persists, tap edits, the form's 刪除紀錄 deletes.
-export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved, onCategoriesChanged }: Props) {
+export function DayScreen({
+  accessToken,
+  categories,
+  date,
+  onBack,
+  onEntrySaved,
+  onCategoriesChanged,
+  filter = emptyFilter,
+}: Props) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [reorderFailed, setReorderFailed] = useState(false);
@@ -91,6 +106,8 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
   };
 
   const heading = dateHeading(date);
+  const filtering = hasFilter(filter);
+  const visibleEntries = (entries ?? []).filter((entry) => entryMatchesFilter(entry, filter));
 
   const renderCard = ({ item, drag, isActive }: RenderItemParams<Entry>) => {
     const category = categories.find((c) => c.id === item.categoryId);
@@ -108,7 +125,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
           photos={item.photos?.map((p) => ({ id: p.id, thumbUrl: p.thumbUrl }))}
           dragging={isActive}
           onPress={() => setEditing(item)}
-          onLongPress={drag}
+          onLongPress={filtering ? undefined : drag}
         />
       </View>
     );
@@ -131,14 +148,15 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
       </View>
       {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
       {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
-      {entries !== null && entries.length === 0 && !failed ? (
+      {entries !== null && visibleEntries.length === 0 && !failed ? (
         <Text style={styles.muted}>{strings.day.empty}</Text>
       ) : null}
       <DraggableFlatList
-        data={entries ?? []}
+        data={visibleEntries}
         keyExtractor={(entry) => entry.id}
         renderItem={renderCard}
         onDragEnd={({ data }) => {
+          if (filtering) return; // a lens shows a partial list; order is server truth
           setEntries(data);
           void persistOrder(data);
         }}

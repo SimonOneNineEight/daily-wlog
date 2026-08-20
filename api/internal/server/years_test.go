@@ -107,6 +107,39 @@ func TestYearColorFollowsEntryOrder(t *testing.T) {
 	}
 }
 
+func TestYearFilter(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	me := decodeMe(t, postMe(t, ts, token))
+	work, sport := me.Categories[0].ID, me.Categories[1].ID
+
+	// One day where sport leads, work follows; one sport-only day.
+	mustCreateEntry(t, ts, token, "2026-04-10", sport)
+	mustCreateEntry(t, ts, token, "2026-04-10", work)
+	mustCreateEntry(t, ts, token, "2026-04-20", sport)
+
+	// Filtered, the day wears its first MATCHING entry's category, and days
+	// with no match drop out; the count follows the lens.
+	filtered := decodeYear(t, getYear(t, ts, token, "2026?categories="+work))
+	if len(filtered.Days) != 1 || filtered.Days[0].Date != "2026-04-10" || filtered.Days[0].CategoryID != work {
+		t.Errorf("filtered year days = %+v, want only 04-10 in work", filtered.Days)
+	}
+	if filtered.TotalEntries != 1 {
+		t.Errorf("filtered totalEntries = %d, want 1", filtered.TotalEntries)
+	}
+	// Unfiltered, the same day wears the topmost entry's category.
+	full := decodeYear(t, getYear(t, ts, token, "2026"))
+	if len(full.Days) != 2 || full.Days[0].CategoryID != sport {
+		t.Errorf("unfiltered year days = %+v, want 04-10 in sport first", full.Days)
+	}
+
+	resp := getYear(t, ts, token, "2026?subcategories=nope")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("malformed filter status = %d, want 400", resp.StatusCode)
+	}
+}
+
 func TestYearValidation(t *testing.T) {
 	ts := newTestServer(t)
 	token := signUpTestUser(t)

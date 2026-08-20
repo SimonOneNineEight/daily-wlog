@@ -107,6 +107,52 @@ func TestMonthValidation(t *testing.T) {
 	}
 }
 
+func TestMonthFilter(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	me := decodeMe(t, postMe(t, ts, token))
+	work, sport := me.Categories[0].ID, me.Categories[1].ID
+	sub := decodeCategory(t, createCategory(t, ts, token, map[string]string{
+		"name": "會議", "color": me.Categories[0].Color, "parentId": work,
+	}))
+
+	mustCreateEntry(t, ts, token, "2026-05-01", work)
+	createEntry(t, ts, token, map[string]string{
+		"date": "2026-05-02", "categoryId": work, "subcategoryId": sub.ID, "content": "x",
+	}).Body.Close()
+	mustCreateEntry(t, ts, token, "2026-05-03", sport)
+
+	dates := func(month monthBody) []string {
+		out := make([]string, len(month.Days))
+		for i, day := range month.Days {
+			out[i] = day.Date
+		}
+		return out
+	}
+
+	// A parent includes its children's entries.
+	byParent := decodeMonth(t, getMonth(t, ts, token, "2026-05?categories="+work))
+	if got := dates(byParent); len(got) != 2 || got[0] != "2026-05-01" || got[1] != "2026-05-02" {
+		t.Errorf("parent filter days = %v, want the two work days", got)
+	}
+	// A subcategory matches only its own entries.
+	bySub := decodeMonth(t, getMonth(t, ts, token, "2026-05?subcategories="+sub.ID))
+	if got := dates(bySub); len(got) != 1 || got[0] != "2026-05-02" {
+		t.Errorf("subcategory filter days = %v, want only the sub day", got)
+	}
+	// Union across both kinds of selection.
+	union := decodeMonth(t, getMonth(t, ts, token, "2026-05?categories="+sport+"&subcategories="+sub.ID))
+	if got := dates(union); len(got) != 2 || got[0] != "2026-05-02" || got[1] != "2026-05-03" {
+		t.Errorf("union filter days = %v, want sub day and sport day", got)
+	}
+
+	resp := getMonth(t, ts, token, "2026-05?categories=not-a-uuid")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("malformed filter status = %d, want 400", resp.StatusCode)
+	}
+}
+
 func TestMonthRequiresAToken(t *testing.T) {
 	resp := getMonth(t, newTestServer(t), "", "2026-03")
 	resp.Body.Close()

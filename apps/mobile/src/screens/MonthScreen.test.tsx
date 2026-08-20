@@ -160,3 +160,51 @@ it('opens category management from the nav bar', async () => {
   fireEvent.press(screen.getByLabelText('類別'));
   expect(onOpenCategories).toHaveBeenCalled();
 });
+
+describe('calendar filter (#13)', () => {
+  const withSub = [
+    ...categories,
+    { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport' },
+  ];
+
+  it('opens the sheet from the funnel and toggles selections', async () => {
+    const onChangeFilter = jest.fn();
+    renderMonth({
+      categories: withSub,
+      filter: { categoryIds: [], subcategoryIds: [] },
+      onChangeFilter,
+    });
+    await act(async () => {});
+
+    fireEvent.press(screen.getByLabelText('篩選'));
+    expect(screen.getByText('篩選')).toBeTruthy();
+    fireEvent.press(screen.getByText('工作'));
+    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: ['c-work'], subcategoryIds: [] });
+
+    // Expanding a parent reveals its subcategory, which toggles independently.
+    fireEvent.press(screen.getByLabelText('展開子類別'));
+    fireEvent.press(screen.getByText('健身房'));
+    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
+  });
+
+  it('sends the lens to the API and shows removable chips', async () => {
+    const onChangeFilter = jest.fn();
+    renderMonth({
+      categories: withSub,
+      filter: { categoryIds: ['c-work'], subcategoryIds: ['c-gym'] },
+      onChangeFilter,
+    });
+    await act(async () => {});
+
+    const monthCalls = (globalThis.fetch as jest.Mock).mock.calls
+      .map(([u]) => String(u))
+      .filter((u) => u.includes('/months/'));
+    expect(monthCalls.some((u) => u.includes('categories=c-work') && u.includes('subcategories=c-gym'))).toBe(true);
+
+    // Chips: one per selection, tap removes; 全部清除 clears.
+    fireEvent.press(screen.getByLabelText('工作'));
+    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
+    fireEvent.press(screen.getByText('全部清除'));
+    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: [] });
+  });
+});

@@ -1192,7 +1192,12 @@ export interface operations {
     };
     getMonth: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter (#13): top-level Category ids. An Entry matches when its category is any of these — a parent always includes its children. */
+                categories?: string[];
+                /** @description Filter (#13): Subcategory ids, matched against the Entry's subcategory. Union with categories; empty filters mean no lens. */
+                subcategories?: string[];
+            };
             header?: never;
             path: {
                 /** @description The month, YYYY-MM. */
@@ -1242,7 +1247,12 @@ export interface operations {
     };
     getYear: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter (#13): top-level Category ids. A filtered day takes its first MATCHING Entry's category; days with no match drop out. */
+                categories?: string[];
+                /** @description Filter (#13): Subcategory ids. Union with categories; the Entry count follows the same lens. */
+                subcategories?: string[];
+            };
             header?: never;
             path: {
                 /** @description The year, YYYY. */

@@ -18,24 +18,32 @@ func (h handlers) GetYear(ctx context.Context, request apigen.GetYearRequestObje
 	if err != nil {
 		return apigen.GetYear400JSONResponse{Message: "year must be YYYY"}, nil
 	}
+	cats, subs, ok := filterIDs(request.Params.Categories, request.Params.Subcategories)
+	if !ok {
+		return apigen.GetYear400JSONResponse{Message: "filter ids must be UUIDs"}, nil
+	}
 	userID := auth.UserID(ctx)
 	journalID, err := h.queries.GetJournal(ctx, userID)
 	if err != nil {
 		return apigen.GetYear500JSONResponse(h.failure(ctx, "loading the year failed", err)), nil
 	}
 	bounds := dbgen.ListYearFirstCategoriesParams{
-		JournalID: journalID,
-		FirstDay:  pgtype.Date{Time: firstDay, Valid: true},
-		NextYear:  pgtype.Date{Time: firstDay.AddDate(1, 0, 0), Valid: true},
+		JournalID:      journalID,
+		FirstDay:       pgtype.Date{Time: firstDay, Valid: true},
+		NextYear:       pgtype.Date{Time: firstDay.AddDate(1, 0, 0), Valid: true},
+		CategoryIds:    cats,
+		SubcategoryIds: subs,
 	}
 	rows, err := h.queries.ListYearFirstCategories(ctx, bounds)
 	if err != nil {
 		return apigen.GetYear500JSONResponse(h.failure(ctx, "loading the year failed", err)), nil
 	}
 	total, err := h.queries.CountYearEntries(ctx, dbgen.CountYearEntriesParams{
-		JournalID: bounds.JournalID,
-		FirstDay:  bounds.FirstDay,
-		NextYear:  bounds.NextYear,
+		JournalID:      bounds.JournalID,
+		FirstDay:       bounds.FirstDay,
+		NextYear:       bounds.NextYear,
+		CategoryIds:    cats,
+		SubcategoryIds: subs,
 	})
 	if err != nil {
 		return apigen.GetYear500JSONResponse(h.failure(ctx, "loading the year failed", err)), nil
