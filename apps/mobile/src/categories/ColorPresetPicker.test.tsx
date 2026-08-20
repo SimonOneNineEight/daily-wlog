@@ -75,7 +75,7 @@ it('previews the chosen color as a dot beside the existing category colors', asy
   }
 });
 
-it('commits a custom color through onChange and saves it to the recents', async () => {
+it('commits a custom color through onChange without saving a recent', async () => {
   const onChange = renderPicker();
 
   fireEvent.press(screen.getByLabelText('自訂顏色'));
@@ -85,9 +85,10 @@ it('commits a custom color through onChange and saves it to the recents', async 
   });
 
   expect(onChange).toHaveBeenCalledWith('#123456');
+  // The recents save belongs to the category save: a confirmed drawer on a
+  // later-canceled sheet must not mark the color as "used".
   const put = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PUT');
-  expect(put).toBeTruthy();
-  expect(JSON.parse(put?.[1]?.body ?? '{}')).toEqual({ color: '#123456' });
+  expect(put).toBeUndefined();
 });
 
 it('does not save preset picks to the recents', async () => {

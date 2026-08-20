@@ -20,6 +20,7 @@ import {
   deleteEntry,
   deletePhoto,
   reorderPhotos,
+  saveColorRecent,
   updateEntry,
 } from '../api/client';
 import { MAX_PHOTOS, PhotoGrid } from '../entries/PhotoGrid';
@@ -28,7 +29,7 @@ import { processPhoto } from '../photos/processPhoto';
 import { uploadPhotos } from '../photos/uploadPhotos';
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { dateHeading } from '../calendar/dateLabel';
-import { ColorPresetPicker } from '../categories/ColorPresetPicker';
+import { ColorPresetPicker, isPresetColor } from '../categories/ColorPresetPicker';
 import { decodeContent, encodeContent } from '../entries/content';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
@@ -243,6 +244,10 @@ export function EntryFormScreen({
     setFailed(false);
     try {
       const made = await createCategory(accessToken, { name: creating, color: newColor });
+      // A custom color earns its recents slot only once a category wears it.
+      if (!isPresetColor(newColor)) {
+        void saveColorRecent(accessToken, newColor).catch(() => undefined);
+      }
       setCreated((prev) => [...prev, made]);
       setCategory(made);
       setSubcategory(null);

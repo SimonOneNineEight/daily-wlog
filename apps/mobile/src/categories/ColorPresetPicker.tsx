@@ -1,9 +1,15 @@
+import { Palette } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 import { ColorDrawer } from './ColorDrawer';
+
+/** Whether the hex is one of the ten preset bases (custom colors are not). */
+export function isPresetColor(hex: string): boolean {
+  return Object.values(theme.categories).some((preset) => preset.base === hex);
+}
 
 type Props = {
   value: string;
@@ -19,8 +25,7 @@ type Props = {
 // drawer (#11) and shows the current custom color once one is chosen.
 export function ColorPresetPicker({ value, onChange, accessToken, existingColors }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const presets = Object.values(theme.categories);
-  const isPreset = presets.some((preset) => preset.base === value);
+  const isPreset = isPresetColor(value);
   return (
     <View style={styles.grid}>
       {Object.entries(theme.categories).map(([name, preset]) => {
@@ -44,12 +49,10 @@ export function ColorPresetPicker({ value, onChange, accessToken, existingColors
         onPress={() => setDrawerOpen(true)}
       >
         {isPreset ? (
-          // No color chosen here yet: a four-color wheel as the affordance.
-          <View style={styles.wheel}>
-            <View style={[styles.wheelQuadrant, { backgroundColor: theme.categories.clay.base }]} />
-            <View style={[styles.wheelQuadrant, { backgroundColor: theme.categories.ochre.base }]} />
-            <View style={[styles.wheelQuadrant, { backgroundColor: theme.categories.blue.base }]} />
-            <View style={[styles.wheelQuadrant, { backgroundColor: theme.categories.green.base }]} />
+          // No custom color chosen yet: the design component's affordance is
+          // a dashed ring around a palette glyph.
+          <View style={styles.customAffordance}>
+            <Palette size={16} color={theme.colors.iconDefault} strokeWidth={2} />
           </View>
         ) : (
           <View style={[styles.swatch, { backgroundColor: value }]} />
@@ -98,18 +101,14 @@ const styles = createStyles((t) => ({
     borderWidth: 2,
     borderColor: t.colors.surface,
   },
-  wheel: {
+  customAffordance: {
     width: 34,
     height: 34,
     borderRadius: t.radius.pill,
-    borderWidth: 2,
-    borderColor: t.colors.surface,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  wheelQuadrant: {
-    width: '50%',
-    height: '50%',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: t.colors.textQuaternary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 }));

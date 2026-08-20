@@ -1084,6 +1084,7 @@ components:
       properties:
         color:
           type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
           description: >
             Hex color (#RRGGBB) the User committed from the color drawer.
             Fully free per the ratified color decision; preset picks are not

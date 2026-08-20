@@ -37,6 +37,12 @@ beforeEach(() => {
     if (u.includes('/categories/') && init?.method === 'DELETE') {
       return { ok: true, status: 204, json: async () => ({}) };
     }
+    if (u.includes('/color-recents') && init?.method === 'PUT') {
+      return { ok: true, json: async () => ({ colors: [JSON.parse(init.body ?? '{}').color] }) };
+    }
+    if (u.includes('/color-recents')) {
+      return { ok: true, json: async () => ({ colors: ['#123456'] }) };
+    }
     throw new Error(`unexpected fetch ${u}`);
   }) as jest.Mock;
 });
@@ -151,6 +157,34 @@ it('creates a top-level category with its icon in one call', async () => {
   expect(body.icon).toBe('tag');
   const patch = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PATCH');
   expect(patch).toBeUndefined();
+});
+
+it('saves a custom color to the recents only once the category persists', async () => {
+  renderScreen();
+
+  fireEvent.press(screen.getByText('美食'));
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+  fireEvent.press(await screen.findByLabelText('#123456'));
+  await act(async () => {
+    // The drawer's 完成 renders after the editor's.
+    const confirms = screen.getAllByText('完成');
+    fireEvent.press(confirms[confirms.length - 1]);
+  });
+  // Drawer confirmed, sheet not saved yet: no recent recorded.
+  expect(
+    (globalThis.fetch as jest.Mock).mock.calls.find(
+      ([url, init]) => String(url).includes('/color-recents') && init?.method === 'PUT',
+    ),
+  ).toBeUndefined();
+
+  await act(async () => {
+    fireEvent.press(screen.getAllByText('完成')[0]);
+  });
+  const put = (globalThis.fetch as jest.Mock).mock.calls.find(
+    ([url, init]) => String(url).includes('/color-recents') && init?.method === 'PUT',
+  );
+  expect(put).toBeTruthy();
+  expect(JSON.parse(put?.[1]?.body ?? '{}')).toEqual({ color: '#123456' });
 });
 
 it('creates a subcategory by picking a parent in the create sheet', async () => {

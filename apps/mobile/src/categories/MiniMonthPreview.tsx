@@ -23,7 +23,8 @@ const DOT_PATTERN: Record<number, ('chosen' | number)[]> = {
   27: [1, 2, 'chosen', 0],
 };
 
-const CELLS = 35;
+// Four full weeks: every month has days 1–28, so the numerals stay honest.
+const CELLS = 28;
 
 /**
  * The drawer's live preview (#11, ratified design): the chosen color as a

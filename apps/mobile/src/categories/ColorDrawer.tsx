@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, PanResponder, Pressable, Text, View } from 'react-native';
 
-import { listColorRecents, saveColorRecent } from '../api/client';
+import { listColorRecents } from '../api/client';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 import type { Hsl } from './colorDerivation';
@@ -15,7 +15,11 @@ type Props = {
   /** The user's current category colors, for the live preview. */
   existingColors: string[];
   onCancel: () => void;
-  /** Fired with the committed hex after the recents save settles. */
+  /**
+   * Fired with the committed hex. Saving the color as a recent is the
+   * caller's job once the category actually persists — a confirmed drawer
+   * on a canceled sheet is not a "used" color.
+   */
   onConfirm: (hex: string) => void;
 };
 
@@ -29,7 +33,6 @@ const RAMP_SEGMENTS = 12;
  * and lightness — brighter and darker than the presets is allowed; the live
  * mini-month preview is the guardrail, not a clamp. The 10 presets appear as
  * a reference row, and the user's saved custom colors as a recents row.
- * Committing a non-preset color saves it server-side (LRU, best-effort).
  */
 export function ColorDrawer({
   accessToken,
@@ -57,15 +60,6 @@ export function ColorDrawer({
   }, [accessToken]);
 
   const applyHex = (hex: string) => setHsl(hexToHsl(hex));
-
-  const commit = async () => {
-    // Presets are always on their reference row; only custom picks earn a
-    // recents slot. The save is best-effort: the chosen color still commits.
-    if (!presetBases.includes(color)) {
-      await saveColorRecent(accessToken, color).catch(() => undefined);
-    }
-    onConfirm(color);
-  };
 
   const hueRamp = Array.from({ length: HUE_SEGMENTS }, (_, i) =>
     hslToHex({ h: ((i + 0.5) * 360) / HUE_SEGMENTS, s: hsl.s, l: hsl.l }),
@@ -108,12 +102,13 @@ export function ColorDrawer({
               <Text style={styles.headerAction}>{strings.entryForm.cancel}</Text>
             </Pressable>
             <Text style={styles.headerTitle}>{strings.colorDrawer.custom}</Text>
-            <Pressable accessibilityRole="button" onPress={() => void commit()}>
+            <Pressable accessibilityRole="button" onPress={() => onConfirm(color)}>
               <Text style={styles.headerConfirm}>{strings.categories.done}</Text>
             </Pressable>
           </View>
 
           <MiniMonthPreview color={color} existingColors={existingColors} />
+          <Text style={styles.hexReadout}>{color}</Text>
 
           <SliderTrack
             label={strings.colorDrawer.hue}
@@ -301,6 +296,13 @@ const styles = createStyles((t) => ({
   sectionHeader: {
     ...t.typography.meta,
     color: t.colors.textTertiary,
+  },
+  // The canvas's live hex readout beside the preview.
+  hexReadout: {
+    ...t.typography.meta,
+    color: t.colors.textTertiary,
+    alignSelf: 'center',
+    marginTop: -t.spacing.space4,
   },
   swatchRow: {
     flexDirection: 'row',

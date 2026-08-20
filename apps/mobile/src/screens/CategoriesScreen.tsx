@@ -4,9 +4,9 @@ import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
-import { createCategory, deleteCategory, updateCategory } from '../api/client';
+import { createCategory, deleteCategory, saveColorRecent, updateCategory } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
-import { ColorPresetPicker } from '../categories/ColorPresetPicker';
+import { ColorPresetPicker, isPresetColor } from '../categories/ColorPresetPicker';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
@@ -184,6 +184,7 @@ function CategoryEditor({
     setFailed(false);
     const trimmed = name.trim();
     try {
+      let colorApplied = false;
       if (target) {
         const patch: { name?: string; color?: string; icon?: string } = {};
         if (trimmed !== target.name) patch.name = trimmed;
@@ -191,6 +192,7 @@ function CategoryEditor({
         if (!isSub && icon !== target.icon) patch.icon = icon;
         if (Object.keys(patch).length > 0) {
           await updateCategory(accessToken, target.id, patch);
+          colorApplied = patch.color !== undefined;
           onCategoriesChanged();
         }
       } else {
@@ -200,7 +202,13 @@ function CategoryEditor({
             ? { name: trimmed, color: activeParent.color, parentId: activeParent.id }
             : { name: trimmed, color, icon },
         );
+        colorApplied = !isSub;
         onCategoriesChanged();
+      }
+      // A custom color earns its recents slot only once a category actually
+      // wears it; the save is best-effort.
+      if (colorApplied && !isPresetColor(color)) {
+        void saveColorRecent(accessToken, color).catch(() => undefined);
       }
       onClose();
     } catch {
