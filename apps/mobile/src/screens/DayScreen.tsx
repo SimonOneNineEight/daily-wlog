@@ -9,6 +9,8 @@ import type { Category, Entry } from '../api/client';
 import { listEntries, reorderDay } from '../api/client';
 import { dateHeading } from '../calendar/dateLabel';
 import { decodeContent } from '../entries/content';
+import type { EntryDraft } from '../entries/drafts';
+import { listDrafts } from '../entries/drafts';
 import { EntryCard } from '../entries/EntryCard';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
@@ -34,6 +36,10 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
   const [reorderFailed, setReorderFailed] = useState(false);
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
+  // Retained failed saves for this date (#14), shown as quiet rows above the
+  // list; tapping one reopens the form prefilled, where 儲存 retries.
+  const [drafts, setDrafts] = useState<EntryDraft[]>([]);
+  const [openDraft, setOpenDraft] = useState<EntryDraft | null>(null);
 
   // Bumping refresh reloads the list (after a save/edit/delete).
   const [refresh, setRefresh] = useState(0);
@@ -55,22 +61,42 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
     };
   }, [accessToken, date, refresh]);
 
+  useEffect(() => {
+    let active = true;
+    void listDrafts(date).then((found) => {
+      if (active) setDrafts(found);
+    });
+    return () => {
+      active = false;
+    };
+  }, [date, refresh]);
+
   const changed = () => {
     setRefresh((n) => n + 1);
     onEntrySaved?.();
   };
 
-  if (composing || editing) {
+  if (composing || editing || openDraft) {
     return (
       <EntryFormScreen
         accessToken={accessToken}
         date={date}
         categories={categories}
-        entry={editing ?? undefined}
+        // A draft for an already-saved Entry brings its Entry along when the
+        // list has it, so the server-side photos still show in the form.
+        entry={
+          editing ??
+          (openDraft?.entryId ? entries?.find((e) => e.id === openDraft.entryId) : undefined)
+        }
+        draft={openDraft ?? undefined}
         onCategoriesChanged={onCategoriesChanged}
         onDone={(saved) => {
           setComposing(false);
           setEditing(null);
+          setOpenDraft(null);
+          // A failed attempt in the form may have kept a draft; success
+          // cleared one. Either way this date's rows need a fresh read.
+          void listDrafts(date).then(setDrafts);
           if (saved) changed();
         }}
       />
@@ -134,6 +160,22 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
       {entries !== null && entries.length === 0 && !failed ? (
         <Text style={styles.muted}>{strings.day.empty}</Text>
       ) : null}
+      {/* Kept drafts (#14). No canvas artboard exists for these, so the
+          quietest surface consistent with the day view: a plain card with
+          the title and a flat 尚未儲存 meta line. */}
+      {drafts.map((draft) => (
+        <Pressable
+          key={draft.id}
+          accessibilityRole="button"
+          style={styles.draftCard}
+          onPress={() => setOpenDraft(draft)}
+        >
+          <Text style={styles.draftTitle}>
+            {decodeContent(draft.content)?.title ?? strings.day.unreadable}
+          </Text>
+          <Text style={styles.draftMeta}>{strings.day.draftUnsaved}</Text>
+        </Pressable>
+      ))}
       <DraggableFlatList
         data={entries ?? []}
         keyExtractor={(entry) => entry.id}
@@ -181,6 +223,22 @@ const styles = createStyles((t) => ({
   },
   muted: {
     ...t.typography.note,
+    color: t.colors.textTertiary,
+  },
+  draftCard: {
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.card,
+    paddingVertical: t.spacing.space5,
+    paddingHorizontal: t.spacing.cardPadding,
+    marginBottom: t.spacing.space5,
+    gap: t.spacing.space1,
+  },
+  draftTitle: {
+    ...t.typography.entryTitle,
+    color: t.colors.textPrimary,
+  },
+  draftMeta: {
+    ...t.typography.meta,
     color: t.colors.textTertiary,
   },
   listContainer: {
