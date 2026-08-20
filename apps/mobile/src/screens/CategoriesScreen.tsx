@@ -294,7 +294,14 @@ function CategoryEditor({
             but disabled, showing the parent's values (AC: inheritance shown
             by disabling). */}
         <View style={isSub ? styles.inherited : null} pointerEvents={isSub ? 'none' : 'auto'}>
-          <ColorPresetPicker value={isSub ? activeParent.color : color} onChange={setColor} />
+          <ColorPresetPicker
+            value={isSub ? activeParent.color : color}
+            onChange={setColor}
+            accessToken={accessToken}
+            existingColors={parentChoices
+              .filter((choice) => choice.id !== target?.id)
+              .map((choice) => choice.color)}
+          />
         </View>
         <View style={isSub ? styles.inherited : null} pointerEvents={isSub ? 'none' : 'auto'}>
           <Text style={styles.sectionHeader}>{strings.categories.iconHeader}</Text>

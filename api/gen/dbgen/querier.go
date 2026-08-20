@@ -44,6 +44,8 @@ type Querier interface {
 	// Usage flags ride along so the management screen can offer delete only
 	// where the lifecycle model allows it.
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)
+	// Most-recent first; SaveColorRecent's trim keeps the list within the cap.
+	ListColorRecents(ctx context.Context, userID string) ([]string, error)
 	ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error)
 	ListEntryIDs(ctx context.Context, arg ListEntryIDsParams) ([]string, error)
 	// One row per entry in the month, date-then-position order; the handler
@@ -63,9 +65,14 @@ type Querier interface {
 	ReorderEntries(ctx context.Context, arg ReorderEntriesParams) error
 	// One statement, final order validated at commit by the deferred constraint.
 	ReorderPhotos(ctx context.Context, arg ReorderPhotosParams) error
+	// LRU save: a new color joins with a fresh used_seq; re-saving an existing
+	// one bumps its used_seq, moving it to the front of the recency order.
+	SaveColorRecent(ctx context.Context, arg SaveColorRecentParams) error
 	// A usable Entry refinement: owned by the user and a child of exactly the
 	// Entry's Category.
 	SubcategoryIsUsable(ctx context.Context, arg SubcategoryIsUsableParams) (bool, error)
+	// Evict beyond the cap: keep the @keep most recent colors, drop the rest.
+	TrimColorRecents(ctx context.Context, arg TrimColorRecentsParams) error
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error)
 	// Full replacement of the editable fields; journal_id scoping means a User
 	// can only ever touch their own Entries (no rows = not found).

@@ -71,7 +71,8 @@ export function EntryFormScreen({
   const [query, setQuery] = useState('');
   // The quick step's pending top-level category name, or null when not creating.
   const [creating, setCreating] = useState<string | null>(null);
-  const [newColor, setNewColor] = useState(firstPreset);
+  // string, not TokenColor: the color drawer's custom picks are free values.
+  const [newColor, setNewColor] = useState<string>(firstPreset);
   const [addingSub, setAddingSub] = useState(false);
   const [subName, setSubName] = useState('');
   // Categories created in this form session, until the parent refetches /me.
@@ -308,7 +309,12 @@ export function EntryFormScreen({
               <CategoryIcon icon="tag" color={newColor} size={36} />
               <Text style={styles.selectedName}>{creating}</Text>
             </View>
-            <ColorPresetPicker value={newColor} onChange={setNewColor} />
+            <ColorPresetPicker
+              value={newColor}
+              onChange={setNewColor}
+              accessToken={accessToken}
+              existingColors={topLevel.map((c) => c.color)}
+            />
             <View style={styles.createActions}>
               <Pressable
                 accessibilityRole="button"

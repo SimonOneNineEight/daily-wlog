@@ -48,6 +48,9 @@ type failingQuerier struct {
 	deletePhotoErr    error
 	listPhotoIDsErr   error
 	reorderPhotosErr  error
+	saveColorErr      error
+	trimColorErr      error
+	listColorsErr     error
 }
 
 func (f failingQuerier) GetSchemaVersion(context.Context) (int32, error) { return 1, nil }
@@ -167,6 +170,43 @@ func (f failingQuerier) DeleteCategory(context.Context, dbgen.DeleteCategoryPara
 		return 0, nil
 	}
 	return 1, f.deleteCatErr
+}
+func (f failingQuerier) SaveColorRecent(context.Context, dbgen.SaveColorRecentParams) error {
+	return f.saveColorErr
+}
+func (f failingQuerier) TrimColorRecents(context.Context, dbgen.TrimColorRecentsParams) error {
+	return f.trimColorErr
+}
+func (f failingQuerier) ListColorRecents(context.Context, string) ([]string, error) {
+	return []string{"#123456"}, f.listColorsErr
+}
+
+func TestColorRecentsFailClosedOnDatabaseErrors(t *testing.T) {
+	token := signUpTestUser(t)
+	cases := map[string]struct {
+		querier failingQuerier
+		run     func(t *testing.T, ts *httptest.Server)
+	}{
+		"list fails": {failingQuerier{listColorsErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, listColorRecents(t, ts, token), 500)
+		}},
+		"save fails": {failingQuerier{saveColorErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, saveColorRecent(t, ts, token, "#123456"), 500)
+		}},
+		"trim fails": {failingQuerier{trimColorErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, saveColorRecent(t, ts, token, "#123456"), 500)
+		}},
+		"relist fails": {failingQuerier{listColorsErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, saveColorRecent(t, ts, token, "#123456"), 500)
+		}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), c.querier, auth.NewVerifier(testJWKSURL()), &fakeStore{}))
+			defer ts.Close()
+			c.run(t, ts)
+		})
+	}
 }
 
 func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {

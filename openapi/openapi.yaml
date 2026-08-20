@@ -645,6 +645,75 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /color-recents:
+    get:
+      operationId: listColorRecents
+      summary: The signed-in User's saved custom colors
+      description: >
+        The color drawer's saved-colors row: custom colors the User has
+        committed, most-recent first, capped at 12.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Saved custom colors, most-recent first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColorRecents"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Listing saved colors failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: saveColorRecent
+      summary: Save a custom color as most recently used
+      description: >
+        LRU semantics: saving a color already on the list moves it to the
+        front; a new color joins at the front and the oldest beyond the
+        12-color cap drops off. Colors normalize to uppercase #RRGGBB, so
+        case variants are the same color.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveColorRecent"
+      responses:
+        "200":
+          description: The updated saved-colors list, most-recent first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColorRecents"
+        "400":
+          description: color is not a #RRGGBB hex value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Saving the color failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   securitySchemes:
     bearerAuth:
@@ -942,6 +1011,27 @@ components:
         schemaVersion:
           type: integer
           description: Version read from the app_info migration baseline.
+    SaveColorRecent:
+      type: object
+      required:
+        - color
+      properties:
+        color:
+          type: string
+          description: >
+            Hex color (#RRGGBB) the User committed from the color drawer.
+            Fully free per the ratified color decision; preset picks are not
+            saved (the presets row is always visible anyway).
+    ColorRecents:
+      type: object
+      required:
+        - colors
+      properties:
+        colors:
+          type: array
+          description: Saved custom colors, most-recent first, capped at 12.
+          items:
+            type: string
     Error:
       type: object
       required:

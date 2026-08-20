@@ -77,6 +77,14 @@ const zhTW = {
     hasChildrenExplanation: '請先刪除底下的子類別。',
     saveFailed: '儲存失敗，請再試一次',
   },
+  colorDrawer: {
+    custom: '自訂顏色',
+    hue: '色相',
+    saturation: '飽和度',
+    lightness: '亮度',
+    presets: '預設顏色',
+    recents: '最近使用',
+  },
   health: {
     loading: '連線中…',
     ok: '系統狀態:正常',
