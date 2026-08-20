@@ -105,6 +105,7 @@ export function DayScreen({ accessToken, categories, date, onBack, onEntrySaved,
           categoryIcon={category?.icon ?? 'tag'}
           subcategoryName={subcategory?.name}
           note={content?.note || undefined}
+          photos={item.photos?.map((p) => ({ id: p.id, thumbUrl: p.thumbUrl }))}
           dragging={isActive}
           onPress={() => setEditing(item)}
           onLongPress={drag}

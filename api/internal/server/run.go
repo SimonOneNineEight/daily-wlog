@@ -13,6 +13,7 @@ import (
 
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/auth"
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/config"
+	"github.com/SimonOneNineEight/daily-wlog/api/internal/storage"
 )
 
 // Run serves the API until ctx is cancelled, then shuts down gracefully.
@@ -29,7 +30,8 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	srv := &http.Server{Addr: cfg.Addr, Handler: New(logger, pool, auth.NewVerifier(cfg.SupabaseJWKSURL))}
+	store := storage.New(cfg.SupabaseStorageURL, cfg.SupabaseSecretKey)
+	srv := &http.Server{Addr: cfg.Addr, Handler: New(logger, pool, auth.NewVerifier(cfg.SupabaseJWKSURL), store)}
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

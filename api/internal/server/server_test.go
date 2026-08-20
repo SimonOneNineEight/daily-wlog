@@ -43,7 +43,7 @@ func discardLogger() *slog.Logger {
 
 func TestRequestsAreLoggedAsJSONWithRequestID(t *testing.T) {
 	var buf bytes.Buffer
-	ts := httptest.NewServer(server.New(logging.New(&buf), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL())))
+	ts := httptest.NewServer(server.New(logging.New(&buf), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL()), testStore()))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/healthz")
@@ -77,7 +77,7 @@ func TestHealthzReportsUnavailableWhenDatabaseUnreachable(t *testing.T) {
 	// A pool is created lazily, so pointing one at a closed port only fails
 	// when the handler runs its query.
 	var buf bytes.Buffer
-	ts := httptest.NewServer(server.New(logging.New(&buf), testPool(t, "postgresql://postgres:postgres@127.0.0.1:1/postgres"), auth.NewVerifier(testJWKSURL())))
+	ts := httptest.NewServer(server.New(logging.New(&buf), testPool(t, "postgresql://postgres:postgres@127.0.0.1:1/postgres"), auth.NewVerifier(testJWKSURL()), testStore()))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/healthz")
@@ -105,7 +105,7 @@ func TestHealthzReportsUnavailableWhenDatabaseUnreachable(t *testing.T) {
 }
 
 func TestHealthzReportsOKWithSchemaVersion(t *testing.T) {
-	ts := httptest.NewServer(server.New(discardLogger(), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL())))
+	ts := httptest.NewServer(server.New(discardLogger(), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL()), testStore()))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL + "/healthz")

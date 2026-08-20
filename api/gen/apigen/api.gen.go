@@ -68,13 +68,14 @@ type CreateEntry struct {
 
 // Entry defines model for Entry.
 type Entry struct {
-	AuthorId      string  `json:"authorId"`
-	CategoryId    string  `json:"categoryId"`
-	Content       string  `json:"content"`
-	Date          string  `json:"date"`
-	Id            string  `json:"id"`
-	Position      int     `json:"position"`
-	SubcategoryId *string `json:"subcategoryId,omitempty"`
+	AuthorId      string   `json:"authorId"`
+	CategoryId    string   `json:"categoryId"`
+	Content       string   `json:"content"`
+	Date          string   `json:"date"`
+	Id            string   `json:"id"`
+	Photos        *[]Photo `json:"photos,omitempty"`
+	Position      int      `json:"position"`
+	SubcategoryId *string  `json:"subcategoryId,omitempty"`
 }
 
 // EntryList defines model for EntryList.
@@ -116,10 +117,65 @@ type MonthDots struct {
 	Days []MonthDay `json:"days"`
 }
 
+// Photo defines model for Photo.
+type Photo struct {
+	Id       string  `json:"id"`
+	Position int     `json:"position"`
+	TakenAt  *string `json:"takenAt,omitempty"`
+	ThumbUrl string  `json:"thumbUrl"`
+
+	// Url Short-lived signed download URL.
+	Url string `json:"url"`
+}
+
+// PhotoList defines model for PhotoList.
+type PhotoList struct {
+	Photos []Photo `json:"photos"`
+}
+
+// PhotoUpload defines model for PhotoUpload.
+type PhotoUpload struct {
+	ObjectPath     string `json:"objectPath"`
+	ThumbPath      string `json:"thumbPath"`
+	ThumbUploadUrl string `json:"thumbUploadUrl"`
+	UploadUrl      string `json:"uploadUrl"`
+}
+
+// PhotoUploads defines model for PhotoUploads.
+type PhotoUploads struct {
+	Uploads []PhotoUpload `json:"uploads"`
+}
+
+// PresignPhotos defines model for PresignPhotos.
+type PresignPhotos struct {
+	// Count How many photos will be uploaded (1..remaining cap).
+	Count int `json:"count"`
+}
+
+// RegisterPhoto defines model for RegisterPhoto.
+type RegisterPhoto struct {
+	ObjectPath string `json:"objectPath"`
+
+	// TakenAt RFC3339 capture time kept from the original (GPS is stripped client-side).
+	TakenAt   *string `json:"takenAt,omitempty"`
+	ThumbPath string  `json:"thumbPath"`
+}
+
+// RegisterPhotos defines model for RegisterPhotos.
+type RegisterPhotos struct {
+	Photos []RegisterPhoto `json:"photos"`
+}
+
 // ReorderDay defines model for ReorderDay.
 type ReorderDay struct {
 	// EntryIds Every Entry id of the date, once, in the new order.
 	EntryIds []string `json:"entryIds"`
+}
+
+// ReorderPhotos defines model for ReorderPhotos.
+type ReorderPhotos struct {
+	// PhotoIds Every photo id of the Entry, once, in the new order.
+	PhotoIds []string `json:"photoIds"`
 }
 
 // UpdateEntry defines model for UpdateEntry.
@@ -152,6 +208,15 @@ type CreateEntryJSONRequestBody = CreateEntry
 // UpdateEntryJSONRequestBody defines body for UpdateEntry for application/json ContentType.
 type UpdateEntryJSONRequestBody = UpdateEntry
 
+// RegisterPhotosJSONRequestBody defines body for RegisterPhotos for application/json ContentType.
+type RegisterPhotosJSONRequestBody = RegisterPhotos
+
+// ReorderPhotosJSONRequestBody defines body for ReorderPhotos for application/json ContentType.
+type ReorderPhotosJSONRequestBody = ReorderPhotos
+
+// PresignPhotosJSONRequestBody defines body for PresignPhotos for application/json ContentType.
+type PresignPhotosJSONRequestBody = PresignPhotos
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// CreateCategory Create a Category or Subcategory
@@ -172,6 +237,15 @@ type ServerInterface interface {
 	// UpdateEntry Update an Entry
 	// (PATCH /entries/{id})
 	UpdateEntry(w http.ResponseWriter, r *http.Request, id string)
+	// RegisterPhotos Record uploaded photos on an Entry
+	// (POST /entries/{id}/photos)
+	RegisterPhotos(w http.ResponseWriter, r *http.Request, id string)
+	// ReorderPhotos Reorder an Entry's photos
+	// (PUT /entries/{id}/photos/order)
+	ReorderPhotos(w http.ResponseWriter, r *http.Request, id string)
+	// PresignPhotos Presign direct-to-storage uploads for an Entry's photos
+	// (POST /entries/{id}/photos/presign)
+	PresignPhotos(w http.ResponseWriter, r *http.Request, id string)
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -181,6 +255,9 @@ type ServerInterface interface {
 	// GetMonth A month's dot structure in one call
 	// (GET /months/{month})
 	GetMonth(w http.ResponseWriter, r *http.Request, month string)
+	// DeletePhoto Delete a photo
+	// (DELETE /photos/{id})
+	DeletePhoto(w http.ResponseWriter, r *http.Request, id string)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -223,6 +300,24 @@ func (_ Unimplemented) UpdateEntry(w http.ResponseWriter, r *http.Request, id st
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// RegisterPhotos Record uploaded photos on an Entry
+// (POST /entries/{id}/photos)
+func (_ Unimplemented) RegisterPhotos(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ReorderPhotos Reorder an Entry's photos
+// (PUT /entries/{id}/photos/order)
+func (_ Unimplemented) ReorderPhotos(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PresignPhotos Presign direct-to-storage uploads for an Entry's photos
+// (POST /entries/{id}/photos/presign)
+func (_ Unimplemented) PresignPhotos(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // GetHealth Liveness and database health
 // (GET /healthz)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
@@ -238,6 +333,12 @@ func (_ Unimplemented) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 // GetMonth A month's dot structure in one call
 // (GET /months/{month})
 func (_ Unimplemented) GetMonth(w http.ResponseWriter, r *http.Request, month string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeletePhoto Delete a photo
+// (DELETE /photos/{id})
+func (_ Unimplemented) DeletePhoto(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -389,6 +490,84 @@ func (siw *ServerInterfaceWrapper) UpdateEntry(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// RegisterPhotos operation middleware
+func (siw *ServerInterfaceWrapper) RegisterPhotos(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RegisterPhotos(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReorderPhotos operation middleware
+func (siw *ServerInterfaceWrapper) ReorderPhotos(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReorderPhotos(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PresignPhotos operation middleware
+func (siw *ServerInterfaceWrapper) PresignPhotos(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PresignPhotos(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
 
@@ -434,6 +613,32 @@ func (siw *ServerInterfaceWrapper) GetMonth(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMonth(w, r, month)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePhoto operation middleware
+func (siw *ServerInterfaceWrapper) DeletePhoto(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePhoto(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -579,6 +784,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/categories", wrapper.CreateCategory)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/entries/{id}/photos/presign", wrapper.PresignPhotos)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/entries/{id}/photos", wrapper.RegisterPhotos)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/entries/{id}/photos/order", wrapper.ReorderPhotos)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/photos/{id}", wrapper.DeletePhoto)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/months/{month}", wrapper.GetMonth)
@@ -995,6 +1212,243 @@ func (response UpdateEntry500JSONResponse) VisitUpdateEntryResponse(w http.Respo
 	return err
 }
 
+type RegisterPhotosRequestObject struct {
+	Id   string `json:"id"`
+	Body *RegisterPhotosJSONRequestBody
+}
+
+type RegisterPhotosResponseObject interface {
+	VisitRegisterPhotosResponse(w http.ResponseWriter) error
+}
+
+type RegisterPhotos201JSONResponse PhotoList
+
+func (response RegisterPhotos201JSONResponse) VisitRegisterPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterPhotos400JSONResponse Error
+
+func (response RegisterPhotos400JSONResponse) VisitRegisterPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterPhotos401JSONResponse Error
+
+func (response RegisterPhotos401JSONResponse) VisitRegisterPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterPhotos404JSONResponse Error
+
+func (response RegisterPhotos404JSONResponse) VisitRegisterPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegisterPhotos500JSONResponse Error
+
+func (response RegisterPhotos500JSONResponse) VisitRegisterPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderPhotosRequestObject struct {
+	Id   string `json:"id"`
+	Body *ReorderPhotosJSONRequestBody
+}
+
+type ReorderPhotosResponseObject interface {
+	VisitReorderPhotosResponse(w http.ResponseWriter) error
+}
+
+type ReorderPhotos200JSONResponse PhotoList
+
+func (response ReorderPhotos200JSONResponse) VisitReorderPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderPhotos400JSONResponse Error
+
+func (response ReorderPhotos400JSONResponse) VisitReorderPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderPhotos401JSONResponse Error
+
+func (response ReorderPhotos401JSONResponse) VisitReorderPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderPhotos404JSONResponse Error
+
+func (response ReorderPhotos404JSONResponse) VisitReorderPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReorderPhotos500JSONResponse Error
+
+func (response ReorderPhotos500JSONResponse) VisitReorderPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignPhotosRequestObject struct {
+	Id   string `json:"id"`
+	Body *PresignPhotosJSONRequestBody
+}
+
+type PresignPhotosResponseObject interface {
+	VisitPresignPhotosResponse(w http.ResponseWriter) error
+}
+
+type PresignPhotos200JSONResponse PhotoUploads
+
+func (response PresignPhotos200JSONResponse) VisitPresignPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignPhotos400JSONResponse Error
+
+func (response PresignPhotos400JSONResponse) VisitPresignPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignPhotos401JSONResponse Error
+
+func (response PresignPhotos401JSONResponse) VisitPresignPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignPhotos404JSONResponse Error
+
+func (response PresignPhotos404JSONResponse) VisitPresignPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignPhotos500JSONResponse Error
+
+func (response PresignPhotos500JSONResponse) VisitPresignPhotosResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetHealthRequestObject struct {
 }
 
@@ -1143,6 +1597,64 @@ func (response GetMonth500JSONResponse) VisitGetMonthResponse(w http.ResponseWri
 	return err
 }
 
+type DeletePhotoRequestObject struct {
+	Id string `json:"id"`
+}
+
+type DeletePhotoResponseObject interface {
+	VisitDeletePhotoResponse(w http.ResponseWriter) error
+}
+
+type DeletePhoto204Response struct {
+}
+
+func (response DeletePhoto204Response) VisitDeletePhotoResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeletePhoto401JSONResponse Error
+
+func (response DeletePhoto401JSONResponse) VisitDeletePhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePhoto404JSONResponse Error
+
+func (response DeletePhoto404JSONResponse) VisitDeletePhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeletePhoto500JSONResponse Error
+
+func (response DeletePhoto500JSONResponse) VisitDeletePhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// CreateCategory Create a Category or Subcategory
@@ -1163,6 +1675,15 @@ type StrictServerInterface interface {
 	// UpdateEntry Update an Entry
 	// (PATCH /entries/{id})
 	UpdateEntry(ctx context.Context, request UpdateEntryRequestObject) (UpdateEntryResponseObject, error)
+	// RegisterPhotos Record uploaded photos on an Entry
+	// (POST /entries/{id}/photos)
+	RegisterPhotos(ctx context.Context, request RegisterPhotosRequestObject) (RegisterPhotosResponseObject, error)
+	// ReorderPhotos Reorder an Entry's photos
+	// (PUT /entries/{id}/photos/order)
+	ReorderPhotos(ctx context.Context, request ReorderPhotosRequestObject) (ReorderPhotosResponseObject, error)
+	// PresignPhotos Presign direct-to-storage uploads for an Entry's photos
+	// (POST /entries/{id}/photos/presign)
+	PresignPhotos(ctx context.Context, request PresignPhotosRequestObject) (PresignPhotosResponseObject, error)
 	// GetHealth Liveness and database health
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
@@ -1172,6 +1693,9 @@ type StrictServerInterface interface {
 	// GetMonth A month's dot structure in one call
 	// (GET /months/{month})
 	GetMonth(ctx context.Context, request GetMonthRequestObject) (GetMonthResponseObject, error)
+	// DeletePhoto Delete a photo
+	// (DELETE /photos/{id})
+	DeletePhoto(ctx context.Context, request DeletePhotoRequestObject) (DeletePhotoResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -1393,6 +1917,105 @@ func (sh *strictHandler) UpdateEntry(w http.ResponseWriter, r *http.Request, id 
 	}
 }
 
+// RegisterPhotos operation middleware
+func (sh *strictHandler) RegisterPhotos(w http.ResponseWriter, r *http.Request, id string) {
+	var request RegisterPhotosRequestObject
+
+	request.Id = id
+
+	var body RegisterPhotosJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RegisterPhotos(ctx, request.(RegisterPhotosRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RegisterPhotos")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RegisterPhotosResponseObject); ok {
+		if err := validResponse.VisitRegisterPhotosResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReorderPhotos operation middleware
+func (sh *strictHandler) ReorderPhotos(w http.ResponseWriter, r *http.Request, id string) {
+	var request ReorderPhotosRequestObject
+
+	request.Id = id
+
+	var body ReorderPhotosJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReorderPhotos(ctx, request.(ReorderPhotosRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReorderPhotos")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReorderPhotosResponseObject); ok {
+		if err := validResponse.VisitReorderPhotosResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PresignPhotos operation middleware
+func (sh *strictHandler) PresignPhotos(w http.ResponseWriter, r *http.Request, id string) {
+	var request PresignPhotosRequestObject
+
+	request.Id = id
+
+	var body PresignPhotosJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PresignPhotos(ctx, request.(PresignPhotosRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PresignPhotos")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PresignPhotosResponseObject); ok {
+		if err := validResponse.VisitPresignPhotosResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetHealth operation middleware
 func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 	var request GetHealthRequestObject
@@ -1460,6 +2083,32 @@ func (sh *strictHandler) GetMonth(w http.ResponseWriter, r *http.Request, month 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMonthResponseObject); ok {
 		if err := validResponse.VisitGetMonthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeletePhoto operation middleware
+func (sh *strictHandler) DeletePhoto(w http.ResponseWriter, r *http.Request, id string) {
+	var request DeletePhotoRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeletePhoto(ctx, request.(DeletePhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeletePhoto")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeletePhotoResponseObject); ok {
+		if err := validResponse.VisitDeletePhotoResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

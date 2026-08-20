@@ -120,6 +120,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entries/{id}/photos/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Presign direct-to-storage uploads for an Entry's photos
+         * @description Returns storage upload URLs for count photos (full image + thumbnail each). Photo bytes never transit the API (ADR-0002); paths are namespaced per user and Entry, and the 10-photo cap counts existing photos.
+         */
+        post: operations["presignPhotos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entries/{id}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record uploaded photos on an Entry
+         * @description Called after the client has uploaded to the presigned URLs. Paths must belong to this Entry's namespace; positions append in the given order; the 10-photo cap is enforced.
+         */
+        post: operations["registerPhotos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/entries/{id}/photos/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder an Entry's photos
+         * @description photoIds must be exactly the Entry's photos — every id, once. Positions become 1..n in the given order.
+         */
+        put: operations["reorderPhotos"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/photos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a photo */
+        delete: operations["deletePhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/months/{month}": {
         parameters: {
             query?: never;
@@ -195,9 +272,47 @@ export interface components {
             subcategoryId?: string;
             authorId: string;
             content: string;
+            photos?: components["schemas"]["Photo"][];
         };
         EntryList: {
             entries: components["schemas"]["Entry"][];
+        };
+        PresignPhotos: {
+            /** @description How many photos will be uploaded (1..remaining cap). */
+            count: number;
+        };
+        PhotoUpload: {
+            objectPath: string;
+            thumbPath: string;
+            uploadUrl: string;
+            thumbUploadUrl: string;
+        };
+        PhotoUploads: {
+            uploads: components["schemas"]["PhotoUpload"][];
+        };
+        RegisterPhoto: {
+            objectPath: string;
+            thumbPath: string;
+            /** @description RFC3339 capture time kept from the original (GPS is stripped client-side). */
+            takenAt?: string;
+        };
+        RegisterPhotos: {
+            photos: components["schemas"]["RegisterPhoto"][];
+        };
+        ReorderPhotos: {
+            /** @description Every photo id of the Entry, once, in the new order. */
+            photoIds: string[];
+        };
+        Photo: {
+            id: string;
+            position: number;
+            /** @description Short-lived signed download URL. */
+            url: string;
+            thumbUrl: string;
+            takenAt?: string;
+        };
+        PhotoList: {
+            photos: components["schemas"]["Photo"][];
         };
         MonthDay: {
             date: string;
@@ -606,6 +721,239 @@ export interface operations {
                 };
             };
             /** @description Creating the category failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    presignPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresignPhotos"];
+            };
+        };
+        responses: {
+            /** @description One upload pair per requested photo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoUploads"];
+                };
+            };
+            /** @description Invalid count or the 10-photo cap would be exceeded. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such Entry in the signed-in User's Journal. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Presigning failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    registerPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterPhotos"];
+            };
+        };
+        responses: {
+            /** @description The Entry's full photo list, in position order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoList"];
+                };
+            };
+            /** @description Foreign paths, duplicates, or the cap exceeded. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such Entry in the signed-in User's Journal. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Recording the photos failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reorderPhotos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderPhotos"];
+            };
+        };
+        responses: {
+            /** @description The Entry's photos in their new order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoList"];
+                };
+            };
+            /** @description photoIds is not exactly the Entry's photos. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such Entry in the signed-in User's Journal. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Reordering failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deletePhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted (row and storage objects). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such photo on the signed-in User's Entries. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Deleting the photo failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

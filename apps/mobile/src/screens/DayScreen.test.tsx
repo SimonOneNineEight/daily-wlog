@@ -302,3 +302,42 @@ it('rolls back and reports when persisting a reorder fails', async () => {
   expect(await screen.findByText('排序失敗，請再試一次')).toBeTruthy();
   expect(gets()).toBeGreaterThan(before); // rolled back to server truth
 });
+
+it('shows existing photos in edit mode and hides the add tile at the cap', async () => {
+  const tenPhotos = Array.from({ length: 10 }, (_, i) => ({
+    id: `p${i}`,
+    position: i + 1,
+    url: `https://signed/full${i}`,
+    thumbUrl: `https://signed/thumb${i}`,
+  }));
+  listedEntries = [
+    {
+      id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', authorId: 'u1',
+      content: encodeContent({ title: '滿照片', note: '' }), photos: tenPhotos,
+    },
+    {
+      id: 'e2', date: '2026-08-19', position: 2, categoryId: 'c-food', authorId: 'u1',
+      content: encodeContent({ title: '兩張', note: '' }), photos: tenPhotos.slice(0, 2),
+    },
+  ];
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+
+  // Full entry: 10 tiles, no add tile.
+  const fullCard = await screen.findByText('滿照片');
+  await act(async () => {
+    fireEvent.press(fullCard);
+  });
+  expect(screen.queryByTestId('grid-item-__add__')).toBeNull();
+  expect(screen.getByTestId('grid-item-photo:p9')).toBeTruthy();
+  await act(async () => {
+    fireEvent.press(screen.getByText('取消'));
+  });
+
+  // Two photos: add tile present with the counter.
+  const partialCard = await screen.findByText('兩張');
+  await act(async () => {
+    fireEvent.press(partialCard);
+  });
+  expect(screen.getByTestId('grid-item-__add__')).toBeTruthy();
+  expect(screen.getByText('2/10')).toBeTruthy();
+});

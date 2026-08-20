@@ -68,12 +68,27 @@ func (h handlers) DeleteEntry(ctx context.Context, request apigen.DeleteEntryReq
 	if err != nil {
 		return apigen.DeleteEntry500JSONResponse(h.failure(ctx, "deleting the entry failed", err)), nil
 	}
+	// Snapshot photo paths first: the row cascade wipes them with the entry.
+	photoRows, err := h.queries.ListPhotosForEntries(ctx, []string{request.Id})
+	if err != nil {
+		return apigen.DeleteEntry500JSONResponse(h.failure(ctx, "deleting the entry failed", err)), nil
+	}
 	deleted, err := h.queries.DeleteEntry(ctx, dbgen.DeleteEntryParams{ID: request.Id, JournalID: journalID})
 	if err != nil {
 		return apigen.DeleteEntry500JSONResponse(h.failure(ctx, "deleting the entry failed", err)), nil
 	}
 	if deleted == 0 {
 		return apigen.DeleteEntry404JSONResponse{Message: "entry not found"}, nil
+	}
+	if len(photoRows) > 0 {
+		paths := make([]string, 0, len(photoRows)*2)
+		for _, row := range photoRows {
+			paths = append(paths, row.ObjectPath, row.ThumbPath)
+		}
+		// Best-effort object cleanup, logged on failure, never surfaced.
+		if err := h.store.Remove(ctx, paths); err != nil {
+			_ = h.failure(ctx, "entry photo cleanup failed", err)
+		}
 	}
 	return apigen.DeleteEntry204Response{}, nil
 }
@@ -107,8 +122,20 @@ func (h handlers) ReorderDay(ctx context.Context, request apigen.ReorderDayReque
 	if err != nil {
 		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
 	}
+	entryIDs := make([]string, len(rows))
+	for i, row := range rows {
+		entryIDs[i] = row.ID
+	}
+	photosByEntry, err := h.photosByEntry(ctx, entryIDs)
+	if err != nil {
+		return apigen.ReorderDay500JSONResponse(h.failure(ctx, "reordering failed", err)), nil
+	}
 	entries := make([]apigen.Entry, len(rows))
 	for i, row := range rows {
+		photos := photosByEntry[row.ID]
+		if photos == nil {
+			photos = []apigen.Photo{}
+		}
 		entries[i] = apigen.Entry{
 			Id:            row.ID,
 			Date:          row.EntryDate,
@@ -117,6 +144,7 @@ func (h handlers) ReorderDay(ctx context.Context, request apigen.ReorderDayReque
 			SubcategoryId: row.SubcategoryID,
 			AuthorId:      row.AuthorID,
 			Content:       string(row.Content),
+			Photos:        &photos,
 		}
 	}
 	return apigen.ReorderDay200JSONResponse{Entries: entries}, nil

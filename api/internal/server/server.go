@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -19,10 +20,20 @@ import (
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/logging"
 )
 
+// ObjectStore is the slice of the storage client the handlers need; an
+// interface so tests can fault-inject storage failures (the platform itself
+// is never mocked for behavior tests).
+type ObjectStore interface {
+	SignUpload(ctx context.Context, path string) (string, error)
+	SignDownloads(ctx context.Context, paths []string, expiresIn time.Duration) (map[string]string, error)
+	Remove(ctx context.Context, paths []string) error
+}
+
 // handlers implements apigen.StrictServerInterface.
 type handlers struct {
 	logger  *slog.Logger
 	queries dbgen.Querier
+	store   ObjectStore
 }
 
 func (h handlers) GetHealth(ctx context.Context, _ apigen.GetHealthRequestObject) (apigen.GetHealthResponseObject, error) {
@@ -76,15 +87,15 @@ func (h handlers) failure(ctx context.Context, message string, err error) apigen
 	return apigen.Error{Message: message}
 }
 
-// New builds the API handler on top of a database pool.
-func New(logger *slog.Logger, pool *pgxpool.Pool, verifier *auth.Verifier) http.Handler {
-	return NewWithQuerier(logger, dbgen.New(pool), verifier)
+// New builds the API handler on top of a database pool and storage client.
+func New(logger *slog.Logger, pool *pgxpool.Pool, verifier *auth.Verifier, store ObjectStore) http.Handler {
+	return NewWithQuerier(logger, dbgen.New(pool), verifier, store)
 }
 
-// NewWithQuerier exists so tests can inject a fault-injecting Querier for
-// database error paths unreachable through the real database; behavior tests
-// use New against local Supabase.
-func NewWithQuerier(logger *slog.Logger, queries dbgen.Querier, verifier *auth.Verifier) http.Handler {
+// NewWithQuerier exists so tests can inject fault-injecting Querier/store
+// implementations for error paths unreachable through the real platform;
+// behavior tests use New against local Supabase.
+func NewWithQuerier(logger *slog.Logger, queries dbgen.Querier, verifier *auth.Verifier, store ObjectStore) http.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(logging.AccessLog(logger))
@@ -93,6 +104,6 @@ func NewWithQuerier(logger *slog.Logger, queries dbgen.Querier, verifier *auth.V
 	router.Use(middleware.Recoverer)
 	router.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
 	router.Use(auth.Middleware(verifier, map[string]bool{"/healthz": true}))
-	h := handlers{logger: logger, queries: queries}
+	h := handlers{logger: logger, queries: queries, store: store}
 	return apigen.HandlerFromMux(apigen.NewStrictHandler(h, nil), router)
 }

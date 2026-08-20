@@ -89,6 +89,7 @@ export function MonthScreen({
             title: decodeContent(entry.content)?.title ?? strings.day.unreadable,
             color: colorOf(entry.categoryId),
             icon: categoryOf(entry.categoryId)?.icon ?? 'tag',
+            hasPhotos: (entry.photos?.length ?? 0) > 0,
           })),
         );
       })

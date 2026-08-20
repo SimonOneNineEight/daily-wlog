@@ -12,8 +12,14 @@ type Querier interface {
 	// A usable Entry category is owned by the user and top-level: Subcategories
 	// refine an Entry's Category, they never replace it.
 	CategoryIsUsable(ctx context.Context, arg CategoryIsUsableParams) (bool, error)
+	CountPhotos(ctx context.Context, entryID string) (int64, error)
 	DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error)
+	// Ownership travels through the Entry's Journal; returns the storage paths
+	// for best-effort object cleanup.
+	DeletePhoto(ctx context.Context, arg DeletePhotoParams) (DeletePhotoRow, error)
 	GetJournal(ctx context.Context, userID string) (string, error)
+	// The Entry, if it belongs to the signed-in User's Journal.
+	GetOwnedEntry(ctx context.Context, arg GetOwnedEntryParams) (string, error)
 	GetSchemaVersion(ctx context.Context) (int32, error)
 	// Position lands after existing siblings (same parent level). Name
 	// uniqueness per (user, parent) is enforced by the table's UNIQUE NULLS NOT
@@ -22,6 +28,7 @@ type Querier interface {
 	// Position is assigned at the end of the date's existing order in the same
 	// statement, so multiple Entries per day stack in creation order.
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
+	InsertPhoto(ctx context.Context, arg InsertPhotoParams) (InsertPhotoRow, error)
 	ListCategories(ctx context.Context, userID string) ([]ListCategoriesRow, error)
 	ListEntriesByDate(ctx context.Context, arg ListEntriesByDateParams) ([]ListEntriesByDateRow, error)
 	ListEntryIDs(ctx context.Context, arg ListEntryIDsParams) ([]string, error)
@@ -29,6 +36,8 @@ type Querier interface {
 	// groups rows into days. Only structure leaves the database — dots need
 	// categories, never content (ADR-0004).
 	ListMonthDots(ctx context.Context, arg ListMonthDotsParams) ([]ListMonthDotsRow, error)
+	ListPhotoIDs(ctx context.Context, entryID string) ([]string, error)
+	ListPhotosForEntries(ctx context.Context, entryIds []string) ([]ListPhotosForEntriesRow, error)
 	// First-sign-in provisioning in one atomic statement: User, Journal, and the
 	// five seeded categories (colors/icons per the design canvas). Every level
 	// conflict-skips, so re-sign-in and concurrent first sign-ins are no-ops.
@@ -38,6 +47,8 @@ type Querier interface {
 	// One statement assigning every entry its new 1..n position; the deferred
 	// unique constraint validates the final order at commit.
 	ReorderEntries(ctx context.Context, arg ReorderEntriesParams) error
+	// One statement, final order validated at commit by the deferred constraint.
+	ReorderPhotos(ctx context.Context, arg ReorderPhotosParams) error
 	// A usable Entry refinement: owned by the user and a child of exactly the
 	// Entry's Category.
 	SubcategoryIsUsable(ctx context.Context, arg SubcategoryIsUsableParams) (bool, error)

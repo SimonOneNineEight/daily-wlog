@@ -17,6 +17,7 @@ import (
 
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/auth"
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/server"
+	"github.com/SimonOneNineEight/daily-wlog/api/internal/storage"
 )
 
 func envOr(key, fallback string) string {
@@ -37,6 +38,18 @@ func testPublishableKey() string {
 
 func testJWKSURL() string {
 	return envOr("SUPABASE_JWKS_URL", testAuthURL()+"/.well-known/jwks.json")
+}
+
+func testStorageURL() string {
+	return envOr("SUPABASE_STORAGE_URL", "http://127.0.0.1:55321/storage/v1")
+}
+
+func testSecretKey() string {
+	return envOr("SUPABASE_SECRET_KEY", "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz")
+}
+
+func testStore() *storage.Client {
+	return storage.New(testStorageURL(), testSecretKey())
 }
 
 // signUpTestUser registers a fresh user with real Supabase Auth and returns
@@ -69,7 +82,7 @@ func signUpTestUser(t *testing.T) string {
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	handler := server.New(discardLogger(), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL()))
+	handler := server.New(discardLogger(), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL()), testStore())
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 	return ts

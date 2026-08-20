@@ -131,8 +131,20 @@ func (h handlers) ListEntries(ctx context.Context, request apigen.ListEntriesReq
 	if err != nil {
 		return apigen.ListEntries500JSONResponse(h.failure(ctx, "listing entries failed", err)), nil
 	}
+	entryIDs := make([]string, len(rows))
+	for i, row := range rows {
+		entryIDs[i] = row.ID
+	}
+	photosByEntry, err := h.photosByEntry(ctx, entryIDs)
+	if err != nil {
+		return apigen.ListEntries500JSONResponse(h.failure(ctx, "listing entries failed", err)), nil
+	}
 	entries := make([]apigen.Entry, len(rows))
 	for i, row := range rows {
+		photos := photosByEntry[row.ID]
+		if photos == nil {
+			photos = []apigen.Photo{}
+		}
 		entries[i] = apigen.Entry{
 			Id:            row.ID,
 			Date:          row.EntryDate,
@@ -141,6 +153,7 @@ func (h handlers) ListEntries(ctx context.Context, request apigen.ListEntriesReq
 			SubcategoryId: row.SubcategoryID,
 			AuthorId:      row.AuthorID,
 			Content:       string(row.Content),
+			Photos:        &photos,
 		}
 	}
 	return apigen.ListEntries200JSONResponse{Entries: entries}, nil

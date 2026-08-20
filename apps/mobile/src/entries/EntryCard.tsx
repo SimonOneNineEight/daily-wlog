@@ -1,8 +1,14 @@
 import { GripHorizontal } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { Dimensions, Pressable, Text, View } from 'react-native';
 
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { createStyles, theme } from '../theme';
+
+import { PhotoGrid } from './PhotoGrid';
+
+// Card inner width: screen minus the day view's gutters and card padding.
+const cardGridWidth =
+  Dimensions.get('window').width - theme.spacing.screenGutter * 2 - theme.spacing.cardPadding * 2;
 
 type Props = {
   title: string;
@@ -11,6 +17,7 @@ type Props = {
   categoryIcon: string;
   subcategoryName?: string;
   note?: string;
+  photos?: { id: string; thumbUrl: string }[];
   dragging?: boolean;
   onPress: () => void;
   onLongPress: () => void;
@@ -26,6 +33,7 @@ export function EntryCard({
   categoryIcon,
   subcategoryName,
   note,
+  photos,
   dragging,
   onPress,
   onLongPress,
@@ -59,6 +67,14 @@ export function EntryCard({
         <Text style={styles.note} numberOfLines={3}>
           {note}
         </Text>
+      ) : null}
+      {photos && photos.length > 0 ? (
+        <View style={styles.photos}>
+          <PhotoGrid
+            photos={photos.map((p) => ({ key: p.id, uri: p.thumbUrl }))}
+            width={cardGridWidth}
+          />
+        </View>
       ) : null}
     </Pressable>
   );
@@ -99,6 +115,9 @@ const styles = createStyles((t) => ({
   note: {
     ...t.typography.note,
     color: t.colors.textSecondary,
+    marginTop: t.spacing.space5,
+  },
+  photos: {
     marginTop: t.spacing.space5,
   },
 }));

@@ -43,6 +43,16 @@ type Journal struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type Photo struct {
+	ID         string
+	EntryID    string
+	Position   int32
+	ObjectPath string
+	ThumbPath  string
+	TakenAt    pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
 type User struct {
 	ID        string
 	CreatedAt pgtype.Timestamptz

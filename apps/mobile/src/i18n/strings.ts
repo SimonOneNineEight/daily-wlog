@@ -32,6 +32,13 @@ const zhTW = {
     reorderFailed: '排序失敗，請再試一次',
     unreadable: '（無法讀取的紀錄）',
   },
+  photos: {
+    takePhoto: '拍照',
+    fromLibrary: '從相簿選擇',
+    removeConfirmTitle: '移除這張照片？',
+    remove: '移除',
+    uploadFailed: '照片上傳失敗，稍後可在編輯這筆紀錄時重新加入',
+  },
   entryForm: {
     cancel: '取消',
     save: '儲存',

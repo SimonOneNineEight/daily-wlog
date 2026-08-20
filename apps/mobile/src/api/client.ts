@@ -70,3 +70,40 @@ export function reorderDay(accessToken: string, date: string, entryIds: string[]
 export function createCategory(accessToken: string, body: CreateCategoryBody): Promise<Category> {
   return request<Category>(accessToken, '/categories', { method: 'POST', body });
 }
+
+export type Photo = NonNullable<Entry['photos']>[number];
+type PhotoUploads =
+  paths['/entries/{id}/photos/presign']['post']['responses']['200']['content']['application/json'];
+type PhotoList =
+  paths['/entries/{id}/photos']['post']['responses']['201']['content']['application/json'];
+type RegisterPhotoBody =
+  paths['/entries/{id}/photos']['post']['requestBody']['content']['application/json']['photos'][number];
+
+export function presignPhotos(accessToken: string, entryId: string, count: number): Promise<PhotoUploads> {
+  return request<PhotoUploads>(accessToken, `/entries/${entryId}/photos/presign`, {
+    method: 'POST',
+    body: { count },
+  });
+}
+
+export function registerPhotos(
+  accessToken: string,
+  entryId: string,
+  photos: RegisterPhotoBody[],
+): Promise<PhotoList> {
+  return request<PhotoList>(accessToken, `/entries/${entryId}/photos`, {
+    method: 'POST',
+    body: { photos },
+  });
+}
+
+export function deletePhoto(accessToken: string, id: string): Promise<void> {
+  return request<void>(accessToken, `/photos/${id}`, { method: 'DELETE' });
+}
+
+export function reorderPhotos(accessToken: string, entryId: string, photoIds: string[]): Promise<PhotoList> {
+  return request<PhotoList>(accessToken, `/entries/${entryId}/photos/order`, {
+    method: 'PUT',
+    body: { photoIds },
+  });
+}

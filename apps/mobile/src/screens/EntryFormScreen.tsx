@@ -1,10 +1,22 @@
 import { ChevronDown, Plus, Search } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActionSheetIOS, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { Category, Entry } from '../api/client';
-import { createCategory, createEntry, deleteEntry, updateEntry } from '../api/client';
+import type { Category, Entry, Photo } from '../api/client';
+import {
+  createCategory,
+  createEntry,
+  deleteEntry,
+  deletePhoto,
+  reorderPhotos,
+  updateEntry,
+} from '../api/client';
+import { PhotoGrid } from '../entries/PhotoGrid';
+import type { ProcessedPhoto } from '../photos/processPhoto';
+import { processPhoto } from '../photos/processPhoto';
+import { uploadPhotos } from '../photos/uploadPhotos';
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { dateHeading } from '../calendar/dateLabel';
 import { ColorPresetPicker } from '../categories/ColorPresetPicker';
@@ -59,6 +71,8 @@ export function EntryFormScreen({
   const [note, setNote] = useState(initialContent?.note ?? '');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [existingPhotos, setExistingPhotos] = useState<Photo[]>(entry?.photos ?? []);
+  const [stagedPhotos, setStagedPhotos] = useState<ProcessedPhoto[]>([]);
 
   const known = new Set(categories.map((c) => c.id));
   const all = [...categories, ...created.filter((c) => !known.has(c.id))];
@@ -80,6 +94,7 @@ export function EntryFormScreen({
     setFailed(false);
     const content = encodeContent({ title: title.trim(), note });
     const refinement = subcategory !== null ? { subcategoryId: subcategory.id } : {};
+    let entryId = entry?.id;
     try {
       if (entry) {
         await updateEntry(accessToken, entry.id, {
@@ -88,12 +103,104 @@ export function EntryFormScreen({
           content,
         });
       } else {
-        await createEntry(accessToken, { date, categoryId: category.id, ...refinement, content });
+        const created = await createEntry(accessToken, {
+          date,
+          categoryId: category.id,
+          ...refinement,
+          content,
+        });
+        entryId = created.id;
       }
-      onDone(true);
     } catch {
       setFailed(true);
       setSaving(false);
+      return;
+    }
+    try {
+      if (entryId && stagedPhotos.length > 0) {
+        await uploadPhotos(accessToken, entryId, stagedPhotos);
+      }
+    } catch {
+      // The Entry itself saved; the photos can be re-added from edit.
+      Alert.alert(strings.photos.uploadFailed);
+    }
+    onDone(true);
+  };
+
+  const photoCount = existingPhotos.length + stagedPhotos.length;
+
+  const addPhotos = () => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: [strings.photos.takePhoto, strings.photos.fromLibrary, strings.entryForm.cancel],
+        cancelButtonIndex: 2,
+      },
+      (choice) => {
+        if (choice === 0) void pickPhotos('camera');
+        if (choice === 1) void pickPhotos('library');
+      },
+    );
+  };
+
+  const pickPhotos = async (source: 'camera' | 'library') => {
+    const remaining = 10 - photoCount;
+    if (remaining < 1) return;
+    let result: ImagePicker.ImagePickerResult;
+    if (source === 'camera') {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) return;
+      result = await ImagePicker.launchCameraAsync({ quality: 1, exif: true });
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        quality: 1,
+        exif: true,
+        allowsMultipleSelection: true,
+        selectionLimit: remaining,
+      });
+    }
+    if (result.canceled) return;
+    const processed = await Promise.all(result.assets.slice(0, remaining).map(processPhoto));
+    setStagedPhotos((prev) => [...prev, ...processed]);
+  };
+
+  const removeGridPhoto = (key: string) => {
+    if (key.startsWith('staged:')) {
+      const index = Number(key.slice('staged:'.length));
+      setStagedPhotos((prev) => prev.filter((_, i) => i !== index));
+      return;
+    }
+    const id = key.slice('photo:'.length);
+    Alert.alert(strings.photos.removeConfirmTitle, undefined, [
+      { text: strings.entryForm.cancel, style: 'cancel' },
+      {
+        text: strings.photos.remove,
+        style: 'destructive',
+        onPress: () => {
+          deletePhoto(accessToken, id)
+            .then(() => setExistingPhotos((prev) => prev.filter((p) => p.id !== id)))
+            .catch(() => Alert.alert(strings.entryForm.saveFailed));
+        },
+      },
+    ]);
+  };
+
+  // Drag order: existing photos persist through the API; staged photos hold
+  // their block after the existing ones until upload, so a cross-block drag
+  // snaps back on the next render (registration appends).
+  const reorderGridPhotos = (keys: string[]) => {
+    const existingIds = keys.filter((k) => k.startsWith('photo:')).map((k) => k.slice('photo:'.length));
+    const stagedIndexes = keys.filter((k) => k.startsWith('staged:')).map((k) => Number(k.slice('staged:'.length)));
+    setStagedPhotos((prev) => stagedIndexes.map((i) => prev[i]));
+    const currentIds = existingPhotos.map((p) => p.id);
+    if (existingIds.length === currentIds.length && existingIds.some((id, i) => id !== currentIds[i])) {
+      const previous = existingPhotos;
+      setExistingPhotos(existingIds.map((id) => previous.find((p) => p.id === id)!));
+      if (entry) {
+        reorderPhotos(accessToken, entry.id, existingIds)
+          .then((list) => setExistingPhotos(list.photos))
+          .catch(() => setExistingPhotos(previous));
+      }
     }
   };
 
@@ -290,6 +397,13 @@ export function EntryFormScreen({
               multiline
               value={note}
               onChangeText={setNote}
+            />
+            <PhotoGrid
+              photos={[
+                ...existingPhotos.map((p) => ({ key: `photo:${p.id}`, uri: p.thumbUrl })),
+                ...stagedPhotos.map((p, i) => ({ key: `staged:${i}`, uri: p.thumbUri })),
+              ]}
+              editable={{ onAdd: addPhotos, onRemove: removeGridPhoto, onReorder: reorderGridPhotos }}
             />
             {failed ? <Text style={styles.error}>{strings.entryForm.saveFailed}</Text> : null}
             {entry ? (

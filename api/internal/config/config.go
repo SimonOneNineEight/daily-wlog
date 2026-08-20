@@ -11,6 +11,10 @@ type Config struct {
 	// SupabaseJWKSURL is where Supabase Auth publishes its signing keys.
 	// Required: token verification fails closed without it.
 	SupabaseJWKSURL string
+	// SupabaseStorageURL is the storage REST base (…/storage/v1). Required.
+	SupabaseStorageURL string
+	// SupabaseSecretKey authenticates the API to storage. Required.
+	SupabaseSecretKey string
 	// SentryDSN enables Sentry error reporting when non-empty.
 	SentryDSN string
 }
@@ -25,14 +29,24 @@ func Load(getenv func(string) string) (Config, error) {
 	if jwksURL == "" {
 		return Config{}, errors.New("SUPABASE_JWKS_URL is required")
 	}
+	storageURL := getenv("SUPABASE_STORAGE_URL")
+	if storageURL == "" {
+		return Config{}, errors.New("SUPABASE_STORAGE_URL is required")
+	}
+	secretKey := getenv("SUPABASE_SECRET_KEY")
+	if secretKey == "" {
+		return Config{}, errors.New("SUPABASE_SECRET_KEY is required")
+	}
 	port := getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	return Config{
-		Addr:            ":" + port,
-		DatabaseURL:     databaseURL,
-		SupabaseJWKSURL: jwksURL,
-		SentryDSN:       getenv("SENTRY_DSN"),
+		Addr:               ":" + port,
+		DatabaseURL:        databaseURL,
+		SupabaseJWKSURL:    jwksURL,
+		SupabaseStorageURL: storageURL,
+		SupabaseSecretKey:  secretKey,
+		SentryDSN:          getenv("SENTRY_DSN"),
 	}, nil
 }

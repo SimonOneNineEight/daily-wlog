@@ -12,10 +12,12 @@ func env(vars map[string]string) func(string) string {
 
 func TestLoadReadsEnvironment(t *testing.T) {
 	cfg, err := config.Load(env(map[string]string{
-		"DATABASE_URL":      "postgresql://db/example",
-		"PORT":              "9090",
-		"SUPABASE_JWKS_URL": "https://auth.example/jwks.json",
-		"SENTRY_DSN":        "https://key@sentry.example/1",
+		"DATABASE_URL":         "postgresql://db/example",
+		"PORT":                 "9090",
+		"SUPABASE_JWKS_URL":    "https://auth.example/jwks.json",
+		"SUPABASE_STORAGE_URL": "https://storage.example/storage/v1",
+		"SUPABASE_SECRET_KEY":  "sb_secret_test",
+		"SENTRY_DSN":           "https://key@sentry.example/1",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -36,8 +38,10 @@ func TestLoadReadsEnvironment(t *testing.T) {
 
 func TestLoadDefaultsPortTo8080(t *testing.T) {
 	cfg, err := config.Load(env(map[string]string{
-		"DATABASE_URL":      "postgresql://db/example",
-		"SUPABASE_JWKS_URL": "https://auth.example/jwks.json",
+		"DATABASE_URL":         "postgresql://db/example",
+		"SUPABASE_JWKS_URL":    "https://auth.example/jwks.json",
+		"SUPABASE_STORAGE_URL": "https://storage.example/storage/v1",
+		"SUPABASE_SECRET_KEY":  "sb_secret_test",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -47,14 +51,24 @@ func TestLoadDefaultsPortTo8080(t *testing.T) {
 	}
 }
 
-func TestLoadRequiresDatabaseURL(t *testing.T) {
-	if _, err := config.Load(env(map[string]string{"SUPABASE_JWKS_URL": "https://auth.example/jwks.json"})); err == nil {
-		t.Fatal("Load succeeded without DATABASE_URL, want an error")
+func TestLoadRequiredKeys(t *testing.T) {
+	full := map[string]string{
+		"DATABASE_URL":         "postgresql://db/example",
+		"SUPABASE_JWKS_URL":    "https://auth.example/jwks.json",
+		"SUPABASE_STORAGE_URL": "https://storage.example/storage/v1",
+		"SUPABASE_SECRET_KEY":  "sb_secret_test",
 	}
-}
-
-func TestLoadRequiresJWKSURL(t *testing.T) {
-	if _, err := config.Load(env(map[string]string{"DATABASE_URL": "postgresql://db/example"})); err == nil {
-		t.Fatal("Load succeeded without SUPABASE_JWKS_URL, want an error")
+	for missing := range full {
+		t.Run(missing, func(t *testing.T) {
+			partial := map[string]string{}
+			for k, v := range full {
+				if k != missing {
+					partial[k] = v
+				}
+			}
+			if _, err := config.Load(env(partial)); err == nil {
+				t.Fatalf("Load succeeded without %s, want an error", missing)
+			}
+		})
 	}
 }

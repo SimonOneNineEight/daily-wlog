@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, Image as ImageIcon } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { strings } from '../i18n/strings';
@@ -11,6 +11,7 @@ export type PanelEntry = {
   title: string;
   color: string;
   icon: string;
+  hasPhotos?: boolean;
 };
 
 type Props = {
@@ -42,6 +43,9 @@ export function DayPanel({ dateLabel, entries, onOpen }: Props) {
             <Text style={styles.title} numberOfLines={1}>
               {entry.title}
             </Text>
+            {entry.hasPhotos ? (
+              <ImageIcon size={15} color={theme.colors.textQuaternary} strokeWidth={2} />
+            ) : null}
           </Pressable>
         ))
       )}

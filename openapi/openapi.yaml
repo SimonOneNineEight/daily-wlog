@@ -306,6 +306,198 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /entries/{id}/photos/presign:
+    post:
+      operationId: presignPhotos
+      summary: Presign direct-to-storage uploads for an Entry's photos
+      description: >
+        Returns storage upload URLs for count photos (full image + thumbnail
+        each). Photo bytes never transit the API (ADR-0002); paths are
+        namespaced per user and Entry, and the 10-photo cap counts existing
+        photos.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresignPhotos"
+      responses:
+        "200":
+          description: One upload pair per requested photo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoUploads"
+        "400":
+          description: Invalid count or the 10-photo cap would be exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such Entry in the signed-in User's Journal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Presigning failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /entries/{id}/photos:
+    post:
+      operationId: registerPhotos
+      summary: Record uploaded photos on an Entry
+      description: >
+        Called after the client has uploaded to the presigned URLs. Paths
+        must belong to this Entry's namespace; positions append in the given
+        order; the 10-photo cap is enforced.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterPhotos"
+      responses:
+        "201":
+          description: The Entry's full photo list, in position order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoList"
+        "400":
+          description: Foreign paths, duplicates, or the cap exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such Entry in the signed-in User's Journal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Recording the photos failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /entries/{id}/photos/order:
+    put:
+      operationId: reorderPhotos
+      summary: Reorder an Entry's photos
+      description: >
+        photoIds must be exactly the Entry's photos — every id, once.
+        Positions become 1..n in the given order.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderPhotos"
+      responses:
+        "200":
+          description: The Entry's photos in their new order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhotoList"
+        "400":
+          description: photoIds is not exactly the Entry's photos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such Entry in the signed-in User's Journal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Reordering failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /photos/{id}:
+    delete:
+      operationId: deletePhoto
+      summary: Delete a photo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted (row and storage objects).
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such photo on the signed-in User's Entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Deleting the photo failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /months/{month}:
     get:
       operationId: getMonth
@@ -482,6 +674,10 @@ components:
           type: string
         content:
           type: string
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Photo"
     EntryList:
       type: object
       required:
@@ -491,6 +687,99 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Entry"
+    PresignPhotos:
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+          description: How many photos will be uploaded (1..remaining cap).
+    PhotoUpload:
+      type: object
+      required:
+        - objectPath
+        - thumbPath
+        - uploadUrl
+        - thumbUploadUrl
+      properties:
+        objectPath:
+          type: string
+        thumbPath:
+          type: string
+        uploadUrl:
+          type: string
+        thumbUploadUrl:
+          type: string
+    PhotoUploads:
+      type: object
+      required:
+        - uploads
+      properties:
+        uploads:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoUpload"
+    RegisterPhoto:
+      type: object
+      required:
+        - objectPath
+        - thumbPath
+      properties:
+        objectPath:
+          type: string
+        thumbPath:
+          type: string
+        takenAt:
+          type: string
+          description: RFC3339 capture time kept from the original (GPS is stripped client-side).
+    RegisterPhotos:
+      type: object
+      required:
+        - photos
+      properties:
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegisterPhoto"
+    ReorderPhotos:
+      type: object
+      required:
+        - photoIds
+      properties:
+        photoIds:
+          type: array
+          items:
+            type: string
+          description: Every photo id of the Entry, once, in the new order.
+    Photo:
+      type: object
+      required:
+        - id
+        - position
+        - url
+        - thumbUrl
+      properties:
+        id:
+          type: string
+        position:
+          type: integer
+        url:
+          type: string
+          description: Short-lived signed download URL.
+        thumbUrl:
+          type: string
+        takenAt:
+          type: string
+    PhotoList:
+      type: object
+      required:
+        - photos
+      properties:
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Photo"
     MonthDay:
       type: object
       required:
