@@ -114,10 +114,13 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
                               </View>
                               <Text style={[styles.rowTitle, styles.rowText]}>{child.name}</Text>
                               {subOn || parentOn ? (
+                                // Dimmed whenever the parent is on (artboard):
+                                // the parent's selection already implies this
+                                // child, so its own check reads secondary.
                                 <Check
                                   size={18}
                                   color={
-                                    subOn ? theme.colors.textPrimary : theme.colors.textQuaternary
+                                    parentOn ? theme.colors.textQuaternary : theme.colors.textPrimary
                                   }
                                   strokeWidth={2}
                                 />

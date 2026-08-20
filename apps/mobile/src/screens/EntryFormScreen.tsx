@@ -120,8 +120,11 @@ export function EntryFormScreen({
       ),
     ).then((readable) => {
       if (!active || readable.every(Boolean)) return;
+      const unreadable = new Set(
+        draft.photos.filter((_, index) => !readable[index]).map((photo) => photo.fullUri),
+      );
       setPhotosMissing(true);
-      setStagedPhotos((prev) => prev.filter((p) => readable[draft.photos.indexOf(p)] !== false));
+      setStagedPhotos((prev) => prev.filter((photo) => !unreadable.has(photo.fullUri)));
     });
     return () => {
       active = false;

@@ -82,7 +82,8 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     gap: t.spacing.space3,
     height: 30,
-    paddingLeft: t.spacing.space4,
+    // Artboard: 10 left of the dot, 8 right of the x.
+    paddingLeft: 10,
     paddingRight: t.spacing.space4,
     borderRadius: t.radius.pill,
     backgroundColor: t.colors.surface,
