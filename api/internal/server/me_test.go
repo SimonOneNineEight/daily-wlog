@@ -10,6 +10,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,9 +47,24 @@ func testStorageURL() string {
 	return envOr("SUPABASE_STORAGE_URL", "http://127.0.0.1:55321/storage/v1")
 }
 
-func testSecretKey() string {
-	return envOr("SUPABASE_SECRET_KEY", "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz")
-}
+// testSecretKey resolves the storage secret from the environment (CI), or
+// from the running local stack: the demo key is public CLI material, but
+// embedding the literal here trips secret scanners by shape.
+var testSecretKey = sync.OnceValue(func() string {
+	if v := os.Getenv("SUPABASE_SECRET_KEY"); v != "" {
+		return v
+	}
+	out, err := exec.Command("supabase", "status", "-o", "env").Output()
+	if err != nil {
+		panic("SUPABASE_SECRET_KEY is unset and `supabase status` failed (is the local stack up?): " + err.Error())
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if rest, ok := strings.CutPrefix(line, "SECRET_KEY="); ok {
+			return strings.Trim(strings.TrimSpace(rest), `"`)
+		}
+	}
+	panic("SECRET_KEY missing from `supabase status -o env` output")
+})
 
 func testStore() *storage.Client {
 	return storage.New(testStorageURL(), testSecretKey())
