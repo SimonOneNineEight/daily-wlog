@@ -209,6 +209,21 @@ type UpdateEntry struct {
 	SubcategoryId *string `json:"subcategoryId,omitempty"`
 }
 
+// Year defines model for Year.
+type Year struct {
+	Days []YearDay `json:"days"`
+
+	// TotalEntries How many Entries the year holds in total.
+	TotalEntries int `json:"totalEntries"`
+}
+
+// YearDay defines model for YearDay.
+type YearDay struct {
+	// CategoryId The day's first Entry's category, by entry order.
+	CategoryId string `json:"categoryId"`
+	Date       string `json:"date"`
+}
+
 // ListEntriesParams defines parameters for ListEntries.
 type ListEntriesParams struct {
 	// Date The Entry date, YYYY-MM-DD.
@@ -286,6 +301,9 @@ type ServerInterface interface {
 	// DeletePhoto Delete a photo
 	// (DELETE /photos/{id})
 	DeletePhoto(w http.ResponseWriter, r *http.Request, id string)
+	// GetYear A year's day colors in one call
+	// (GET /years/{year})
+	GetYear(w http.ResponseWriter, r *http.Request, year string)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -379,6 +397,12 @@ func (_ Unimplemented) GetMonth(w http.ResponseWriter, r *http.Request, month st
 // DeletePhoto Delete a photo
 // (DELETE /photos/{id})
 func (_ Unimplemented) DeletePhoto(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetYear A year's day colors in one call
+// (GET /years/{year})
+func (_ Unimplemented) GetYear(w http.ResponseWriter, r *http.Request, year string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -740,6 +764,32 @@ func (siw *ServerInterfaceWrapper) DeletePhoto(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// GetYear operation middleware
+func (siw *ServerInterfaceWrapper) GetYear(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "year" -------------
+	var year string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "year", chi.URLParam(r, "year"), &year, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "year", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetYear(w, r, year)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -897,6 +947,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/months/{month}", wrapper.GetMonth)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/years/{year}", wrapper.GetYear)
 	})
 
 	return r
@@ -1918,6 +1971,70 @@ func (response DeletePhoto500JSONResponse) VisitDeletePhotoResponse(w http.Respo
 	return err
 }
 
+type GetYearRequestObject struct {
+	Year string `json:"year"`
+}
+
+type GetYearResponseObject interface {
+	VisitGetYearResponse(w http.ResponseWriter) error
+}
+
+type GetYear200JSONResponse Year
+
+func (response GetYear200JSONResponse) VisitGetYearResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetYear400JSONResponse Error
+
+func (response GetYear400JSONResponse) VisitGetYearResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetYear401JSONResponse Error
+
+func (response GetYear401JSONResponse) VisitGetYearResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetYear500JSONResponse Error
+
+func (response GetYear500JSONResponse) VisitGetYearResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// CreateCategory Create a Category or Subcategory
@@ -1965,6 +2082,9 @@ type StrictServerInterface interface {
 	// DeletePhoto Delete a photo
 	// (DELETE /photos/{id})
 	DeletePhoto(ctx context.Context, request DeletePhotoRequestObject) (DeletePhotoResponseObject, error)
+	// GetYear A year's day colors in one call
+	// (GET /years/{year})
+	GetYear(ctx context.Context, request GetYearRequestObject) (GetYearResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -2437,6 +2557,32 @@ func (sh *strictHandler) DeletePhoto(w http.ResponseWriter, r *http.Request, id 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeletePhotoResponseObject); ok {
 		if err := validResponse.VisitDeletePhotoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetYear operation middleware
+func (sh *strictHandler) GetYear(w http.ResponseWriter, r *http.Request, year string) {
+	var request GetYearRequestObject
+
+	request.Year = year
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetYear(ctx, request.(GetYearRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetYear")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetYearResponseObject); ok {
+		if err := validResponse.VisitGetYearResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

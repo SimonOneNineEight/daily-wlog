@@ -19,6 +19,7 @@ type Querier interface {
 	// as its category or its refinement. Callers gate ownership first.
 	CategoryUsage(ctx context.Context, id string) (CategoryUsageRow, error)
 	CountPhotos(ctx context.Context, entryID string) (int64, error)
+	CountYearEntries(ctx context.Context, arg CountYearEntriesParams) (int64, error)
 	DeleteCategory(ctx context.Context, arg DeleteCategoryParams) (int64, error)
 	DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64, error)
 	// Ownership travels through the Entry's Journal; returns the storage paths
@@ -52,6 +53,10 @@ type Querier interface {
 	ListMonthDots(ctx context.Context, arg ListMonthDotsParams) ([]ListMonthDotsRow, error)
 	ListPhotoIDs(ctx context.Context, entryID string) ([]string, error)
 	ListPhotosForEntries(ctx context.Context, entryIds []string) ([]ListPhotosForEntriesRow, error)
+	// One row per recorded day: the FIRST Entry's category by entry order
+	// (distinct on keeps the first row of each date's position ordering).
+	// Only structure leaves the database — never content (ADR-0004).
+	ListYearFirstCategories(ctx context.Context, arg ListYearFirstCategoriesParams) ([]ListYearFirstCategoriesRow, error)
 	// First-sign-in provisioning in one atomic statement: User, Journal, and the
 	// five seeded categories (colors/icons per the design canvas). Every level
 	// conflict-skips, so re-sign-in and concurrent first sign-ins are no-ops.

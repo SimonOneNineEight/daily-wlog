@@ -77,6 +77,13 @@ const zhTW = {
     hasChildrenExplanation: '請先刪除底下的子類別。',
     saveFailed: '儲存失敗，請再試一次',
   },
+  year: {
+    title: (year: number) => `${year}年`,
+    monthLabel: (month: number) => `${month}月`,
+    countLabel: (count: number) => `今年到目前為止 ${count} 則紀錄`,
+    open: '年',
+    today: '今天',
+  },
   health: {
     loading: '連線中…',
     ok: '系統狀態:正常',

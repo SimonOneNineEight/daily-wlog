@@ -645,6 +645,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /years/{year}:
+    get:
+      operationId: getYear
+      summary: A year's day colors in one call
+      description: >
+        Every day of the year that has Entries, each with its FIRST Entry's
+        category id (entry order decides), plus the year's Entry count.
+        One color per day, never stripes — the year view's contract.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The year, YYYY.
+      responses:
+        "200":
+          description: The year's recorded days, in date order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Year"
+        "400":
+          description: Invalid year.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Loading the year failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   securitySchemes:
     bearerAuth:
@@ -929,6 +971,30 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MonthDay"
+    YearDay:
+      type: object
+      required:
+        - date
+        - categoryId
+      properties:
+        date:
+          type: string
+        categoryId:
+          type: string
+          description: The day's first Entry's category, by entry order.
+    Year:
+      type: object
+      required:
+        - days
+        - totalEntries
+      properties:
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/YearDay"
+        totalEntries:
+          type: integer
+          description: How many Entries the year holds in total.
     Health:
       type: object
       required:

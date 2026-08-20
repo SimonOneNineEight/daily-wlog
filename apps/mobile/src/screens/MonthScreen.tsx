@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Tags } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, List, Plus, Tags } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -22,6 +22,10 @@ type Props = {
   onAddEntry: () => void;
   /** Opens category management (#10); #15's settings may rehome this. */
   onOpenCategories?: () => void;
+  /** Opens the year view (#12). */
+  onOpenYear?: () => void;
+  /** Land on this month instead of today's (year view tap-through, #12). */
+  initialMonth?: { year: number; month: number };
   /** Bump to refetch the visible month (after a save elsewhere). */
   refresh?: number;
 };
@@ -39,6 +43,8 @@ export function MonthScreen({
   onOpenDay,
   onAddEntry,
   onOpenCategories,
+  onOpenYear,
+  initialMonth,
   refresh = 0,
 }: Props) {
   const todayParts = {
@@ -46,10 +52,13 @@ export function MonthScreen({
     month: today.getMonth() + 1,
     day: today.getDate(),
   };
+  const landsOnToday =
+    !initialMonth ||
+    (initialMonth.year === todayParts.year && initialMonth.month === todayParts.month);
   const [view, setView] = useState({
-    year: todayParts.year,
-    month: todayParts.month,
-    day: todayParts.day,
+    year: initialMonth?.year ?? todayParts.year,
+    month: initialMonth?.month ?? todayParts.month,
+    day: landsOnToday ? todayParts.day : 1,
   });
   const visible = { year: view.year, month: view.month };
   const selectedDay = view.day;
@@ -164,6 +173,16 @@ export function MonthScreen({
           >
             <ChevronRight size={20} color={theme.colors.iconDefault} strokeWidth={2} />
           </Pressable>
+          {onOpenYear ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.year.open}
+              style={styles.navButton}
+              onPress={onOpenYear}
+            >
+              <List size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
         </View>
       </View>
 

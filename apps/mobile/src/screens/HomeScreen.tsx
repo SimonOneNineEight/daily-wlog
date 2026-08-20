@@ -12,6 +12,7 @@ import { CategoriesScreen } from './CategoriesScreen';
 import { DayScreen } from './DayScreen';
 import { EntryFormScreen } from './EntryFormScreen';
 import { MonthScreen } from './MonthScreen';
+import { YearScreen } from './YearScreen';
 
 type Props = {
   accessToken: string;
@@ -20,10 +21,11 @@ type Props = {
 };
 
 type Route =
-  | { name: 'month' }
+  | { name: 'month'; focus?: { year: number; month: number } }
   | { name: 'day'; date: string }
   | { name: 'form'; date: string }
-  | { name: 'categories' };
+  | { name: 'categories' }
+  | { name: 'year' };
 
 // Home lands on the month view (#6); the day list and entry form are routes
 // behind it. Real navigation infrastructure can replace this switch when the
@@ -42,6 +44,16 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
         onBack={() => setRoute({ name: 'month' })}
         onEntrySaved={bumpMonth}
         onCategoriesChanged={onCategoriesChanged}
+      />
+    );
+  }
+  if (route.name === 'year') {
+    return (
+      <YearScreen
+        accessToken={accessToken}
+        categories={categories}
+        onOpenMonth={(year, month) => setRoute({ name: 'month', focus: { year, month } })}
+        onBack={() => setRoute({ name: 'month' })}
       />
     );
   }
@@ -76,9 +88,11 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
           accessToken={accessToken}
           categories={categories}
           refresh={monthRefresh}
+          initialMonth={route.focus}
           onOpenDay={(date) => setRoute({ name: 'day', date })}
           onAddEntry={() => setRoute({ name: 'form', date: localDateString(new Date()) })}
           onOpenCategories={() => setRoute({ name: 'categories' })}
+          onOpenYear={() => setRoute({ name: 'year' })}
         />
       </View>
       <Pressable

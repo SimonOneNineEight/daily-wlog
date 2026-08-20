@@ -52,6 +52,12 @@ export function getMonth(accessToken: string, month: string): Promise<MonthDots>
   return request<MonthDots>(accessToken, `/months/${month}`);
 }
 
+export type YearColors = paths['/years/{year}']['get']['responses']['200']['content']['application/json'];
+
+export function getYear(accessToken: string, year: string): Promise<YearColors> {
+  return request<YearColors>(accessToken, `/years/${year}`);
+}
+
 type UpdateEntryBody =
   paths['/entries/{id}']['patch']['requestBody']['content']['application/json'];
 

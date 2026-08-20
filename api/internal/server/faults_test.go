@@ -32,6 +32,8 @@ type failingQuerier struct {
 	reorderErr     error
 	insertCatErr   error
 	subcategoryErr error
+	yearListErr    error
+	yearCountErr   error
 	catParentErr   error
 	updateCatErr   error
 	cascadeErr     error
@@ -69,6 +71,12 @@ func (f failingQuerier) ListEntriesByDate(context.Context, dbgen.ListEntriesByDa
 }
 func (f failingQuerier) ListMonthDots(context.Context, dbgen.ListMonthDotsParams) ([]dbgen.ListMonthDotsRow, error) {
 	return nil, f.monthDotsErr
+}
+func (f failingQuerier) ListYearFirstCategories(context.Context, dbgen.ListYearFirstCategoriesParams) ([]dbgen.ListYearFirstCategoriesRow, error) {
+	return nil, f.yearListErr
+}
+func (f failingQuerier) CountYearEntries(context.Context, dbgen.CountYearEntriesParams) (int64, error) {
+	return 0, f.yearCountErr
 }
 func (f failingQuerier) UpdateEntry(context.Context, dbgen.UpdateEntryParams) (dbgen.UpdateEntryRow, error) {
 	return dbgen.UpdateEntryRow{ID: "entry-id", Position: 1}, f.updateErr
@@ -385,6 +393,22 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL()), &fakeStore{}))
 			defer ts.Close()
 			resp := getMonth(t, ts, token, "2026-08")
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want 500", resp.StatusCode)
+			}
+		})
+	}
+	yearCases := map[string]failingQuerier{
+		"journal read fails": {journalErr: errors.New("boom")},
+		"year list fails":    {yearListErr: errors.New("boom")},
+		"year count fails":   {yearCountErr: errors.New("boom")},
+	}
+	for name, querier := range yearCases {
+		t.Run("year/"+name, func(t *testing.T) {
+			ts := httptest.NewServer(server.NewWithQuerier(discardLogger(), querier, auth.NewVerifier(testJWKSURL()), &fakeStore{}))
+			defer ts.Close()
+			resp := getYear(t, ts, token, "2026")
 			resp.Body.Close()
 			if resp.StatusCode != http.StatusInternalServerError {
 				t.Fatalf("status = %d, want 500", resp.StatusCode)

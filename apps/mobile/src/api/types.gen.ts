@@ -241,6 +241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/years/{year}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A year's day colors in one call
+         * @description Every day of the year that has Entries, each with its FIRST Entry's category id (entry order decides), plus the year's Entry count. One color per day, never stripes — the year view's contract.
+         */
+        get: operations["getYear"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -358,6 +378,16 @@ export interface components {
         };
         MonthDots: {
             days: components["schemas"]["MonthDay"][];
+        };
+        YearDay: {
+            date: string;
+            /** @description The day's first Entry's category, by entry order. */
+            categoryId: string;
+        };
+        Year: {
+            days: components["schemas"]["YearDay"][];
+            /** @description How many Entries the year holds in total. */
+            totalEntries: number;
         };
         Health: {
             /** @enum {string} */
@@ -1168,6 +1198,56 @@ export interface operations {
                 };
             };
             /** @description Loading the month failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getYear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The year, YYYY. */
+                year: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The year's recorded days, in date order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Year"];
+                };
+            };
+            /** @description Invalid year. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Loading the year failed. */
             500: {
                 headers: {
                     [name: string]: unknown;
