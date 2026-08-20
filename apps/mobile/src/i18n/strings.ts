@@ -81,6 +81,10 @@ const zhTW = {
     title: (year: number) => `${year}年`,
     monthLabel: (month: number) => `${month}月`,
     countLabel: (count: number) => `今年到目前為止 ${count} 則紀錄`,
+    // Derived copy: the canvas labels only the current year.
+    totalLabel: (count: number) => `共 ${count} 則紀錄`,
+    prevYear: '上一年',
+    nextYear: '下一年',
     open: '年',
     today: '今天',
   },

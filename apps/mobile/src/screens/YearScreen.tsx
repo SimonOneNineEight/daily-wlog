@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,7 +24,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 // its first Entry's color — the "look how much life I've captured" screen.
 // One endpoint call delivers the whole year.
 export function YearScreen({ accessToken, categories, today = new Date(), onOpenMonth, onBack }: Props) {
-  const year = today.getFullYear();
+  const [year, setYear] = useState(today.getFullYear());
+  const isCurrentYear = year === today.getFullYear();
   const [colorsByMonth, setColorsByMonth] = useState<Record<number, Record<number, string>>>({});
   const [totalEntries, setTotalEntries] = useState(0);
 
@@ -66,9 +67,25 @@ export function YearScreen({ accessToken, categories, today = new Date(), onOpen
         <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={strings.year.prevYear}
+          style={styles.navButton}
+          onPress={() => setYear(year - 1)}
+        >
+          <ChevronLeft size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={strings.year.nextYear}
+          style={styles.navButton}
+          onPress={() => setYear(year + 1)}
+        >
+          <ChevronRight size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
           accessibilityLabel={strings.year.today}
           style={styles.navButton}
-          onPress={() => onOpenMonth(year, today.getMonth() + 1)}
+          onPress={() => onOpenMonth(today.getFullYear(), today.getMonth() + 1)}
         >
           <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
         </Pressable>
@@ -81,13 +98,19 @@ export function YearScreen({ accessToken, categories, today = new Date(), onOpen
                 year={year}
                 month={month}
                 colors={colorsByMonth[month] ?? {}}
-                todayDay={month === today.getMonth() + 1 ? today.getDate() : undefined}
+                todayDay={
+                  isCurrentYear && month === today.getMonth() + 1 ? today.getDate() : undefined
+                }
                 onPress={() => onOpenMonth(year, month)}
               />
             </View>
           ))}
         </View>
-        <Text style={styles.countLabel}>{strings.year.countLabel(totalEntries)}</Text>
+        <Text style={styles.countLabel}>
+          {isCurrentYear
+            ? strings.year.countLabel(totalEntries)
+            : strings.year.totalLabel(totalEntries)}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );

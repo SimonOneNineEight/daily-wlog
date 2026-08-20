@@ -23,6 +23,15 @@ beforeEach(() => {
         }),
       };
     }
+    if (String(url).includes('/years/2025')) {
+      return {
+        ok: true,
+        json: async () => ({
+          days: [{ date: '2025-06-09', categoryId: 'c-work' }],
+          totalEntries: 1,
+        }),
+      };
+    }
     throw new Error(`unexpected fetch ${String(url)}`);
   }) as jest.Mock;
 });
@@ -63,6 +72,22 @@ it('opens the tapped month', async () => {
   await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
   fireEvent.press(screen.getByLabelText('3月'));
   expect(onOpenMonth).toHaveBeenCalledWith(2026, 3);
+});
+
+it('pages to earlier years through the chevrons', async () => {
+  renderScreen();
+
+  await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
+  fireEvent.press(screen.getByLabelText('上一年'));
+
+  expect(screen.getByText('2025年')).toBeTruthy();
+  await waitFor(() => expect(screen.getByTestId('year-day-6-9')).toBeTruthy());
+  // Past years drop the "so far this year" phrasing.
+  expect(screen.getByText('共 1 則紀錄')).toBeTruthy();
+
+  fireEvent.press(screen.getByLabelText('下一年'));
+  expect(screen.getByText('2026年')).toBeTruthy();
+  await waitFor(() => expect(screen.getByText('今年到目前為止 3 則紀錄')).toBeTruthy());
 });
 
 it('jumps back to today through the trailing action', async () => {
