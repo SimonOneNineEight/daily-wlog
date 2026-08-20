@@ -1,6 +1,6 @@
 import { ChevronDown, Plus, Search } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
@@ -31,6 +31,8 @@ import { CategoryIcon } from '../calendar/CategoryIcon';
 import { dateHeading } from '../calendar/dateLabel';
 import { ColorPresetPicker, isPresetColor } from '../categories/ColorPresetPicker';
 import { decodeContent, encodeContent } from '../entries/content';
+import type { EntryDraft } from '../entries/drafts';
+import { clearDraft, newDraftId, saveDraft } from '../entries/drafts';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
@@ -40,6 +42,8 @@ type Props = {
   categories: Category[];
   /** When present, the form edits this Entry instead of creating one. */
   entry?: Entry;
+  /** A retained failed save (#14): the form opens prefilled from it and 儲存 retries. */
+  draft?: EntryDraft;
   onDone: (saved: boolean) => void;
   /** Fired after an inline category/subcategory creation lands server-side. */
   onCategoriesChanged?: () => void;
@@ -59,15 +63,23 @@ export function EntryFormScreen({
   date,
   categories,
   entry,
+  draft,
   onDone,
   onCategoriesChanged,
 }: Props) {
-  const initialContent = entry ? decodeContent(entry.content) : null;
+  // A draft outranks the entry: it holds the newer, unsaved intent.
+  const initialContent = draft
+    ? decodeContent(draft.content)
+    : entry
+      ? decodeContent(entry.content)
+      : null;
+  const initialCategoryId = draft ? draft.categoryId : entry?.categoryId;
+  const initialSubcategoryId = draft ? draft.subcategoryId : entry?.subcategoryId;
   const [category, setCategory] = useState<Category | null>(
-    entry ? (categories.find((c) => c.id === entry.categoryId) ?? null) : null,
+    initialCategoryId ? (categories.find((c) => c.id === initialCategoryId) ?? null) : null,
   );
   const [subcategory, setSubcategory] = useState<Category | null>(
-    entry?.subcategoryId ? (categories.find((c) => c.id === entry.subcategoryId) ?? null) : null,
+    initialSubcategoryId ? (categories.find((c) => c.id === initialSubcategoryId) ?? null) : null,
   );
   const [query, setQuery] = useState('');
   // The quick step's pending top-level category name, or null when not creating.
@@ -82,8 +94,39 @@ export function EntryFormScreen({
   const [note, setNote] = useState(initialContent?.note ?? '');
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [photosFailed, setPhotosFailed] = useState(false);
   const [existingPhotos, setExistingPhotos] = useState<Photo[]>(entry?.photos ?? []);
-  const [stagedPhotos, setStagedPhotos] = useState<ProcessedPhoto[]>([]);
+  const [stagedPhotos, setStagedPhotos] = useState<ProcessedPhoto[]>(draft?.photos ?? []);
+  // The OS may purge the cache files a draft's photo URIs point at; prune the
+  // unreadable ones on restore so a retry saves what survives instead of
+  // failing forever, and say so.
+  const [photosMissing, setPhotosMissing] = useState(false);
+  // Where a failed save is kept (#14). A restored draft keeps its id so the
+  // retry overwrites in place and success clears the right slot.
+  const [draftId] = useState(() => draft?.id ?? newDraftId());
+  // Set once createEntry lands, so a photo-failure retry updates instead of
+  // creating a duplicate Entry.
+  const [savedEntryId, setSavedEntryId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!draft || draft.photos.length === 0) return;
+    let active = true;
+    void Promise.all(
+      draft.photos.map((photo) =>
+        fetch(photo.fullUri).then(
+          (response) => response.ok,
+          () => false,
+        ),
+      ),
+    ).then((readable) => {
+      if (!active || readable.every(Boolean)) return;
+      setPhotosMissing(true);
+      setStagedPhotos((prev) => prev.filter((p) => readable[draft.photos.indexOf(p)] !== false));
+    });
+    return () => {
+      active = false;
+    };
+  }, [draft]);
 
   const known = new Set(categories.map((c) => c.id));
   const all = [...categories, ...created.filter((c) => !known.has(c.id))];
@@ -103,12 +146,26 @@ export function EntryFormScreen({
     if (!canSave || category === null) return;
     setSaving(true);
     setFailed(false);
+    setPhotosFailed(false);
     const content = encodeContent({ title: title.trim(), note });
     const refinement = subcategory !== null ? { subcategoryId: subcategory.id } : {};
-    let entryId = entry?.id;
+    // Draft retention (#14): any failure keeps the full Entry — words and the
+    // staged photos' local copies — locally, and 儲存 stays the retry.
+    const keepDraft = (entryId: string | undefined) =>
+      saveDraft({
+        id: draftId,
+        date,
+        ...(entryId !== undefined ? { entryId } : {}),
+        categoryId: category.id,
+        ...refinement,
+        content,
+        photos: stagedPhotos,
+        savedAt: new Date().toISOString(),
+      });
+    let entryId = entry?.id ?? draft?.entryId ?? savedEntryId;
     try {
-      if (entry) {
-        await updateEntry(accessToken, entry.id, {
+      if (entryId !== undefined) {
+        await updateEntry(accessToken, entryId, {
           categoryId: category.id,
           ...refinement,
           content,
@@ -121,20 +178,27 @@ export function EntryFormScreen({
           content,
         });
         entryId = created.id;
+        setSavedEntryId(created.id);
       }
     } catch {
       setFailed(true);
       setSaving(false);
+      await keepDraft(entryId);
       return;
     }
     try {
-      if (entryId && stagedPhotos.length > 0) {
+      if (entryId !== undefined && stagedPhotos.length > 0) {
         await uploadPhotos(accessToken, entryId, stagedPhotos);
       }
     } catch {
-      // The Entry itself saved; the photos can be re-added from edit.
-      Alert.alert(strings.photos.uploadFailed);
+      // The Entry's words reached the server; the photos wait in the draft,
+      // pinned to entryId so the retry updates instead of duplicating.
+      setPhotosFailed(true);
+      setSaving(false);
+      await keepDraft(entryId);
+      return;
     }
+    await clearDraft(draftId);
     onDone(true);
   };
 
@@ -433,7 +497,13 @@ export function EntryFormScreen({
               ]}
               editable={{ onAdd: addPhotos, onRemove: removeGridPhoto, onReorder: reorderGridPhotos }}
             />
+            {photosMissing ? (
+              <Text style={styles.notice}>{strings.entryForm.draftPhotosMissing}</Text>
+            ) : null}
             {failed ? <Text style={styles.error}>{strings.entryForm.saveFailed}</Text> : null}
+            {photosFailed ? (
+              <Text style={styles.error}>{strings.entryForm.photoUploadFailed}</Text>
+            ) : null}
             {entry ? (
               <Pressable accessibilityRole="button" style={styles.deleteButton} onPress={confirmDelete}>
                 <Text style={styles.deleteLabel}>{strings.entryForm.delete}</Text>
@@ -729,5 +799,9 @@ const styles = createStyles((t) => ({
   error: {
     ...t.typography.meta,
     color: t.colors.textDestructive,
+  },
+  notice: {
+    ...t.typography.meta,
+    color: t.colors.textTertiary,
   },
 }));

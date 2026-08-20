@@ -31,6 +31,9 @@ const zhTW = {
     loadFailed: '無法載入紀錄',
     reorderFailed: '排序失敗，請再試一次',
     unreadable: '（無法讀取的紀錄）',
+    // Draft retention (#14) — derived copy, no canvas artboard: the meta
+    // line under a kept draft's title on the day view.
+    draftUnsaved: '尚未儲存',
   },
   photos: {
     addPhoto: '新增照片',
@@ -57,6 +60,11 @@ const zhTW = {
     titlePlaceholder: '標題',
     notePlaceholder: '備註（選填）',
     saveFailed: '儲存失敗，請再試一次',
+    // Draft retention (#14) — derived copy: the photo half of a save failed;
+    // the draft keeps the photos and 儲存 retries.
+    photoUploadFailed: '照片上傳失敗，請再試一次',
+    // Derived copy: a restored draft whose cached photo files the OS purged.
+    draftPhotosMissing: '部分照片已無法讀取',
   },
   categories: {
     title: '類別',
