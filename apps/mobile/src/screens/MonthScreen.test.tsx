@@ -208,3 +208,41 @@ describe('calendar filter (#13)', () => {
     expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: [] });
   });
 });
+
+it('normalizes parent and child selections like the canvas', async () => {
+  const withSub = [
+    ...categories,
+    { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport' },
+  ];
+  const onChangeFilter = jest.fn();
+  renderMonth({
+    categories: withSub,
+    filter: { categoryIds: ['c-sport'], subcategoryIds: [] },
+    onChangeFilter,
+  });
+  await act(async () => {});
+
+  fireEvent.press(screen.getByLabelText('篩選'));
+  // Picking a child narrows the lens: its parent's selection drops.
+  fireEvent.press(screen.getByLabelText('展開子類別'));
+  fireEvent.press(screen.getByText('健身房'));
+  expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
+});
+
+it('turning a parent on clears its own children picks', async () => {
+  const withSub = [
+    ...categories,
+    { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport' },
+  ];
+  const onChangeFilter = jest.fn();
+  renderMonth({
+    categories: withSub,
+    filter: { categoryIds: [], subcategoryIds: ['c-gym'] },
+    onChangeFilter,
+  });
+  await act(async () => {});
+
+  fireEvent.press(screen.getByLabelText('篩選'));
+  fireEvent.press(screen.getByText('運動'));
+  expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: ['c-sport'], subcategoryIds: [] });
+});

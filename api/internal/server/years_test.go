@@ -133,6 +133,23 @@ func TestYearFilter(t *testing.T) {
 		t.Errorf("unfiltered year days = %+v, want 04-10 in sport first", full.Days)
 	}
 
+	// Subcategory expansion and union on the year lens.
+	sub := decodeCategory(t, createCategory(t, ts, token, map[string]string{
+		"name": "會議", "color": me.Categories[0].Color, "parentId": work,
+	}))
+	createEntry(t, ts, token, map[string]string{
+		"date": "2026-07-07", "categoryId": work, "subcategoryId": sub.ID, "content": "x",
+	}).Body.Close()
+
+	bySub := decodeYear(t, getYear(t, ts, token, "2026?subcategories="+sub.ID))
+	if len(bySub.Days) != 1 || bySub.Days[0].Date != "2026-07-07" || bySub.TotalEntries != 1 {
+		t.Errorf("subcategory year lens = %+v (%d), want only 07-07", bySub.Days, bySub.TotalEntries)
+	}
+	union := decodeYear(t, getYear(t, ts, token, "2026?categories="+sport+"&subcategories="+sub.ID))
+	if len(union.Days) != 3 || union.TotalEntries != 3 {
+		t.Errorf("union year lens = %+v (%d), want three days / three entries", union.Days, union.TotalEntries)
+	}
+
 	resp := getYear(t, ts, token, "2026?subcategories=nope")
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {

@@ -64,8 +64,17 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
                     <Pressable
                       accessibilityRole="button"
                       style={[styles.row, (!lastParent || open) && styles.rowDivided]}
+                      // Canvas normalization: turning a parent on clears its
+                      // own children's picks (it already includes them).
                       onPress={() =>
-                        onChange({ ...filter, categoryIds: toggle(filter.categoryIds, category.id) })
+                        onChange({
+                          categoryIds: toggle(filter.categoryIds, category.id),
+                          subcategoryIds: parentOn
+                            ? filter.subcategoryIds
+                            : filter.subcategoryIds.filter(
+                                (id) => !children.some((child) => child.id === id),
+                              ),
+                        })
                       }
                     >
                       <CategoryIcon icon={category.icon} color={category.color} />
@@ -102,9 +111,13 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
                                 (!lastParent || childIndex < children.length - 1) &&
                                   styles.rowDivided,
                               ]}
+                              // Canvas normalization: picking a child narrows
+                              // the lens, so its parent's selection drops.
                               onPress={() =>
                                 onChange({
-                                  ...filter,
+                                  categoryIds: subOn
+                                    ? filter.categoryIds
+                                    : filter.categoryIds.filter((id) => id !== category.id),
                                   subcategoryIds: toggle(filter.subcategoryIds, child.id),
                                 })
                               }
