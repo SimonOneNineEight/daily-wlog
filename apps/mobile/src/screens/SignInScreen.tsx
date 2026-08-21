@@ -1,6 +1,6 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '../auth/supabase';
@@ -22,6 +22,13 @@ const devPassword = process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD;
 export function SignInScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Email sign-in (#20's precursor): the working method until the OAuth
+  // providers are wired, and the fallback door forever after.
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [registering, setRegistering] = useState(false);
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -75,6 +82,35 @@ export function SignInScreen() {
     }
   };
 
+  const submitEmail = async () => {
+    if (email.trim() === '' || password === '' || busy) return;
+    setFailed(false);
+    setAwaitingConfirm(false);
+    setBusy(true);
+    try {
+      if (registering) {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+        // Confirmation-required projects return a user but no session; the
+        // person confirms in their inbox and signs in from here.
+        if (!data.session) setAwaitingConfirm(true);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+      }
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const signInAsDev = async () => {
     if (!devEmail || !devPassword) return;
     setFailed(false);
@@ -114,6 +150,42 @@ export function SignInScreen() {
         <Pressable accessibilityRole="button" style={styles.googleButton} onPress={signInWithGoogle}>
           <Text style={styles.googleLabel}>{strings.signIn.google}</Text>
         </Pressable>
+        <TextInput
+          style={styles.field}
+          placeholder={strings.signIn.emailPlaceholder}
+          placeholderTextColor={styles.placeholder.color}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.field}
+          placeholder={strings.signIn.passwordPlaceholder}
+          placeholderTextColor={styles.placeholder.color}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete={registering ? 'new-password' : 'current-password'}
+        />
+        <Pressable accessibilityRole="button" style={styles.emailButton} onPress={() => void submitEmail()}>
+          <Text style={styles.emailLabel}>
+            {registering ? strings.signIn.signUpAction : strings.signIn.signInAction}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.toggle}
+          onPress={() => setRegistering((r) => !r)}
+        >
+          <Text style={styles.toggleLabel}>
+            {registering ? strings.signIn.toggleToSignIn : strings.signIn.toggleToSignUp}
+          </Text>
+        </Pressable>
+        {awaitingConfirm ? (
+          <Text style={styles.notice}>{strings.signIn.confirmEmail}</Text>
+        ) : null}
         {devEmail && devPassword ? (
           <Pressable accessibilityRole="button" style={styles.devButton} onPress={() => void signInAsDev()}>
             <Text style={styles.devLabel}>{strings.signIn.devLogin}</Text>
@@ -176,6 +248,43 @@ const styles = createStyles((t) => ({
   error: {
     ...t.typography.meta,
     color: t.colors.textDestructive,
+    textAlign: 'center',
+  },
+  field: {
+    ...t.typography.entryTitle,
+    color: t.colors.textPrimary,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.r4,
+    borderWidth: t.border.hairline,
+    borderColor: t.colors.lineSeparatorStrong,
+    paddingHorizontal: t.spacing.cardPadding,
+    height: t.spacing.rowHeight,
+  },
+  placeholder: {
+    color: t.colors.textPlaceholder,
+  },
+  emailButton: {
+    height: t.spacing.rowHeight,
+    borderRadius: t.radius.r4,
+    backgroundColor: t.colors.controlPrimaryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emailLabel: {
+    ...t.typography.entryTitle,
+    color: t.colors.controlPrimaryFg,
+  },
+  toggle: {
+    alignItems: 'center',
+    paddingVertical: t.spacing.space3,
+  },
+  toggleLabel: {
+    ...t.typography.meta,
+    color: t.colors.textSecondary,
+  },
+  notice: {
+    ...t.typography.meta,
+    color: t.colors.textSecondary,
     textAlign: 'center',
   },
 }));

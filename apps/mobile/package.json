@@ -42,7 +42,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "lint": "eslint .",
-    "generate:theme": "node scripts/generate-theme.mjs"
+    "generate:theme": "node scripts/generate-theme.mjs",
+    "start:hosted": "sh -c 'set -a; . ./.env.hosted; set +a; expo start --tunnel'"
   },
   "jest": {
     "preset": "jest-expo",
