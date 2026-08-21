@@ -159,16 +159,6 @@ export function MonthScreen({
           <Text style={styles.navSubtitle}>{strings.month.yearLabel(visible.year)}</Text>
         </View>
         <View style={styles.navActions}>
-          {onChangeFilter ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={strings.filter.open}
-              style={styles.navButton}
-              onPress={() => setFilterOpen(true)}
-            >
-              <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-            </Pressable>
-          ) : null}
           {onOpenSettings ? (
             <Pressable
               accessibilityRole="button"
@@ -195,16 +185,6 @@ export function MonthScreen({
           >
             <ChevronRight size={20} color={theme.colors.iconDefault} strokeWidth={2} />
           </Pressable>
-          {onOpenYear ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={strings.year.open}
-              style={styles.navButton}
-              onPress={onOpenYear}
-            >
-              <List size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-            </Pressable>
-          ) : null}
         </View>
       </View>
 
@@ -260,6 +240,34 @@ export function MonthScreen({
           onOpen={() => onOpenDay(selectedDate)}
         />
       </View>
+
+      {/* The view bubble (ratified 2026-08-20, supersedes the four-action
+          nav): "change what I see" actions float bottom-left, balancing the
+          +. 篩選 sits beside the sheet it opens; 年 is the zoom out. */}
+      {onChangeFilter || onOpenYear ? (
+        <View style={styles.viewBubble}>
+          {onChangeFilter ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.filter.open}
+              style={styles.viewBubbleButton}
+              onPress={() => setFilterOpen(true)}
+            >
+              <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
+          {onOpenYear ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.year.open}
+              style={styles.viewBubbleButton}
+              onPress={onOpenYear}
+            >
+              <List size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
 
       <Pressable
         accessibilityRole="button"
@@ -329,6 +337,27 @@ const styles = createStyles((t) => ({
     height: t.spacing.fabSize,
     borderRadius: t.radius.pill,
     backgroundColor: t.colors.controlPrimaryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewBubble: {
+    position: 'absolute',
+    left: t.spacing.fabInset,
+    bottom: t.spacing.fabInset,
+    height: t.spacing.fabSize,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: t.spacing.space3,
+    borderRadius: t.radius.pill,
+    backgroundColor: t.colors.surface,
+    shadowColor: t.colors.textPrimary,
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  viewBubbleButton: {
+    width: t.spacing.hitMin,
+    height: t.spacing.hitMin,
     alignItems: 'center',
     justifyContent: 'center',
   },
