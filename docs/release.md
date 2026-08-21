@@ -68,3 +68,7 @@ Data collected, linked to identity:
 - Privacy policy + terms documents (the deferred settings rows, and App
   Store Connect wants a privacy policy URL).
 - Replace the placeholder icon if a real identity lands first.
+- Motion pass, second half: press states shipped (theme/press.tsx), but
+  the 150ms selection, 240ms content-swap, and 300ms screen-push token
+  timings are unimplemented — route changes are instant cuts. Sheets and
+  the month pager ride native timings.
