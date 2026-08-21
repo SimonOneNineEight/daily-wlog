@@ -57,6 +57,20 @@ func TestDeactivationBlocksEverythingButMe(t *testing.T) {
 	}
 }
 
+func reactivate(t *testing.T, ts *httptest.Server, token string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/me/reactivate", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /me/reactivate: %v", err)
+	}
+	return resp
+}
+
 func TestReactivationWithinGrace(t *testing.T) {
 	ts := newTestServer(t)
 	token := signUpTestUser(t)
@@ -65,9 +79,21 @@ func TestReactivationWithinGrace(t *testing.T) {
 
 	deactivate(t, ts, token).Body.Close()
 
-	// Signing in again is the reactivation: /me answers and access returns,
-	// with everything intact.
-	back := decodeMe(t, postMe(t, ts, token))
+	// A session restore is not a reactivation: the app provisions on every
+	// launch, so /me must refuse, or any signed-in device would silently
+	// cancel the deletion.
+	refused := postMe(t, ts, token)
+	refused.Body.Close()
+	if refused.StatusCode != http.StatusForbidden {
+		t.Fatalf("provision while deactivated = %d, want 403", refused.StatusCode)
+	}
+
+	// The deliberate restore brings the world back intact.
+	restoredWorld := reactivate(t, ts, token)
+	if restoredWorld.StatusCode != http.StatusOK {
+		t.Fatalf("reactivate status = %d, want 200", restoredWorld.StatusCode)
+	}
+	back := decodeMe(t, restoredWorld)
 	if back.JournalID != me.JournalID {
 		t.Fatalf("journal changed across reactivation: %q then %q", me.JournalID, back.JournalID)
 	}

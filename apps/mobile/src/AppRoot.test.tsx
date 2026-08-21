@@ -96,3 +96,37 @@ it('returns to the sign-in screen on sign-out through settings', async () => {
 
   expect(await screen.findByText('每天五分鐘，留下你的生活')).toBeTruthy();
 });
+
+it('gates a deactivated account and restores only on the deliberate tap', async () => {
+  mockAuthState.session = { access_token: 'token-1', user: { id: 'u1' } };
+  let deactivated = true;
+  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string }) => {
+    const u = String(url);
+    if (u.endsWith('/me/reactivate') && init?.method === 'POST') {
+      deactivated = false;
+      return { ok: true, json: async () => ({ userId: 'u1', journalId: 'j1', categories: [] }) };
+    }
+    if (u.endsWith('/me')) {
+      if (deactivated) {
+        return { ok: false, status: 403, json: async () => ({ message: 'account is deactivated' }) };
+      }
+      return { ok: true, json: async () => ({ userId: 'u1', journalId: 'j1', categories: [] }) };
+    }
+    if (u.includes('/months/')) return { ok: true, json: async () => ({ days: [] }) };
+    if (u.includes('/entries')) return { ok: true, json: async () => ({ entries: [] }) };
+    throw new Error(`unexpected fetch ${u}`);
+  }) as jest.Mock;
+
+  render(<AppRoot />);
+  // A session restore lands on the gate, never silently back in the app.
+  expect(await screen.findByText('帳號已停用')).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.press(screen.getByText('復原帳號'));
+  });
+  const reactivateCall = (globalThis.fetch as jest.Mock).mock.calls.find(([u]) =>
+    String(u).endsWith('/me/reactivate'),
+  );
+  expect(reactivateCall).toBeTruthy();
+  expect(await screen.findByText('8月')).toBeTruthy();
+});

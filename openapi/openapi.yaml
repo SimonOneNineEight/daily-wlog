@@ -31,9 +31,9 @@ paths:
       description: >
         Idempotent. On first sign-in it atomically creates the User, their
         Journal, and the five seeded categories; on every later call it
-        returns the same world unchanged. Signing in on a deactivated
-        account before its purge reactivates it (#15) — every other route
-        answers 403 while deactivated.
+        returns the same world unchanged. A deactivated account answers 403
+        here and everywhere else (#15); restoring it takes the deliberate
+        POST /me/reactivate, never a mere session restore.
       security:
         - bearerAuth: []
       responses:
@@ -45,6 +45,12 @@ paths:
                 $ref: "#/components/schemas/Me"
         "401":
           description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The account is deactivated.
           content:
             application/json:
               schema:
@@ -77,6 +83,37 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           description: Deactivation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /me/reactivate:
+    post:
+      operationId: reactivateMe
+      summary: Restore a deactivated account within its grace period
+      description: >
+        The deliberate half of reactivation (#15): the user confirms the
+        restore and gets their world back intact. A separate operation from
+        POST /me on purpose — the app provisions on every launch, and an
+        auto-reactivating /me would let any still-signed-in device cancel a
+        deletion silently. Idempotent on active accounts.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The restored (or already active) User's world.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Reactivation failed.
           content:
             application/json:
               schema:

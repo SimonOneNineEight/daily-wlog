@@ -59,16 +59,16 @@ func (f failQ) InsertAccountAudit(context.Context, dbgen.InsertAccountAuditParam
 	return f.err("audit")
 }
 
-type okStore struct{}
+type stubStore struct{ err error }
 
-func (okStore) Remove(context.Context, []string) error { return errors.New("best-effort ignored") }
+func (s stubStore) Remove(context.Context, []string) error { return s.err }
 
 func TestRunFailsClosedOnEachStep(t *testing.T) {
 	for _, step := range []string{
 		"due", "photos", "entries", "children", "parents", "recents", "journal", "user", "audit",
 	} {
 		t.Run(step, func(t *testing.T) {
-			_, err := purge.Run(t.Context(), failQ{failOn: step}, okStore{}, time.Now())
+			_, err := purge.Run(t.Context(), failQ{failOn: step}, stubStore{}, time.Now())
 			if err == nil {
 				t.Fatalf("step %q: err = nil, want failure", step)
 			}
@@ -76,14 +76,21 @@ func TestRunFailsClosedOnEachStep(t *testing.T) {
 	}
 }
 
-func TestRunCountsAndIgnoresStoreFailures(t *testing.T) {
-	// No step fails: one due account purges even though object removal errors
-	// (best-effort by design).
-	purged, err := purge.Run(t.Context(), failQ{}, okStore{}, time.Now())
+func TestRunCounts(t *testing.T) {
+	purged, err := purge.Run(t.Context(), failQ{}, stubStore{}, time.Now())
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
 	if purged != 1 {
 		t.Fatalf("purged = %d, want 1", purged)
+	}
+}
+
+func TestRunAbortsBeforeRowsWhenObjectRemovalFails(t *testing.T) {
+	// Erasure means the files go first: a storage failure must leave every
+	// row (and the account's due status) intact for the next run.
+	_, err := purge.Run(t.Context(), failQ{}, stubStore{err: errors.New("boom")}, time.Now())
+	if err == nil {
+		t.Fatal("err = nil, want the storage failure to abort the purge")
 	}
 }

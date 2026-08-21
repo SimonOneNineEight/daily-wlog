@@ -16,14 +16,17 @@ import (
 )
 
 // ObjectStore is the storage slice the purge needs; storage.Client satisfies
-// it. Object removal is best-effort — rows are the record of truth, and an
-// orphaned file with no row pointing at it is unreachable anyway.
+// it.
 type ObjectStore interface {
 	Remove(ctx context.Context, paths []string) error
 }
 
+// GracePeriod is how long a deactivated account survives before the purge:
+// domain policy, so it lives here rather than in the cmd shim.
+const GracePeriod = 30 * 24 * time.Hour
+
 // Run purges every account deactivated before the cutoff and returns how
-// many. The caller picks the cutoff (now minus the 30-day grace in cmd/purge;
+// many. The caller picks the cutoff (now minus GracePeriod in cmd/purge;
 // tests pass a future cutoff to stand in for elapsed time).
 func Run(ctx context.Context, queries dbgen.Querier, store ObjectStore, cutoff time.Time) (int, error) {
 	due, err := queries.ListPurgeDue(ctx, pgtype.Timestamptz{Time: cutoff, Valid: true})
@@ -47,7 +50,12 @@ func purgeOne(ctx context.Context, queries dbgen.Querier, store ObjectStore, use
 	for _, row := range photoRows {
 		paths = append(paths, row.ObjectPath, row.ThumbPath)
 	}
-	_ = store.Remove(ctx, paths) // best-effort; see ObjectStore
+	// Purge is erasure, so a failed object removal aborts before any row
+	// disappears: the paths stay recorded and the next run retries. (Removing
+	// rows first would orphan the files in the bucket forever.)
+	if err := store.Remove(ctx, paths); err != nil {
+		return err
+	}
 
 	entries, err := queries.PurgeUserEntries(ctx, userID)
 	if err != nil {
@@ -67,19 +75,24 @@ func purgeOne(ctx context.Context, queries dbgen.Querier, store ObjectStore, use
 	if _, err := queries.PurgeUserJournal(ctx, userID); err != nil {
 		return err
 	}
-	if _, err := queries.PurgeUserRow(ctx, userID); err != nil {
-		return err
-	}
 
-	// The durable trail records what the cascade covered.
+	// The durable trail records what the cascade covered — written before the
+	// user row goes, because deleting that row removes the account from
+	// ListPurgeDue and an unwritten audit line would never be retried. A crash
+	// between the two leaves the account due once more; the rerun writes a
+	// second, all-zero line, which honestly records the interruption.
 	scope, _ := json.Marshal(map[string]int64{
 		"photos":     int64(len(photoRows)),
 		"entries":    entries,
 		"categories": children + parents,
 	})
-	return queries.InsertAccountAudit(ctx, dbgen.InsertAccountAuditParams{
+	if err := queries.InsertAccountAudit(ctx, dbgen.InsertAccountAuditParams{
 		UserID: userID,
 		Event:  "purged",
 		Scope:  scope,
-	})
+	}); err != nil {
+		return err
+	}
+	_, err = queries.PurgeUserRow(ctx, userID)
+	return err
 }

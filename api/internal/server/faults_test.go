@@ -498,14 +498,29 @@ func TestEntriesFailClosedOnDatabaseErrors(t *testing.T) {
 			checkStatus(t, resp, 500)
 		}},
 		"reactivate fails": {failingQuerier{reactivateErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
-			resp := postMe(t, ts, token)
+			resp := reactivate(t, ts, token)
 			resp.Body.Close()
 			checkStatus(t, resp, 500)
 		}},
 		"reactivate audit fails": {failingQuerier{reactivateRows: true, auditErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			resp := reactivate(t, ts, token)
+			resp.Body.Close()
+			checkStatus(t, resp, 500)
+		}},
+		"reactivate world fails": {failingQuerier{journalErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			resp := reactivate(t, ts, token)
+			resp.Body.Close()
+			checkStatus(t, resp, 500)
+		}},
+		"provision status check fails": {failingQuerier{statusErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
 			resp := postMe(t, ts, token)
 			resp.Body.Close()
 			checkStatus(t, resp, 500)
+		}},
+		"provision refuses the deactivated": {failingQuerier{statusDeleted: true}, func(t *testing.T, ts *httptest.Server) {
+			resp := postMe(t, ts, token)
+			resp.Body.Close()
+			checkStatus(t, resp, 403)
 		}},
 		"gate check fails": {failingQuerier{statusErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
 			resp := getMonth(t, ts, token, "2026-08")

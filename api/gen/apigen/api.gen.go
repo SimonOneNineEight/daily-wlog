@@ -337,6 +337,9 @@ type ServerInterface interface {
 	// ProvisionMe Provision and return the signed-in User's world
 	// (POST /me)
 	ProvisionMe(w http.ResponseWriter, r *http.Request)
+	// ReactivateMe Restore a deactivated account within its grace period
+	// (POST /me/reactivate)
+	ReactivateMe(w http.ResponseWriter, r *http.Request)
 	// GetMonth A month's dot structure in one call
 	// (GET /months/{month})
 	GetMonth(w http.ResponseWriter, r *http.Request, month string, params GetMonthParams)
@@ -445,6 +448,12 @@ func (_ Unimplemented) DeactivateMe(w http.ResponseWriter, r *http.Request) {
 // ProvisionMe Provision and return the signed-in User's world
 // (POST /me)
 func (_ Unimplemented) ProvisionMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ReactivateMe Restore a deactivated account within its grace period
+// (POST /me/reactivate)
+func (_ Unimplemented) ReactivateMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -814,6 +823,20 @@ func (siw *ServerInterfaceWrapper) ProvisionMe(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// ReactivateMe operation middleware
+func (siw *ServerInterfaceWrapper) ReactivateMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReactivateMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetMonth operation middleware
 func (siw *ServerInterfaceWrapper) GetMonth(w http.ResponseWriter, r *http.Request) {
 
@@ -1071,6 +1094,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/me", wrapper.ProvisionMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/reactivate", wrapper.ReactivateMe)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/entries", wrapper.ListEntries)
@@ -2160,9 +2186,72 @@ func (response ProvisionMe401JSONResponse) VisitProvisionMeResponse(w http.Respo
 	return err
 }
 
+type ProvisionMe403JSONResponse Error
+
+func (response ProvisionMe403JSONResponse) VisitProvisionMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ProvisionMe500JSONResponse Error
 
 func (response ProvisionMe500JSONResponse) VisitProvisionMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReactivateMeRequestObject struct {
+}
+
+type ReactivateMeResponseObject interface {
+	VisitReactivateMeResponse(w http.ResponseWriter) error
+}
+
+type ReactivateMe200JSONResponse Me
+
+func (response ReactivateMe200JSONResponse) VisitReactivateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReactivateMe401JSONResponse Error
+
+func (response ReactivateMe401JSONResponse) VisitReactivateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReactivateMe500JSONResponse Error
+
+func (response ReactivateMe500JSONResponse) VisitReactivateMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2412,6 +2501,9 @@ type StrictServerInterface interface {
 	// ProvisionMe Provision and return the signed-in User's world
 	// (POST /me)
 	ProvisionMe(ctx context.Context, request ProvisionMeRequestObject) (ProvisionMeResponseObject, error)
+	// ReactivateMe Restore a deactivated account within its grace period
+	// (POST /me/reactivate)
+	ReactivateMe(ctx context.Context, request ReactivateMeRequestObject) (ReactivateMeResponseObject, error)
 	// GetMonth A month's dot structure in one call
 	// (GET /months/{month})
 	GetMonth(ctx context.Context, request GetMonthRequestObject) (GetMonthResponseObject, error)
@@ -2920,6 +3012,30 @@ func (sh *strictHandler) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ProvisionMeResponseObject); ok {
 		if err := validResponse.VisitProvisionMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReactivateMe operation middleware
+func (sh *strictHandler) ReactivateMe(w http.ResponseWriter, r *http.Request) {
+	var request ReactivateMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReactivateMe(ctx, request.(ReactivateMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReactivateMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReactivateMeResponseObject); ok {
+		if err := validResponse.VisitReactivateMeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

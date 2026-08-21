@@ -13,6 +13,16 @@ export type MonthDots =
 export type CreateCategoryBody =
   paths['/categories']['post']['requestBody']['content']['application/json'];
 
+/** A non-2xx API answer; status lets callers branch (403 = deactivated). */
+export class ApiError extends Error {
+  status: number;
+
+  constructor(path: string, status: number) {
+    super(`${path} responded ${status}`);
+    this.status = status;
+  }
+}
+
 async function request<T>(
   accessToken: string,
   path: string,
@@ -27,7 +37,7 @@ async function request<T>(
     ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
   });
   if (!response.ok) {
-    throw new Error(`${path} responded ${response.status}`);
+    throw new ApiError(path, response.status);
   }
   if (response.status === 204) {
     return undefined as T;
@@ -43,6 +53,11 @@ export function provisionMe(accessToken: string): Promise<Me> {
 /** Deactivates the account (#15); the permanent purge follows 30 days later. */
 export function deactivateMe(accessToken: string): Promise<void> {
   return request<void>(accessToken, '/me', { method: 'DELETE' });
+}
+
+/** The deliberate restore of a deactivated account within its grace. */
+export function reactivateMe(accessToken: string): Promise<Me> {
+  return request<Me>(accessToken, '/me/reactivate', { method: 'POST' });
 }
 
 export function createEntry(accessToken: string, body: CreateEntryBody): Promise<Entry> {

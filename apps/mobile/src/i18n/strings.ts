@@ -22,6 +22,12 @@ const zhTW = {
     deleteConfirmBody: '30天內重新登入即可復原。之後所有紀錄、照片與類別將永久刪除。',
     deleteConfirm: '刪除',
     deleteFailed: '刪除失敗，請再試一次',
+    // The deactivated gate screen: restoring takes a deliberate tap, never
+    // a mere session restore.
+    deactivatedTitle: '帳號已停用',
+    deactivatedBody: '30天內可復原帳號。之後所有紀錄、照片與類別將永久刪除。',
+    restore: '復原帳號',
+    restoreFailed: '復原失敗，請再試一次',
   },
   month: {
     title: (month: number) => `${month}月`,

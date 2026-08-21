@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,6 +13,7 @@ import (
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/SimonOneNineEight/daily-wlog/api/gen/apigen"
@@ -51,30 +53,37 @@ func (h handlers) GetHealth(ctx context.Context, _ apigen.GetHealthRequestObject
 
 func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestObject) (apigen.ProvisionMeResponseObject, error) {
 	userID := auth.UserID(ctx)
+	// A deactivated account never auto-reactivates here: the app provisions
+	// on every launch, so an auto-restoring /me would let any still-signed-in
+	// device cancel a deletion silently. POST /me/reactivate is the
+	// deliberate path (#15).
+	deletedAt, err := h.queries.GetAccountStatus(ctx, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
+	}
+	if err == nil && deletedAt.Valid {
+		return apigen.ProvisionMe403JSONResponse{Message: "account is deactivated"}, nil
+	}
 	if err := h.queries.ProvisionUser(ctx, userID); err != nil {
 		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
 	}
-	// Signing in on a deactivated account before its purge reactivates it
-	// (#15); the audit trail records the return.
-	reactivated, err := h.queries.ReactivateAccount(ctx, userID)
+	world, err := h.world(ctx, userID)
 	if err != nil {
 		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
 	}
-	if reactivated > 0 {
-		if err := h.queries.InsertAccountAudit(ctx, dbgen.InsertAccountAuditParams{
-			UserID: userID,
-			Event:  "reactivated",
-		}); err != nil {
-			return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
-		}
-	}
+	return apigen.ProvisionMe200JSONResponse(world), nil
+}
+
+// world assembles the signed-in User's Me payload; shared by provisioning
+// and reactivation.
+func (h handlers) world(ctx context.Context, userID string) (apigen.Me, error) {
 	journalID, err := h.queries.GetJournal(ctx, userID)
 	if err != nil {
-		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
+		return apigen.Me{}, err
 	}
 	rows, err := h.queries.ListCategories(ctx, userID)
 	if err != nil {
-		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
+		return apigen.Me{}, err
 	}
 	categories := make([]apigen.Category, len(rows))
 	for i, row := range rows {
@@ -90,7 +99,7 @@ func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestOb
 			HasChildren: &hasChildren,
 		}
 	}
-	return apigen.ProvisionMe200JSONResponse{UserId: userID, JournalId: journalID, Categories: categories}, nil
+	return apigen.Me{UserId: userID, JournalId: journalID, Categories: categories}, nil
 }
 
 // failure logs an operation failure, reports it to Sentry, and returns the
@@ -121,7 +130,7 @@ func NewWithQuerier(logger *slog.Logger, queries dbgen.Querier, verifier *auth.V
 	router.Use(middleware.Recoverer)
 	router.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
 	router.Use(auth.Middleware(verifier, map[string]bool{"/healthz": true}))
-	router.Use(deactivationGate(queries))
+	router.Use(deactivationGate(queries, logger))
 	h := handlers{logger: logger, queries: queries, store: store}
 	return apigen.HandlerFromMux(apigen.NewStrictHandler(h, nil), router)
 }

@@ -2,8 +2,10 @@ import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 
 import type { Me } from './api/client';
-import { provisionMe } from './api/client';
+import { ApiError, provisionMe, reactivateMe } from './api/client';
+import { supabase } from './auth/supabase';
 import { useSession } from './auth/useSession';
+import { DeactivatedScreen } from './screens/DeactivatedScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { SignInScreen } from './screens/SignInScreen';
 
@@ -17,15 +19,24 @@ export function AppRoot() {
   const [world, setWorld] = useState<{ userId: string; me: Me } | null>(null);
   // Bumped when the form creates a category, so /me is refetched.
   const [worldVersion, setWorldVersion] = useState(0);
+  // A deactivated account (#15): /me answers 403 and only the deliberate
+  // restore (or 登出) leaves this state.
+  const [deactivated, setDeactivated] = useState(false);
 
   useEffect(() => {
     if (!accessToken || !userId) return;
     let active = true;
     provisionMe(accessToken)
       .then((me) => {
-        if (active) setWorld({ userId, me });
+        if (!active) return;
+        setWorld({ userId, me });
+        setDeactivated(false);
       })
       .catch((error) => {
+        if (error instanceof ApiError && error.status === 403) {
+          if (active) setDeactivated(true);
+          return;
+        }
         Sentry.captureException(error);
       });
     return () => {
@@ -42,6 +53,20 @@ export function AppRoot() {
   }
   if (!session) {
     return <SignInScreen />;
+  }
+  if (deactivated && userId) {
+    return (
+      <DeactivatedScreen
+        onRestore={async () => {
+          const me = await reactivateMe(session.access_token);
+          setWorld({ userId, me });
+          setDeactivated(false);
+        }}
+        onSignOut={() => {
+          void supabase.auth.signOut();
+        }}
+      />
+    );
   }
   return (
     <HomeScreen

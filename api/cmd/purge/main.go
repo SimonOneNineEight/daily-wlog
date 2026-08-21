@@ -18,8 +18,6 @@ import (
 	"github.com/SimonOneNineEight/daily-wlog/api/internal/storage"
 )
 
-const gracePeriod = 30 * 24 * time.Hour
-
 func main() {
 	logger := logging.New(os.Stdout)
 	cfg, err := config.Load(os.Getenv)
@@ -36,7 +34,7 @@ func main() {
 	defer pool.Close()
 
 	store := storage.New(cfg.SupabaseStorageURL, cfg.SupabaseSecretKey)
-	purged, err := purge.Run(ctx, dbgen.New(pool), store, time.Now().Add(-gracePeriod))
+	purged, err := purge.Run(ctx, dbgen.New(pool), store, time.Now().Add(-purge.GracePeriod))
 	if err != nil {
 		logger.Error("purge", "error", err)
 		os.Exit(1)

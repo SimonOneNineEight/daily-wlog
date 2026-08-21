@@ -32,7 +32,7 @@ export interface paths {
         put?: never;
         /**
          * Provision and return the signed-in User's world
-         * @description Idempotent. On first sign-in it atomically creates the User, their Journal, and the five seeded categories; on every later call it returns the same world unchanged. Signing in on a deactivated account before its purge reactivates it (#15) — every other route answers 403 while deactivated.
+         * @description Idempotent. On first sign-in it atomically creates the User, their Journal, and the five seeded categories; on every later call it returns the same world unchanged. A deactivated account answers 403 here and everywhere else (#15); restoring it takes the deliberate POST /me/reactivate, never a mere session restore.
          */
         post: operations["provisionMe"];
         /**
@@ -40,6 +40,26 @@ export interface paths {
          * @description Leaving is a right (#15). Deactivation is immediate — every route except POST /me answers 403 from here on — and the permanent purge follows after a 30-day grace, cascading through Entries, Categories, and stored photo files. Signing in again before the purge reactivates the account intact. Idempotent.
          */
         delete: operations["deactivateMe"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a deactivated account within its grace period
+         * @description The deliberate half of reactivation (#15): the user confirms the restore and gets their world back intact. A separate operation from POST /me on purpose — the app provisions on every launch, and an auto-reactivating /me would let any still-signed-in device cancel a deletion silently. Idempotent on active accounts.
+         */
+        post: operations["reactivateMe"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -499,6 +519,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description The account is deactivated. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description Provisioning failed. */
             500: {
                 headers: {
@@ -536,6 +565,44 @@ export interface operations {
                 };
             };
             /** @description Deactivation failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reactivateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The restored (or already active) User's world. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Reactivation failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

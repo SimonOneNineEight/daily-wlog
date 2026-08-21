@@ -29,8 +29,10 @@ export function SettingsScreen({ accessToken, onOpenCategories, onBack }: Props)
         text: strings.settings.deleteConfirm,
         style: 'destructive',
         onPress: () => {
+          // Global sign-out revokes every device's refresh token: a deletion
+          // must not be silently undone by another signed-in phone.
           deactivateMe(accessToken)
-            .then(() => supabase.auth.signOut())
+            .then(() => supabase.auth.signOut({ scope: 'global' }))
             .catch(() => setFailed(true));
         },
       },
@@ -158,7 +160,7 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: t.spacing.space3,
-    height: 40,
+    height: t.spacing.hitMin,
     paddingHorizontal: t.spacing.space2,
   },
   deleteLabel: {
