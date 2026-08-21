@@ -1,7 +1,8 @@
 import { GripHorizontal } from 'lucide-react-native';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 
 import { CategoryIcon } from '../calendar/CategoryIcon';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 import { PhotoGrid } from './PhotoGrid';

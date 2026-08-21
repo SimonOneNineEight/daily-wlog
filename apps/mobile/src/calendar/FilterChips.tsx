@@ -1,8 +1,9 @@
 import { X } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import type { Category } from '../api/client';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 import type { CalendarFilter } from './filter';

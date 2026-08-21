@@ -1,7 +1,8 @@
 import { ChevronRight, Image as ImageIcon } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 import { CategoryIcon } from './CategoryIcon';

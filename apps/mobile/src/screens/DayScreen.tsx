@@ -1,6 +1,6 @@
 import { ChevronLeft, Plus } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import type { RenderItemParams } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import type { EntryDraft } from '../entries/drafts';
 import { listDrafts } from '../entries/drafts';
 import { EntryCard } from '../entries/EntryCard';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 import { EntryFormScreen } from './EntryFormScreen';
@@ -208,6 +209,7 @@ export function DayScreen({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={strings.day.addEntry}
+        feedback="scale"
         style={styles.fab}
         onPress={() => setComposing(true)}
       >

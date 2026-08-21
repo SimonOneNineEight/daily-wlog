@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Modal, PanResponder, Pressable, Text, View } from 'react-native';
+import { Modal, PanResponder, Text, View } from 'react-native';
 
 import { listColorRecents } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles } from '../theme';
 import type { Hsl } from './colorDerivation';
 import { hexToHsl, hslToHex } from './colorDerivation';
@@ -122,6 +123,7 @@ export function ColorDrawer({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.entryForm.cancel}
+          feedback="none"
           style={styles.scrim}
           onPress={onCancel}
         />

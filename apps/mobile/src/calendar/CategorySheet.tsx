@@ -1,11 +1,12 @@
 import { Check, Pencil, Plus } from 'lucide-react-native';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, ScrollView, Text, View } from 'react-native';
 
 import type { Category } from '../api/client';
 import type { Editing } from '../categories/CategoryEditorSheet';
 import { CategoryEditorSheet } from '../categories/CategoryEditorSheet';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 import { CategoryIcon } from './CategoryIcon';
@@ -62,6 +63,7 @@ export function CategorySheet({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.filter.done}
+          feedback="none"
           style={styles.scrim}
           onPress={onClose}
         />

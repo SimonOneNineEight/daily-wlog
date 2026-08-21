@@ -1,6 +1,6 @@
 import { ChevronLeft, Plus, Settings, Tags } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
 import type { Category } from '../api/client';
@@ -15,6 +15,7 @@ import { MonthGrid } from '../calendar/MonthGrid';
 import { monthKey, shiftMonth } from '../calendar/monthMath';
 import { decodeContent } from '../entries/content';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 type Props = {
@@ -258,6 +259,7 @@ export function MonthScreen({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={strings.day.addEntry}
+        feedback="scale"
         style={styles.fab}
         onPress={onAddEntry}
       >

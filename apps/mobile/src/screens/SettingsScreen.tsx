@@ -1,12 +1,13 @@
 import { ChevronLeft, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { deactivateMe } from '../api/client';
 import { supabase } from '../auth/supabase';
 import { useSession } from '../auth/useSession';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 type Props = {

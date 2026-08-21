@@ -1,11 +1,12 @@
 import { Check, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
 import { createElement, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, TextInput, View } from 'react-native';
 
 import type { Category } from '../api/client';
 import { createCategory, deleteCategory, saveColorRecent, updateCategory } from '../api/client';
 import { CategoryIcon, glyphFor } from '../calendar/CategoryIcon';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 import { ColorPresetPicker, isPresetColor } from './ColorPresetPicker';
@@ -55,6 +56,7 @@ export function CategoryEditorSheet(props: Props) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.entryForm.cancel}
+          feedback="none"
           style={styles.scrim}
           onPress={props.onClose}
         />

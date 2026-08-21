@@ -1,6 +1,7 @@
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles } from '../theme';
 
 type Props = {

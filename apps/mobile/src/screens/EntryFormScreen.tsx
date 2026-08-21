@@ -5,7 +5,6 @@ import {
   ActionSheetIOS,
   Alert,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -34,6 +33,7 @@ import { decodeContent, encodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { clearDraft, newDraftId, saveDraft } from '../entries/drafts';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 type Props = {

@@ -1,6 +1,6 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Tags } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
@@ -10,6 +10,7 @@ import { emptyFilter, filterParams } from '../calendar/filter';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MiniMonth } from '../calendar/MiniMonth';
 import { strings } from '../i18n/strings';
+import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
 type Props = {
