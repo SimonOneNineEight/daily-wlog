@@ -8,6 +8,8 @@ const zhTW = {
     wordmark: 'daily-wlog',
     promise: '每天五分鐘，留下你的生活',
     google: '使用 Google 帳戶登入',
+    emailButton: '使用電子郵件登入',
+    emailTitle: '電子郵件登入',
     emailPlaceholder: '電子郵件',
     passwordPlaceholder: '密碼',
     signInAction: '登入',

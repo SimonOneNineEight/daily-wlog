@@ -28,8 +28,10 @@ beforeEach(() => {
   mockSignUp.mockClear();
 });
 
-it('signs in with email and password', async () => {
+it('signs in with email and password from its own page', async () => {
   render(<SignInScreen />);
+
+  fireEvent.press(screen.getByText('使用電子郵件登入'));
 
   fireEvent.changeText(screen.getByPlaceholderText('電子郵件'), 'pm@wlog.local');
   fireEvent.changeText(screen.getByPlaceholderText('密碼'), 'secret-123');
@@ -46,6 +48,8 @@ it('signs in with email and password', async () => {
 it('registers through the toggle and shows the confirm-email notice', async () => {
   render(<SignInScreen />);
 
+  fireEvent.press(screen.getByText('使用電子郵件登入'));
+
   fireEvent.press(screen.getByText('還沒有帳戶？註冊'));
   fireEvent.changeText(screen.getByPlaceholderText('電子郵件'), 'pm@wlog.local');
   fireEvent.changeText(screen.getByPlaceholderText('密碼'), 'secret-123');
@@ -61,6 +65,8 @@ it('registers through the toggle and shows the confirm-email notice', async () =
 it('shows the flat error line when sign-in fails', async () => {
   mockSignInWithPassword.mockResolvedValueOnce({ error: new Error('nope') } as never);
   render(<SignInScreen />);
+
+  fireEvent.press(screen.getByText('使用電子郵件登入'));
 
   fireEvent.changeText(screen.getByPlaceholderText('電子郵件'), 'pm@wlog.local');
   fireEvent.changeText(screen.getByPlaceholderText('密碼'), 'wrong');
