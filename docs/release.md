@@ -12,12 +12,33 @@ exist.
 2. **Simon — hosted Supabase project** (supabase.com, free tier).
    Do not paste keys into the repo or the chat; they go into EAS/hosting
    secret stores in step 4.
-3. **Simon — decide the API host.** The Go API needs a home; Supabase does
-   not run it. Candidates (all fine at this scale): Fly.io, Railway,
-   Render. Needs: one small container, `DATABASE_URL`,
-   `SUPABASE_JWKS_URL`, `SUPABASE_STORAGE_URL`, `SUPABASE_SECRET_KEY`
-   env vars, and a daily scheduled run of `cmd/purge` (#15) — Fly machines
-   cron, Railway cron, or a GitHub Actions schedule hitting the same image.
+3. **API host: Simon's home Linux box** (ratified 2026-08-21 for the
+   TestFlight phase; migrate to Fly/Railway/Render later by moving the
+   same four env vars). deploy/home/ has everything. One-time setup on
+   the box:
+
+   ```sh
+   sudo useradd --system --no-create-home daily-wlog
+   sudo mkdir -p /opt/daily-wlog /etc/daily-wlog
+   sudo cp deploy/home/daily-wlog-*.service deploy/home/daily-wlog-purge.timer /etc/systemd/system/
+   sudo cp deploy/home/api.env.example /etc/daily-wlog/api.env
+   sudo chmod 600 /etc/daily-wlog/api.env   # then fill in the real values
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now daily-wlog-purge.timer
+   # Public HTTPS without opening router ports:
+   curl -fsSL https://tailscale.com/install.sh | sh
+   sudo tailscale up
+   sudo tailscale funnel --bg 8080          # note the https://…ts.net URL
+   ```
+
+   Then from the Mac: `DEPLOY_HOST=user@homebox deploy/home/deploy.sh`
+   (cross-compiles api + purge, ships them, restarts the service). The
+   ts.net URL becomes `EXPO_PUBLIC_API_URL`.
+
+   Gotchas baked into api.env.example: use the **session pooler**
+   connection string (direct db.<ref> hosts are IPv6-only, and pgx needs
+   session mode), and the project must be **migrated to JWT signing keys**
+   (Project Settings → JWT Keys) or every token verification 401s.
 4. **Wire secrets.**
    - Hosted Supabase: apply `supabase/migrations/` via `supabase link` +
      `supabase db push`; create the private `photos` bucket per
