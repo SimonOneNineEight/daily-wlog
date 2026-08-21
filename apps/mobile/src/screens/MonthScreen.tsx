@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Funnel, Plus, Settings } from 'lucide-react-native';
+import { ChevronLeft, Funnel, Plus, Settings } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -173,7 +173,19 @@ export function MonthScreen({
             <Text style={styles.navSubtitle}>{strings.month.yearLabel(visible.year)}</Text>
           )}
         </View>
+        {/* Full Apple (ratified 2026-08-20): months change by swipe alone,
+            so the nav holds just the lens and the utility. */}
         <View style={styles.navActions}>
+          {onChangeFilter ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.filter.open}
+              style={styles.navButton}
+              onPress={() => setFilterOpen(true)}
+            >
+              <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
           {onOpenSettings ? (
             <Pressable
               accessibilityRole="button"
@@ -184,22 +196,6 @@ export function MonthScreen({
               <Settings size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.month.prevMonth}
-            style={styles.navButton}
-            onPress={() => moveMonth(-1)}
-          >
-            <ChevronLeft size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.month.nextMonth}
-            style={styles.navButton}
-            onPress={() => moveMonth(1)}
-          >
-            <ChevronRight size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-          </Pressable>
         </View>
       </View>
 
@@ -255,20 +251,6 @@ export function MonthScreen({
           onOpen={() => onOpenDay(selectedDate)}
         />
       </View>
-
-      {/* The filter floats bottom-left, one white circle balancing the
-          black + (ratified 2026-08-20): 篩選 sits beside the sheet it opens,
-          and the year view is the tappable ‹ year label, Apple-style. */}
-      {onChangeFilter ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.filter.open}
-          style={styles.filterBubble}
-          onPress={() => setFilterOpen(true)}
-        >
-          <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-        </Pressable>
-      ) : null}
 
       <Pressable
         accessibilityRole="button"
@@ -340,21 +322,6 @@ const styles = createStyles((t) => ({
     backgroundColor: t.colors.controlPrimaryBg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  filterBubble: {
-    position: 'absolute',
-    left: t.spacing.fabInset,
-    bottom: t.spacing.fabInset,
-    width: t.spacing.fabSize,
-    height: t.spacing.fabSize,
-    borderRadius: t.radius.pill,
-    backgroundColor: t.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: t.colors.textPrimary,
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
   },
   navYear: {
     flexDirection: 'row',

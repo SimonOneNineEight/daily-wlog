@@ -92,12 +92,15 @@ it("shows today's entries in the panel by default and the empty line otherwise",
   expect(screen.getByText('8月20日 星期四')).toBeTruthy();
 });
 
-it('moves between months with the chevrons and fetches the new month', async () => {
+it('moves between months by swipe alone and fetches the new month', async () => {
   renderMonth();
   await screen.findByText('8月');
+  const { width } = Dimensions.get('window');
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText('下一個月'));
+    fireEvent(screen.getByTestId('month-pager'), 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { x: 2 * width } },
+    });
   });
   expect(await screen.findByText('9月')).toBeTruthy();
   const monthCalls = (globalThis.fetch as jest.Mock).mock.calls
@@ -106,8 +109,14 @@ it('moves between months with the chevrons and fetches the new month', async () 
   expect(monthCalls.some((u) => u.includes('/months/2026-09'))).toBe(true);
 
   await act(async () => {
-    fireEvent.press(screen.getByLabelText('上一個月'));
-    fireEvent.press(screen.getByLabelText('上一個月'));
+    fireEvent(screen.getByTestId('month-pager'), 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { x: 0 } },
+    });
+  });
+  await act(async () => {
+    fireEvent(screen.getByTestId('month-pager'), 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { x: 0 } },
+    });
   });
   expect(await screen.findByText('7月')).toBeTruthy();
 });
