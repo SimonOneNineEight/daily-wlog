@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Funnel, List, Plus, Settings } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Funnel, LayoutGrid, Plus, Settings } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -263,7 +263,7 @@ export function MonthScreen({
               style={styles.viewBubbleButton}
               onPress={onOpenYear}
             >
-              <List size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+              <LayoutGrid size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
         </View>
