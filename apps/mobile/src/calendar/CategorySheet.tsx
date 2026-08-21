@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronUp, Pencil, Plus } from 'lucide-react-native';
+import { Check, Pencil, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -37,7 +37,6 @@ export function CategorySheet({
   onCategoriesChanged,
   onClose,
 }: Props) {
-  const [expanded, setExpanded] = useState<string[]>([]);
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const topLevel = categories.filter((c) => !c.parentId);
@@ -85,7 +84,6 @@ export function CategorySheet({
               {topLevel.map((category) => {
                 const children = childrenOf(category.id);
                 const parentOn = filter.categoryIds.includes(category.id);
-                const open = expanded.includes(category.id);
                 return (
                   <View key={category.id}>
                     <Pressable
@@ -110,25 +108,8 @@ export function CategorySheet({
                         <Check size={18} color={theme.colors.textPrimary} strokeWidth={2} />
                       ) : null}
                       {editButton(() => setEditing({ mode: 'edit', id: category.id }))}
-                      {children.length > 0 ? (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            open ? strings.filter.collapse : strings.filter.expand
-                          }
-                          style={styles.expandButton}
-                          onPress={() => setExpanded((prev) => toggle(prev, category.id))}
-                        >
-                          {open ? (
-                            <ChevronUp size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
-                          ) : (
-                            <ChevronDown size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
-                          )}
-                        </Pressable>
-                      ) : null}
                     </Pressable>
-                    {open
-                      ? children.map((child) => {
+                    {children.map((child) => {
                           const subOn = filter.subcategoryIds.includes(child.id);
                           return (
                             <Pressable
@@ -165,8 +146,7 @@ export function CategorySheet({
                               {editButton(() => setEditing({ mode: 'edit', id: child.id }))}
                             </Pressable>
                           );
-                        })
-                      : null}
+                        })}
                   </View>
                 );
               })}

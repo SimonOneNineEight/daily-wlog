@@ -190,8 +190,7 @@ describe('calendar filter (#13)', () => {
     fireEvent.press(screen.getByText('工作'));
     expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: ['c-work'], subcategoryIds: [] });
 
-    // Expanding a parent reveals its subcategory, which toggles independently.
-    fireEvent.press(screen.getByLabelText('展開子類別'));
+    // Subcategories are always visible and toggle independently.
     fireEvent.press(screen.getByText('健身房'));
     expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
   });
@@ -233,7 +232,6 @@ it('normalizes parent and child selections like the canvas', async () => {
 
   fireEvent.press(screen.getByLabelText('類別'));
   // Picking a child narrows the lens: its parent's selection drops.
-  fireEvent.press(screen.getByLabelText('展開子類別'));
   fireEvent.press(screen.getByText('健身房'));
   expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
 });

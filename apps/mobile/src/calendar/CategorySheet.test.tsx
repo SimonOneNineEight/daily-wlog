@@ -98,10 +98,10 @@ it('renames a category through the row editor', async () => {
 it('edits a subcategory from its expanded row with sections disabled', () => {
   renderSheet();
 
-  fireEvent.press(screen.getByLabelText('展開子類別'));
-  // The last ✎ belongs to the freshly revealed 健身房 row.
+  // Subcategories are always visible (Apple's always-expanded list); the
+  // 健身房 row sits right under 運動.
   const editButtons = screen.getAllByLabelText('編輯類別');
-  fireEvent.press(editButtons[editButtons.length - 2]);
+  fireEvent.press(editButtons[2]);
   expect(screen.getByDisplayValue('健身房')).toBeTruthy();
   expect(screen.getByText('子類別沿用上層分類的圖示與顏色。')).toBeTruthy();
 });

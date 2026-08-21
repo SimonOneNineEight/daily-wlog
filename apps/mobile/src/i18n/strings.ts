@@ -109,8 +109,6 @@ const zhTW = {
   filter: {
     clearAll: '全部清除',
     done: '完成',
-    expand: '展開子類別',
-    collapse: '收合子類別',
   },
   year: {
     title: (year: number) => `${year}年`,
