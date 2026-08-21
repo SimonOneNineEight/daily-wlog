@@ -1,17 +1,18 @@
-import { Check, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
+import { Check, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
 import { createElement, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
 import { createCategory, deleteCategory, saveColorRecent, updateCategory } from '../api/client';
 import { CategoryIcon, glyphFor } from '../calendar/CategoryIcon';
-import { ColorPresetPicker, isPresetColor } from '../categories/ColorPresetPicker';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
-// The canvas's drawn icon set (lucide, consistent weight — no emoji per the
-// design bans); every name resolves through CategoryIcon's lookup.
+import { ColorPresetPicker, isPresetColor } from './ColorPresetPicker';
+
+// The drawn icon set offered by the editor (lucide, consistent weight — no
+// emoji per the design bans); every name resolves through CategoryIcon's
+// lookup.
 const ICON_CHOICES = [
   'dumbbell', 'volleyball', 'bike', 'waves-ladder', 'mountain', 'footprints',
   'trophy', 'tent', 'plane', 'car', 'train-front', 'bus',
@@ -28,110 +29,9 @@ const ICON_CHOICES = [
 
 const firstPreset = Object.values(theme.categories)[0].base;
 
+export type Editing = { mode: 'create'; parent?: Category } | { mode: 'edit'; id: string };
+
 type Props = {
-  accessToken: string;
-  categories: Category[];
-  onBack: () => void;
-  onCategoriesChanged: () => void;
-};
-
-type Editing = { mode: 'create'; parent?: Category } | { mode: 'edit'; id: string };
-
-// Category management (#10) per the canvas: the 類別 list shows parent rows
-// with subcategories as a joined subtitle; tapping a row opens the 分類表單
-// bottom sheet. Ratified deviations from the canvas (Simon, 2026-08-20):
-// the icon picker stays available when editing, and subcategories stay an
-// inline list in the sheet rather than a count-row to a separate screen.
-export function CategoriesScreen({ accessToken, categories, onBack, onCategoriesChanged }: Props) {
-  const [editing, setEditing] = useState<Editing | null>(null);
-
-  const topLevel = categories.filter((c) => !c.parentId);
-  const childrenOf = (id: string) => categories.filter((c) => c.parentId === id);
-
-  const target =
-    editing?.mode === 'edit' ? categories.find((c) => c.id === editing.id) : undefined;
-
-  return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.navBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.day.back}
-          style={styles.navButton}
-          onPress={onBack}
-        >
-          <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
-        </Pressable>
-        <Text style={styles.navTitle}>{strings.categories.title}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.categories.add}
-          style={styles.navButton}
-          onPress={() => setEditing({ mode: 'create' })}
-        >
-          <Plus size={22} color={theme.colors.iconDefault} strokeWidth={2} />
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={styles.body}>
-        <View style={styles.card}>
-          {topLevel.map((category, index) => {
-            const children = childrenOf(category.id);
-            return (
-              <Pressable
-                key={category.id}
-                accessibilityRole="button"
-                style={[styles.row, index < topLevel.length - 1 && styles.rowDivided]}
-                onPress={() => setEditing({ mode: 'edit', id: category.id })}
-              >
-                <CategoryIcon icon={category.icon} color={category.color} />
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>{category.name}</Text>
-                  {children.length > 0 ? (
-                    <Text style={styles.rowSubtitle} numberOfLines={1}>
-                      {children.map((c) => c.name).join('、')}
-                    </Text>
-                  ) : null}
-                </View>
-                <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
-              </Pressable>
-            );
-          })}
-        </View>
-      </ScrollView>
-      {editing ? (
-        <Modal transparent animationType="slide" onRequestClose={() => setEditing(null)}>
-          <View style={styles.sheetOverlay}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={strings.entryForm.cancel}
-              style={styles.sheetScrim}
-              onPress={() => setEditing(null)}
-            />
-            <CategoryEditor
-              key={editing.mode === 'edit' ? editing.id : `create-${editing.parent?.id ?? 'top'}`}
-              accessToken={accessToken}
-              target={target}
-              parent={
-                editing.mode === 'create'
-                  ? editing.parent
-                  : target?.parentId
-                    ? categories.find((c) => c.id === target.parentId)
-                    : undefined
-              }
-              parentChoices={topLevel}
-              childrenOfTarget={target ? childrenOf(target.id) : []}
-              onOpen={(next) => setEditing(next)}
-              onClose={() => setEditing(null)}
-              onCategoriesChanged={onCategoriesChanged}
-            />
-          </View>
-        </Modal>
-      ) : null}
-    </SafeAreaView>
-  );
-}
-
-type EditorProps = {
   accessToken: string;
   /** The category being edited; undefined when creating. */
   target?: Category;
@@ -145,6 +45,25 @@ type EditorProps = {
   onCategoriesChanged: () => void;
 };
 
+// The 分類表單 sheet (#10, canvas artboard), extracted for reuse by the 類別
+// sheet. Ratified deviations (Simon, 2026-08-20): the icon picker stays
+// available when editing, and subcategories stay an inline list.
+export function CategoryEditorSheet(props: Props) {
+  return (
+    <Modal transparent animationType="slide" onRequestClose={props.onClose}>
+      <View style={styles.overlay}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={strings.entryForm.cancel}
+          style={styles.scrim}
+          onPress={props.onClose}
+        />
+        <CategoryEditor {...props} />
+      </View>
+    </Modal>
+  );
+}
+
 function CategoryEditor({
   accessToken,
   target,
@@ -154,7 +73,7 @@ function CategoryEditor({
   onOpen,
   onClose,
   onCategoriesChanged,
-}: EditorProps) {
+}: Props) {
   const [name, setName] = useState(target?.name ?? '');
   const [color, setColor] = useState(target?.color ?? firstPreset);
   const [icon, setIcon] = useState(target?.icon ?? 'tag');
@@ -411,73 +330,11 @@ function CategoryEditor({
 }
 
 const styles = createStyles((t) => ({
-  screen: {
-    flex: 1,
-    backgroundColor: t.colors.background,
-  },
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: t.spacing.space4,
-    height: t.spacing.navBarHeight,
-    paddingHorizontal: t.spacing.space4,
-  },
-  navButton: {
-    width: t.spacing.hitMin,
-    height: t.spacing.hitMin,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navTitle: {
-    ...t.typography.sectionHeader,
-    color: t.colors.textPrimary,
-    flex: 1,
-  },
-  body: {
-    gap: t.spacing.space7,
-    paddingHorizontal: t.spacing.screenGutter,
-    paddingTop: t.spacing.space5,
-    paddingBottom: t.spacing.space10,
-  },
-  card: {
-    backgroundColor: t.colors.surface,
-    borderRadius: t.radius.card,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: t.spacing.space5,
-    minHeight: t.spacing.rowHeight,
-    paddingVertical: t.spacing.rowPaddingY,
-    paddingHorizontal: t.spacing.cardPadding,
-  },
-  rowDivided: {
-    borderBottomWidth: t.border.hairline,
-    borderBottomColor: t.colors.lineSeparator,
-  },
-  rowText: {
-    flex: 1,
-  },
-  rowTitle: {
-    ...t.typography.entryTitle,
-    color: t.colors.textPrimary,
-    flexShrink: 1,
-  },
-  rowSubtitle: {
-    ...t.typography.meta,
-    color: t.colors.textTertiary,
-    marginTop: t.spacing.space1,
-  },
-  rowValue: {
-    ...t.typography.meta,
-    color: t.colors.textTertiary,
-  },
-  sheetOverlay: {
+  overlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
-  sheetScrim: {
+  scrim: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -556,6 +413,35 @@ const styles = createStyles((t) => ({
     marginBottom: t.spacing.space4,
     marginLeft: t.spacing.space1,
   },
+  card: {
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.card,
+    overflow: 'hidden',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.space5,
+    minHeight: t.spacing.rowHeight,
+    paddingVertical: t.spacing.rowPaddingY,
+    paddingHorizontal: t.spacing.cardPadding,
+  },
+  rowDivided: {
+    borderBottomWidth: t.border.hairline,
+    borderBottomColor: t.colors.lineSeparator,
+  },
+  rowText: {
+    flex: 1,
+  },
+  rowTitle: {
+    ...t.typography.entryTitle,
+    color: t.colors.textPrimary,
+    flexShrink: 1,
+  },
+  rowValue: {
+    ...t.typography.meta,
+    color: t.colors.textTertiary,
+  },
   appearance: {
     gap: t.spacing.space7,
   },
@@ -603,7 +489,7 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: t.spacing.space3,
-    height: 40,
+    height: t.spacing.hitMin,
     paddingHorizontal: t.spacing.space2,
   },
   deleteLabel: {

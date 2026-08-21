@@ -185,8 +185,8 @@ describe('calendar filter (#13)', () => {
     });
     await act(async () => {});
 
-    fireEvent.press(screen.getByLabelText('篩選'));
-    expect(screen.getByText('篩選')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('類別'));
+    expect(screen.getByText('類別')).toBeTruthy();
     fireEvent.press(screen.getByText('工作'));
     expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: ['c-work'], subcategoryIds: [] });
 
@@ -231,7 +231,7 @@ it('normalizes parent and child selections like the canvas', async () => {
   });
   await act(async () => {});
 
-  fireEvent.press(screen.getByLabelText('篩選'));
+  fireEvent.press(screen.getByLabelText('類別'));
   // Picking a child narrows the lens: its parent's selection drops.
   fireEvent.press(screen.getByLabelText('展開子類別'));
   fireEvent.press(screen.getByText('健身房'));
@@ -251,7 +251,7 @@ it('turning a parent on clears its own children picks', async () => {
   });
   await act(async () => {});
 
-  fireEvent.press(screen.getByLabelText('篩選'));
+  fireEvent.press(screen.getByLabelText('類別'));
   fireEvent.press(screen.getByText('運動'));
   expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: ['c-sport'], subcategoryIds: [] });
 });

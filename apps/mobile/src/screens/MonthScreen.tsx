@@ -1,4 +1,4 @@
-import { ChevronLeft, Funnel, Plus, Settings } from 'lucide-react-native';
+import { ChevronLeft, Plus, Settings, Tags } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -9,8 +9,8 @@ import type { PanelEntry } from '../calendar/DayPanel';
 import { DayPanel } from '../calendar/DayPanel';
 import type { CalendarFilter } from '../calendar/filter';
 import { emptyFilter, entryMatchesFilter, filterParams } from '../calendar/filter';
+import { CategorySheet } from '../calendar/CategorySheet';
 import { FilterChips } from '../calendar/FilterChips';
-import { FilterSheet } from '../calendar/FilterSheet';
 import { MonthGrid } from '../calendar/MonthGrid';
 import { monthKey, shiftMonth } from '../calendar/monthMath';
 import { decodeContent } from '../entries/content';
@@ -24,8 +24,10 @@ type Props = {
   today?: Date;
   onOpenDay: (date: string) => void;
   onAddEntry: () => void;
-  /** Opens settings (#15), which hosts category management. */
+  /** Opens settings (#15). */
   onOpenSettings?: () => void;
+  /** Fired after the 類別 sheet changes a category, so /me refetches. */
+  onCategoriesChanged?: () => void;
   /** Opens the year view (#12). */
   onOpenYear?: () => void;
   /** Land on this month instead of today's (year view tap-through, #12). */
@@ -50,6 +52,7 @@ export function MonthScreen({
   onOpenDay,
   onAddEntry,
   onOpenSettings,
+  onCategoriesChanged,
   onOpenYear,
   initialMonth,
   filter = emptyFilter,
@@ -179,11 +182,11 @@ export function MonthScreen({
           {onChangeFilter ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={strings.filter.open}
+              accessibilityLabel={strings.categories.title}
               style={styles.navButton}
               onPress={() => setFilterOpen(true)}
             >
-              <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+              <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
           {onOpenSettings ? (
@@ -262,10 +265,12 @@ export function MonthScreen({
       </Pressable>
 
       {filterOpen && onChangeFilter ? (
-        <FilterSheet
+        <CategorySheet
+          accessToken={accessToken}
           categories={categories}
           filter={filter}
           onChange={onChangeFilter}
+          onCategoriesChanged={() => onCategoriesChanged?.()}
           onClose={() => setFilterOpen(false)}
         />
       ) : null}

@@ -8,7 +8,6 @@ import { emptyFilter } from '../calendar/filter';
 import { localDateString } from '../calendar/monthMath';
 import { createStyles } from '../theme';
 
-import { CategoriesScreen } from './CategoriesScreen';
 import { DayScreen } from './DayScreen';
 import { EntryFormScreen } from './EntryFormScreen';
 import { MonthScreen } from './MonthScreen';
@@ -26,7 +25,6 @@ type Route =
   | { name: 'day'; date: string }
   | { name: 'form'; date: string }
   | { name: 'settings' }
-  | { name: 'categories' }
   | { name: 'year' };
 
 // Home lands on the month view (#6); the day list, entry form, settings, and
@@ -59,6 +57,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
         categories={categories}
         filter={filter}
         onChangeFilter={setFilter}
+        onCategoriesChanged={onCategoriesChanged}
         onOpenMonth={(year, month) => setRoute({ name: 'month', focus: { year, month } })}
         onBack={() => setRoute({ name: 'month' })}
       />
@@ -68,18 +67,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
     return (
       <SettingsScreen
         accessToken={accessToken}
-        onOpenCategories={() => setRoute({ name: 'categories' })}
         onBack={() => setRoute({ name: 'month' })}
-      />
-    );
-  }
-  if (route.name === 'categories') {
-    return (
-      <CategoriesScreen
-        accessToken={accessToken}
-        categories={categories}
-        onBack={() => setRoute({ name: 'settings' })}
-        onCategoriesChanged={() => onCategoriesChanged?.()}
       />
     );
   }
@@ -110,6 +98,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
           onOpenDay={(date) => setRoute({ name: 'day', date })}
           onAddEntry={() => setRoute({ name: 'form', date: localDateString(new Date()) })}
           onOpenSettings={() => setRoute({ name: 'settings' })}
+          onCategoriesChanged={onCategoriesChanged}
           onOpenYear={() => setRoute({ name: 'year' })}
         />
       </View>

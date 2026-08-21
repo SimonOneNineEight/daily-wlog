@@ -28,24 +28,15 @@ afterEach(() => {
 });
 
 function renderSettings(overrides: Partial<React.ComponentProps<typeof SettingsScreen>> = {}) {
-  const onOpenCategories = jest.fn();
-  render(
-    <SettingsScreen
-      accessToken="tok"
-      onOpenCategories={onOpenCategories}
-      onBack={jest.fn()}
-      {...overrides}
-    />,
-  );
-  return onOpenCategories;
+  render(<SettingsScreen accessToken="tok" onBack={jest.fn()} {...overrides} />);
 }
 
-it('shows the account row and hosts the categories entry', () => {
-  const onOpenCategories = renderSettings();
+it('shows the account row', () => {
+  renderSettings();
   expect(screen.getByText('simon@wlog.local')).toBeTruthy();
-
-  fireEvent.press(screen.getByText('類別'));
-  expect(onOpenCategories).toHaveBeenCalled();
+  // 類別 moved out (ratified 2026-08-20): it lives behind the calendar's
+  // 類別 sheet, not in settings.
+  expect(screen.queryByText('類別')).toBeNull();
 });
 
 it('signs out from its own row', () => {

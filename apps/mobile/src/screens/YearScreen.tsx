@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Funnel } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, ChevronRight, Tags } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import type { Category } from '../api/client';
 import { getYear } from '../api/client';
 import type { CalendarFilter } from '../calendar/filter';
 import { emptyFilter, filterParams } from '../calendar/filter';
-import { FilterSheet } from '../calendar/FilterSheet';
+import { CategorySheet } from '../calendar/CategorySheet';
 import { MiniMonth } from '../calendar/MiniMonth';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
@@ -20,6 +20,8 @@ type Props = {
   /** The shared calendar filter (#13), owned by HomeScreen. */
   filter?: CalendarFilter;
   onChangeFilter?: (filter: CalendarFilter) => void;
+  /** Fired after the 類別 sheet changes a category, so /me refetches. */
+  onCategoriesChanged?: () => void;
   onOpenMonth: (year: number, month: number) => void;
   onBack: () => void;
 };
@@ -35,6 +37,7 @@ export function YearScreen({
   today = new Date(),
   filter = emptyFilter,
   onChangeFilter,
+  onCategoriesChanged,
   onOpenMonth,
   onBack,
 }: Props) {
@@ -83,11 +86,11 @@ export function YearScreen({
         {onChangeFilter ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={strings.filter.open}
+            accessibilityLabel={strings.categories.title}
             style={styles.navButton}
             onPress={() => setFilterOpen(true)}
           >
-            <Funnel size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
           </Pressable>
         ) : null}
         <Pressable
@@ -138,10 +141,12 @@ export function YearScreen({
         </Text>
       </ScrollView>
       {filterOpen && onChangeFilter ? (
-        <FilterSheet
+        <CategorySheet
+          accessToken={accessToken}
           categories={categories}
           filter={filter}
           onChange={onChangeFilter}
+          onCategoriesChanged={() => onCategoriesChanged?.()}
           onClose={() => setFilterOpen(false)}
         />
       ) : null}

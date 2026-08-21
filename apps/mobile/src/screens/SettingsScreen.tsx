@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,14 +11,14 @@ import { createStyles, theme } from '../theme';
 
 type Props = {
   accessToken: string;
-  onOpenCategories: () => void;
   onBack: () => void;
 };
 
 // Settings (#15), derived — no canvas artboard: quiet cards of rows in the
-// list idiom. 類別 lives here per the ratified nav decision; leaving is a
-// right, so 刪除帳號 sits at the bottom with the 30-day grace spelled out.
-export function SettingsScreen({ accessToken, onOpenCategories, onBack }: Props) {
+// list idiom (類別 moved to the calendar's 類別 sheet, ratified 2026-08-20);
+// leaving is a right, so 刪除帳號 closes the screen with the grace spelled
+// out.
+export function SettingsScreen({ accessToken, onBack }: Props) {
   const session = useSession();
   const [failed, setFailed] = useState(false);
 
@@ -65,14 +65,6 @@ export function SettingsScreen({ accessToken, onOpenCategories, onBack }: Props)
         </View>
 
         <View style={styles.card}>
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.row, styles.rowDivided]}
-            onPress={onOpenCategories}
-          >
-            <Text style={[styles.rowTitle, styles.rowText]}>{strings.categories.title}</Text>
-            <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
-          </Pressable>
           <Pressable
             accessibilityRole="button"
             style={styles.row}

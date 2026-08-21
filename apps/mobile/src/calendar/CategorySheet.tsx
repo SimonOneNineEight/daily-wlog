@@ -1,18 +1,22 @@
-import { Check, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronUp, Pencil, Plus } from 'lucide-react-native';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import type { Category } from '../api/client';
-import { CategoryIcon } from './CategoryIcon';
+import type { Editing } from '../categories/CategoryEditorSheet';
+import { CategoryEditorSheet } from '../categories/CategoryEditorSheet';
 import { strings } from '../i18n/strings';
 import { createStyles, theme } from '../theme';
 
+import { CategoryIcon } from './CategoryIcon';
 import type { CalendarFilter } from './filter';
 
 type Props = {
+  accessToken: string;
   categories: Category[];
   filter: CalendarFilter;
   onChange: (filter: CalendarFilter) => void;
+  onCategoriesChanged: () => void;
   onClose: () => void;
 };
 
@@ -20,14 +24,38 @@ function toggle(list: string[], id: string): string[] {
   return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 }
 
-// The filter sheet (#13, canvas artboard): a two-level category tree with
-// checkmarks. Selecting a parent includes its children (their checks dim to
-// show the implication); subcategories also select independently. No cap.
-export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
+// The 類別 sheet (ratified 2026-08-20, Apple's Calendars model): one surface
+// where the category list is both the calendar's lens and its own manager.
+// Tapping a row toggles its checkmark (filtering, union semantics, parents
+// include children); the ✎ opens that category's editor; 新增類別 creates.
+// Canvas normalization holds: a child pick drops its parent and vice versa.
+export function CategorySheet({
+  accessToken,
+  categories,
+  filter,
+  onChange,
+  onCategoriesChanged,
+  onClose,
+}: Props) {
   const [expanded, setExpanded] = useState<string[]>([]);
+  const [editing, setEditing] = useState<Editing | null>(null);
 
   const topLevel = categories.filter((c) => !c.parentId);
   const childrenOf = (id: string) => categories.filter((c) => c.parentId === id);
+
+  const target =
+    editing?.mode === 'edit' ? categories.find((c) => c.id === editing.id) : undefined;
+
+  const editButton = (open: () => void) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={strings.categories.editTitle}
+      style={styles.editButton}
+      onPress={open}
+    >
+      <Pencil size={15} color={theme.colors.textQuaternary} strokeWidth={2} />
+    </Pressable>
+  );
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
@@ -47,23 +75,22 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
             >
               <Text style={styles.headerClear}>{strings.filter.clearAll}</Text>
             </Pressable>
-            <Text style={styles.headerTitle}>{strings.filter.title}</Text>
+            <Text style={styles.headerTitle}>{strings.categories.title}</Text>
             <Pressable accessibilityRole="button" style={styles.headerDone} onPress={onClose}>
               <Text style={styles.headerDoneLabel}>{strings.filter.done}</Text>
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.body}>
             <View style={styles.card}>
-              {topLevel.map((category, index) => {
+              {topLevel.map((category) => {
                 const children = childrenOf(category.id);
                 const parentOn = filter.categoryIds.includes(category.id);
                 const open = expanded.includes(category.id);
-                const lastParent = index === topLevel.length - 1;
                 return (
                   <View key={category.id}>
                     <Pressable
                       accessibilityRole="button"
-                      style={[styles.row, (!lastParent || open) && styles.rowDivided]}
+                      style={[styles.row, styles.rowDivided]}
                       // Canvas normalization: turning a parent on clears its
                       // own children's picks (it already includes them).
                       onPress={() =>
@@ -82,6 +109,7 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
                       {parentOn ? (
                         <Check size={18} color={theme.colors.textPrimary} strokeWidth={2} />
                       ) : null}
+                      {editButton(() => setEditing({ mode: 'edit', id: category.id }))}
                       {children.length > 0 ? (
                         <Pressable
                           accessibilityRole="button"
@@ -100,17 +128,13 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
                       ) : null}
                     </Pressable>
                     {open
-                      ? children.map((child, childIndex) => {
+                      ? children.map((child) => {
                           const subOn = filter.subcategoryIds.includes(child.id);
                           return (
                             <Pressable
                               key={child.id}
                               accessibilityRole="button"
-                              style={[
-                                styles.row,
-                                (!lastParent || childIndex < children.length - 1) &&
-                                  styles.rowDivided,
-                              ]}
+                              style={[styles.row, styles.rowDivided]}
                               // Canvas normalization: picking a child narrows
                               // the lens, so its parent's selection drops.
                               onPress={() =>
@@ -138,6 +162,7 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
                                   strokeWidth={2}
                                 />
                               ) : null}
+                              {editButton(() => setEditing({ mode: 'edit', id: child.id }))}
                             </Pressable>
                           );
                         })
@@ -145,10 +170,37 @@ export function FilterSheet({ categories, filter, onChange, onClose }: Props) {
                   </View>
                 );
               })}
+              <Pressable
+                accessibilityRole="button"
+                style={styles.row}
+                onPress={() => setEditing({ mode: 'create' })}
+              >
+                <Plus size={17} color={theme.colors.iconDefault} strokeWidth={2} />
+                <Text style={styles.rowTitle}>{strings.categories.add}</Text>
+              </Pressable>
             </View>
           </ScrollView>
         </View>
       </View>
+      {editing ? (
+        <CategoryEditorSheet
+          key={editing.mode === 'edit' ? editing.id : `create-${editing.parent?.id ?? 'top'}`}
+          accessToken={accessToken}
+          target={target}
+          parent={
+            editing.mode === 'create'
+              ? editing.parent
+              : target?.parentId
+                ? categories.find((c) => c.id === target.parentId)
+                : undefined
+          }
+          parentChoices={topLevel}
+          childrenOfTarget={target ? childrenOf(target.id) : []}
+          onOpen={(next) => setEditing(next)}
+          onClose={() => setEditing(null)}
+          onCategoriesChanged={onCategoriesChanged}
+        />
+      ) : null}
     </Modal>
   );
 }
@@ -221,7 +273,7 @@ const styles = createStyles((t) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: t.spacing.space5,
+    gap: t.spacing.space4,
     minHeight: t.spacing.rowHeight,
     paddingVertical: t.spacing.rowPaddingY,
     paddingHorizontal: t.spacing.cardPadding,
@@ -237,6 +289,12 @@ const styles = createStyles((t) => ({
     ...t.typography.entryTitle,
     color: t.colors.textPrimary,
     flexShrink: 1,
+  },
+  editButton: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   expandButton: {
     width: 30,
