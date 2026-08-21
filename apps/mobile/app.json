@@ -7,10 +7,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "bundleIdentifier": "com.simononenineeight.dailywlog",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "CFBundleDevelopmentRegion": "zh_TW"
+        "CFBundleDevelopmentRegion": "zh_TW",
+        "NSCameraUsageDescription": "拍照加入紀錄。",
+        "NSPhotoLibraryUsageDescription": "從相簿選擇照片加入紀錄。"
       }
     },
     "android": {
