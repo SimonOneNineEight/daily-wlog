@@ -1,6 +1,6 @@
 import { Check, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
 import { createElement, useState } from 'react';
-import { Alert, Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Modal, ScrollView, Text, TextInput, View } from 'react-native';
 
 import type { Category } from '../api/client';
 import { createCategory, deleteCategory, saveColorRecent, updateCategory } from '../api/client';
@@ -173,6 +173,15 @@ function CategoryEditor({
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled">
+        {/* Behind every row: a tap on empty sheet ground drops the keyboard
+            (#31); interactive children above it keep their own touches. */}
+        <Pressable
+          testID="editor-body"
+          accessible={false}
+          feedback="none"
+          style={styles.bodyTapCatcher}
+          onPress={() => Keyboard.dismiss()}
+        />
         <View style={styles.identityRow}>
           <CategoryIcon
             icon={isSub ? (activeParent.icon ?? 'tag') : icon}
@@ -186,6 +195,8 @@ function CategoryEditor({
             value={name}
             onChangeText={setName}
             autoFocus={target === undefined}
+            returnKeyType="done"
+            onSubmitEditing={() => Keyboard.dismiss()}
           />
         </View>
 
@@ -394,6 +405,13 @@ const styles = createStyles((t) => ({
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.space6,
     paddingBottom: 32,
+  },
+  bodyTapCatcher: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   identityRow: {
     flexDirection: 'row',

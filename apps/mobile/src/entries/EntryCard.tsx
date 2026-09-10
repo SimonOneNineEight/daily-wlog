@@ -48,22 +48,19 @@ export function EntryCard({
       onLongPress={onLongPress}
       delayLongPress={200}
     >
-      <View style={styles.headerRow}>
-        {/* Centered on the title's line box, so icon and title glyphs sit on
-            one visual line (the line box carries leading above the glyph). */}
-        <View style={styles.iconHolder}>
-          <CategoryIcon icon={categoryIcon} color={categoryColor} />
-        </View>
-        <View style={styles.headerText}>
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={styles.categoryLine} numberOfLines={1}>
-            {categoryLine}
-          </Text>
-        </View>
+      {/* One center-aligned row (#31): icon, title, and grip share a visual
+          line no matter how the platform seats glyphs in the line box; the
+          category line hangs beneath, indented to the title's left edge. */}
+      <View style={styles.titleRow}>
+        <CategoryIcon icon={categoryIcon} color={categoryColor} />
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
         <GripHorizontal size={18} color={theme.colors.textQuaternary} strokeWidth={2} />
       </View>
+      <Text style={styles.categoryLine} numberOfLines={1}>
+        {categoryLine}
+      </Text>
       {note ? (
         <Text style={styles.note} numberOfLines={3}>
           {note}
@@ -92,26 +89,22 @@ const styles = createStyles((t) => ({
     borderWidth: t.border.hairline,
     borderColor: t.colors.lineSeparatorStrong,
   },
-  headerRow: {
+  titleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: t.spacing.space5,
-  },
-  iconHolder: {
-    height: t.typography.entryTitle.lineHeight,
-    justifyContent: 'center',
-  },
-  headerText: {
-    flex: 1,
   },
   title: {
     ...t.typography.entryTitle,
     color: t.colors.textPrimary,
+    flex: 1,
   },
   categoryLine: {
     ...t.typography.meta,
     color: t.colors.textTertiary,
     marginTop: t.spacing.space1,
+    // Indented under the title: the icon's 22px box plus the row gap.
+    marginLeft: 22 + t.spacing.space5,
   },
   note: {
     ...t.typography.note,
