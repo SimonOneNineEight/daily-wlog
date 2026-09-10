@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
@@ -34,6 +34,9 @@ beforeEach(() => {
         }),
       };
     }
+    if (String(url).includes('/years/')) {
+      return { ok: true, json: async () => ({ days: [], totalEntries: 0 }) };
+    }
     throw new Error(`unexpected fetch ${String(url)}`);
   }) as jest.Mock;
 });
@@ -49,7 +52,7 @@ function renderScreen(overrides: Partial<React.ComponentProps<typeof YearScreen>
       categories={categories}
       today={new Date(2026, 7, 5)}
       onOpenMonth={jest.fn()}
-      onBack={jest.fn()}
+      onChangeFilter={jest.fn()}
       {...overrides}
     />,
   );
@@ -76,20 +79,49 @@ it('opens the tapped month', async () => {
   expect(onOpenMonth).toHaveBeenCalledWith(2026, 3);
 });
 
-it('pages to earlier years through the chevrons', async () => {
+it('shows a past year with the totals phrasing after paging back', async () => {
   renderScreen();
 
   await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
-  fireEvent.press(screen.getByLabelText('上一年'));
+  act(() => {
+    fireGestureHandler(getByGestureTestId('year-fling-prev'), [
+      { state: State.BEGAN },
+      { state: State.ACTIVE },
+      { state: State.END },
+    ]);
+  });
 
   expect(screen.getByText('2025年')).toBeTruthy();
   await waitFor(() => expect(screen.getByTestId('year-day-6-9')).toBeTruthy());
   // Past years drop the "so far this year" phrasing.
   expect(screen.getByText('共 1 則紀錄')).toBeTruthy();
+});
 
-  fireEvent.press(screen.getByLabelText('下一年'));
-  expect(screen.getByText('2026年')).toBeTruthy();
-  await waitFor(() => expect(screen.getByText('今年到目前為止 3 則紀錄')).toBeTruthy());
+it('holds no back button and no year chevrons (#27)', async () => {
+  renderScreen();
+  await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
+
+  expect(screen.queryByLabelText('返回')).toBeNull();
+  expect(screen.queryByLabelText('上一年')).toBeNull();
+  expect(screen.queryByLabelText('下一年')).toBeNull();
+  expect(screen.getByLabelText('今天')).toBeTruthy();
+  expect(screen.getByLabelText('類別')).toBeTruthy();
+});
+
+it('opens the endless year wheel from the title and picks a year (#27)', async () => {
+  renderScreen();
+  await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
+
+  fireEvent.press(screen.getByLabelText('選擇年份'));
+  // Future years are allowed: 2028 sits in the wheel's centered window.
+  await act(async () => {
+    fireEvent.press(within(screen.getByTestId('year-wheel')).getByText('2028年'));
+  });
+
+  expect(screen.getByText('2028年')).toBeTruthy();
+  expect(screen.queryByTestId('year-wheel')).toBeNull();
+  const calls = (globalThis.fetch as jest.Mock).mock.calls.map(([u]) => String(u));
+  expect(calls.some((u) => u.includes('/years/2028'))).toBe(true);
 });
 
 it('swipes to the neighboring years (#26)', async () => {

@@ -59,7 +59,6 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
         onChangeFilter={setFilter}
         onCategoriesChanged={onCategoriesChanged}
         onOpenMonth={(year, month) => setRoute({ name: 'month', focus: { year, month } })}
-        onBack={() => setRoute({ name: 'month' })}
       />
     );
   }

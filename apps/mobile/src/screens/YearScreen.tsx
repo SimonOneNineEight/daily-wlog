@@ -1,6 +1,6 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Tags } from 'lucide-react-native';
+import { CalendarDays, Tags } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { FlatList, ScrollView, Text, View } from 'react-native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,10 +25,16 @@ type Props = {
   /** Fired after the 類別 sheet changes a category, so /me refetches. */
   onCategoriesChanged?: () => void;
   onOpenMonth: (year: number, month: number) => void;
-  onBack: () => void;
 };
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+// The year wheel (#27): ±150 years around the viewed year, recentered on
+// every open — practically endless in both directions, future allowed
+// (backfilling old memories is the product). Fixed row height so the list
+// can start centered.
+const WHEEL_SPAN = 150;
+const WHEEL_ROW_HEIGHT = 44;
 
 // The year view (#12): twelve mini months, each recorded day a solid box in
 // its first Entry's color — the "look how much life I've captured" screen.
@@ -41,13 +47,13 @@ export function YearScreen({
   onChangeFilter,
   onCategoriesChanged,
   onOpenMonth,
-  onBack,
 }: Props) {
   const [year, setYear] = useState(today.getFullYear());
   const isCurrentYear = year === today.getFullYear();
   const [colorsByMonth, setColorsByMonth] = useState<Record<number, Record<number, string>>>({});
   const [totalEntries, setTotalEntries] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [wheelOpen, setWheelOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -90,15 +96,16 @@ export function YearScreen({
     <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         <View style={styles.navBar}>
+          {/* No back and no chevrons (ratified 2026-09-10): swipes page the
+              years, tapping a month leaves, and the title opens the wheel. */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={strings.day.back}
-            style={styles.navButton}
-            onPress={onBack}
+            accessibilityLabel={strings.year.pickYear}
+            style={styles.navTitleButton}
+            onPress={() => setWheelOpen(true)}
           >
-            <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
+            <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
           </Pressable>
-          <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
           {onChangeFilter ? (
             <Pressable
               accessibilityRole="button"
@@ -109,22 +116,6 @@ export function YearScreen({
               <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.year.prevYear}
-            style={styles.navButton}
-            onPress={() => setYear(year - 1)}
-          >
-            <ChevronLeft size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.year.nextYear}
-            style={styles.navButton}
-            onPress={() => setYear(year + 1)}
-          >
-            <ChevronRight size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={strings.year.today}
@@ -166,6 +157,47 @@ export function YearScreen({
             onClose={() => setFilterOpen(false)}
           />
         ) : null}
+        {wheelOpen ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.entryForm.cancel}
+              feedback="none"
+              style={styles.wheelScrim}
+              onPress={() => setWheelOpen(false)}
+            />
+            <View style={styles.wheelCard}>
+              <FlatList
+                testID="year-wheel"
+                data={Array.from({ length: WHEEL_SPAN * 2 + 1 }, (_, i) => year - WHEEL_SPAN + i)}
+                keyExtractor={(item) => String(item)}
+                getItemLayout={(_, index) => ({
+                  length: WHEEL_ROW_HEIGHT,
+                  offset: WHEEL_ROW_HEIGHT * index,
+                  index,
+                })}
+                // Two rows above the viewed year: it sits centered in the
+                // five-row window.
+                initialScrollIndex={WHEEL_SPAN - 2}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    style={styles.wheelRow}
+                    onPress={() => {
+                      setYear(item);
+                      setWheelOpen(false);
+                    }}
+                  >
+                    <Text style={item === year ? styles.wheelYearCurrent : styles.wheelYear}>
+                      {strings.year.title(item)}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            </View>
+          </>
+        ) : null}
       </SafeAreaView>
     </GestureDetector>
   );
@@ -189,10 +221,49 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  navTitleButton: {
+    flex: 1,
+    height: t.spacing.hitMin,
+    justifyContent: 'center',
+  },
   navTitle: {
     ...t.typography.sectionHeader,
     color: t.colors.textPrimary,
-    flex: 1,
+  },
+  wheelScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: t.colors.scrim,
+  },
+  // The wheel drops in behind the title: a floating card under the nav bar.
+  wheelCard: {
+    position: 'absolute',
+    top: t.spacing.navBarHeight,
+    left: t.spacing.space4,
+    width: 132,
+    height: WHEEL_ROW_HEIGHT * 5,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.card,
+    borderWidth: t.border.hairline,
+    borderColor: t.colors.lineSeparator,
+    overflow: 'hidden',
+  },
+  wheelRow: {
+    height: WHEEL_ROW_HEIGHT,
+    justifyContent: 'center',
+    paddingHorizontal: t.spacing.cardPadding,
+  },
+  wheelYear: {
+    ...t.typography.entryTitle,
+    color: t.colors.textSecondary,
+  },
+  wheelYearCurrent: {
+    ...t.typography.entryTitle,
+    fontWeight: '600',
+    color: t.colors.textPrimary,
   },
   body: {
     paddingHorizontal: t.spacing.screenGutter,
