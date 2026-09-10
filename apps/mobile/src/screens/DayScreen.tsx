@@ -217,6 +217,11 @@ export function DayScreen({
         <DraggableFlatList
           data={visibleEntries}
           keyExtractor={(entry) => entry.id}
+          // Without this the list's pan activates on first touch and starves
+          // the screen's horizontal flings (#26) everywhere the list sits —
+          // most of the screen. 20pt of vertical travel arms the drag pan;
+          // horizontal flings never cross it and pass through.
+          activationDistance={20}
           renderItem={renderCard}
           onDragEnd={({ data }) => {
             if (filtering) return; // a lens shows a partial list; order is server truth
