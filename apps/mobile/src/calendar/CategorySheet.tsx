@@ -69,6 +69,10 @@ export function CategorySheet({
         />
         <View style={styles.sheet}>
           <View style={styles.header}>
+            {/* Rendered first and absolutely spanned, so the title centers
+                on the sheet itself, not on the gap the side buttons leave
+                (全部清除 is wider than 完成). */}
+            <Text style={styles.headerTitle}>{strings.categories.title}</Text>
             <Pressable
               accessibilityRole="button"
               style={styles.headerButton}
@@ -76,7 +80,6 @@ export function CategorySheet({
             >
               <Text style={styles.headerClear}>{strings.filter.clearAll}</Text>
             </Pressable>
-            <Text style={styles.headerTitle}>{strings.categories.title}</Text>
             <Pressable accessibilityRole="button" style={styles.headerDone} onPress={onClose}>
               <Text style={styles.headerDoneLabel}>{strings.filter.done}</Text>
             </Pressable>
@@ -210,6 +213,7 @@ const styles = createStyles((t) => ({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: t.spacing.space4,
     padding: t.spacing.space4,
     backgroundColor: t.colors.materialBar,
@@ -228,7 +232,9 @@ const styles = createStyles((t) => ({
   headerTitle: {
     ...t.typography.sectionHeader,
     color: t.colors.textPrimary,
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
     textAlign: 'center',
   },
   headerDone: {

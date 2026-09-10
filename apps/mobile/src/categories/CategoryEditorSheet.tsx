@@ -166,12 +166,14 @@ function CategoryEditor({
   return (
     <View style={styles.sheet} testID="category-editor-sheet">
       <View style={styles.sheetHeader}>
-        <Pressable accessibilityRole="button" style={styles.headerButton} onPress={onClose}>
-          <Text style={styles.headerCancel}>{strings.entryForm.cancel}</Text>
-        </Pressable>
+        {/* Absolutely spanned first child: the title centers on the sheet,
+            not on the gap between the unequal side buttons. */}
         <Text style={styles.sheetTitle} numberOfLines={1}>
           {target ? strings.categories.editTitle : strings.categories.add}
         </Text>
+        <Pressable accessibilityRole="button" style={styles.headerButton} onPress={onClose}>
+          <Text style={styles.headerCancel}>{strings.entryForm.cancel}</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           style={[styles.headerSave, !canSave && styles.headerSaveDisabled]}
@@ -212,41 +214,46 @@ function CategoryEditor({
         <View>
           <Text style={styles.sectionHeader}>{strings.categories.parentHeader}</Text>
           <View style={styles.card}>
-            <Pressable
-              accessibilityRole="button"
-              style={[styles.row, parentListOpen && styles.rowDivided]}
-              disabled={target !== undefined}
-              onPress={() => setParentListOpen((open) => !open)}
-            >
-              <Text style={[styles.rowTitle, styles.rowText]}>
-                {activeParent ? activeParent.name : strings.categories.noParent}
-              </Text>
-              <Text style={styles.rowValue}>
-                {isSub ? strings.categories.parentHintSub : strings.categories.parentHintTop}
-              </Text>
-              <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
-            </Pressable>
-            {parentListOpen
-              ? parentOptions.map((option, index) => (
-                  <Pressable
-                    key={option.id ?? 'none'}
-                    accessibilityRole="button"
-                    style={[styles.row, index < parentOptions.length - 1 && styles.rowDivided]}
-                    onPress={() => {
-                      setChosenParent(option.category);
-                      setParentListOpen(false);
-                    }}
-                  >
-                    {option.category ? (
-                      <CategoryIcon icon={option.category.icon} color={option.category.color} />
-                    ) : null}
-                    <Text style={[styles.rowTitle, styles.rowText]}>{option.name}</Text>
-                    {(chosenParent?.id ?? null) === option.id ? (
-                      <Check size={18} color={theme.colors.textPrimary} strokeWidth={2} />
-                    ) : null}
-                  </Pressable>
-                ))
-              : null}
+            {/* An accordion that swaps, not stacks (ratified 2026-09-10,
+                deviating from the canvas's summary-plus-list): while open,
+                the ✓ carries the selection and every pick collapses — the
+                current row included, which is the close-unchanged path. */}
+            {!parentListOpen ? (
+              <Pressable
+                accessibilityRole="button"
+                style={styles.row}
+                disabled={target !== undefined}
+                onPress={() => setParentListOpen(true)}
+              >
+                <Text style={[styles.rowTitle, styles.rowText]}>
+                  {activeParent ? activeParent.name : strings.categories.noParent}
+                </Text>
+                <Text style={styles.rowValue}>
+                  {isSub ? strings.categories.parentHintSub : strings.categories.parentHintTop}
+                </Text>
+                <ChevronRight size={16} color={theme.colors.textQuaternary} strokeWidth={2} />
+              </Pressable>
+            ) : (
+              parentOptions.map((option, index) => (
+                <Pressable
+                  key={option.id ?? 'none'}
+                  accessibilityRole="button"
+                  style={[styles.row, index < parentOptions.length - 1 && styles.rowDivided]}
+                  onPress={() => {
+                    setChosenParent(option.category);
+                    setParentListOpen(false);
+                  }}
+                >
+                  {option.category ? (
+                    <CategoryIcon icon={option.category.icon} color={option.category.color} />
+                  ) : null}
+                  <Text style={[styles.rowTitle, styles.rowText]}>{option.name}</Text>
+                  {(chosenParent?.id ?? null) === option.id ? (
+                    <Check size={18} color={theme.colors.textPrimary} strokeWidth={2} />
+                  ) : null}
+                </Pressable>
+              ))
+            )}
           </View>
         </View>
 
@@ -374,6 +381,7 @@ const styles = createStyles((t) => ({
   sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: t.spacing.space4,
     padding: t.spacing.space4,
     backgroundColor: t.colors.materialBar,
@@ -392,7 +400,9 @@ const styles = createStyles((t) => ({
   sheetTitle: {
     ...t.typography.sectionHeader,
     color: t.colors.textPrimary,
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
     textAlign: 'center',
   },
   headerSave: {

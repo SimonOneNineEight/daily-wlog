@@ -3,11 +3,13 @@ import { Keyboard } from 'react-native';
 
 import { CategoryEditorSheet } from './CategoryEditorSheet';
 
-function renderEditor() {
+const sport = { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 1 };
+
+function renderEditor(parentChoices: (typeof sport)[] = []) {
   return render(
     <CategoryEditorSheet
       accessToken="tok"
-      parentChoices={[]}
+      parentChoices={parentChoices}
       childrenOfTarget={[]}
       onOpen={jest.fn()}
       onClose={jest.fn()}
@@ -15,6 +17,25 @@ function renderEditor() {
     />,
   );
 }
+
+describe('parent list accordion', () => {
+  it('swaps the summary row for the option list while open', () => {
+    renderEditor([sport]);
+
+    // Closed: the summary row with its hint.
+    expect(screen.getByText('獨立類別')).toBeTruthy();
+    fireEvent.press(screen.getByText('無'));
+
+    // Open: the options replace the summary — nothing shows twice.
+    expect(screen.queryByText('獨立類別')).toBeNull();
+    fireEvent.press(screen.getByText('運動'));
+
+    // Picked and collapsed: the summary carries the choice, hint flips.
+    expect(screen.getByText('運動')).toBeTruthy();
+    expect(screen.getByText('子類別')).toBeTruthy();
+    expect(screen.queryByText('無')).toBeNull();
+  });
+});
 
 describe('keyboard dismissal (#31)', () => {
   it('dismisses on name-field submit', () => {

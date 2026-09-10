@@ -129,10 +129,12 @@ export function ColorDrawer({
         />
         <View style={styles.sheet}>
           <View style={styles.header}>
+            {/* Absolutely spanned first child: the title centers on the
+                sheet, not on the gap between the unequal side buttons. */}
+            <Text style={styles.headerTitle}>{strings.colorDrawer.custom}</Text>
             <Pressable accessibilityRole="button" style={styles.headerButton} onPress={onCancel}>
               <Text style={styles.headerCancel}>{strings.entryForm.cancel}</Text>
             </Pressable>
-            <Text style={styles.headerTitle}>{strings.colorDrawer.custom}</Text>
             <Pressable
               accessibilityRole="button"
               style={styles.headerConfirm}
@@ -383,6 +385,7 @@ const styles = createStyles((t) => ({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: t.spacing.space4,
     padding: t.spacing.space4,
     backgroundColor: t.colors.materialBar,
@@ -401,7 +404,9 @@ const styles = createStyles((t) => ({
   headerTitle: {
     ...t.typography.sectionHeader,
     color: t.colors.textPrimary,
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
     textAlign: 'center',
   },
   headerConfirm: {
