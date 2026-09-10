@@ -66,7 +66,10 @@ export function SignInScreen() {
     setFailed(false);
     try {
       const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
-      GoogleSignin.configure({ webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID });
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      });
       const result = await GoogleSignin.signIn();
       const idToken = result.data?.idToken;
       if (!idToken) {
