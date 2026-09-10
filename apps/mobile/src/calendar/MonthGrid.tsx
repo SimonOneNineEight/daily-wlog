@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles } from '../theme';
 
@@ -19,6 +19,7 @@ type Props = {
 
 /** Apple Calendar-style month grid per the design canvas. */
 export function MonthGrid({ year, month, days, today, selected, onSelectDay }: Props) {
+  const strings = useStrings();
   return (
     <View>
       <View style={styles.weekdayRow}>

@@ -3,12 +3,13 @@ import { Text, View } from 'react-native';
 
 import { apiUrl } from '../api/client';
 import type { components } from '../api/types.gen';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { createStyles } from '../theme';
 
 type Health = components['schemas']['Health'];
 
 export function HealthScreen() {
+  const strings = useStrings();
   const [health, setHealth] = useState<Health | null>(null);
   const [unreachable, setUnreachable] = useState(false);
 

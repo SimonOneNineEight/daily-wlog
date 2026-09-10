@@ -4,7 +4,7 @@ import { Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '../auth/supabase';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -16,6 +16,7 @@ type Props = {
 // sign-in screen's 使用電子郵件登入 button. One form, two modes — the toggle
 // flips 登入 into 建立帳戶 rather than duplicating the page.
 export function EmailSignInScreen({ onBack }: Props) {
+  const strings = useStrings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [registering, setRegistering] = useState(false);

@@ -34,6 +34,26 @@ module.exports = defineConfig([
     rules: { 'i18next/no-literal-string': 'off' },
   },
   {
+    // App Language discipline (#33): the catalog is reached only through
+    // useStrings, so a language switch re-renders everything. A direct
+    // import would freeze that consumer on zh-TW.
+    files: ['src/**', 'App.tsx'],
+    ignores: ['src/i18n/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/i18n/strings'],
+              message: 'Read strings via useStrings() (src/i18n/AppLanguageProvider).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     ignores: ['src/api/types.gen.ts', 'src/theme/theme.gen.ts', '.expo/**'],
   },
 ]);

@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppRoot } from './src/AppRoot';
+import { AppLanguageProvider } from './src/i18n/AppLanguageProvider';
 import { HealthScreen } from './src/screens/HealthScreen';
 import { SpecimenScreen } from './src/screens/SpecimenScreen';
 
@@ -27,7 +28,7 @@ export default Sentry.wrap(function App() {
   return (
     <GestureHandlerRootView style={rootStyle}>
       <SafeAreaProvider>
-        {DevScreen ? <DevScreen /> : <AppRoot />}
+        <AppLanguageProvider>{DevScreen ? <DevScreen /> : <AppRoot />}</AppLanguageProvider>
         {/* Light-only MVP on a light background: status bar content is dark. */}
         <StatusBar style="dark" />
       </SafeAreaProvider>

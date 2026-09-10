@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
 
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { createStyles, theme } from '../theme';
 
 // Visual verification surface for the design tokens (issue #3): every
@@ -10,6 +10,7 @@ import { createStyles, theme } from '../theme';
 // EXPO_PUBLIC_SCREEN=specimen; token names render from the theme object
 // itself, so this screen can never drift from the generated theme.
 export function SpecimenScreen() {
+  const strings = useStrings();
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{strings.specimen.title}</Text>

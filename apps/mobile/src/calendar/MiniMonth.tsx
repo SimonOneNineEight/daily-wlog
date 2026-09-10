@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles } from '../theme';
 
@@ -19,6 +19,7 @@ type Props = {
 // box in its FIRST Entry's color with the numeral punched out in white —
 // one color per day, never stripes. Today gets a ring only while uncolored.
 export function MiniMonth({ year, month, colors, todayDay, onPress }: Props) {
+  const strings = useStrings();
   const leading = new Date(year, month - 1, 1).getDay();
   const dayCount = new Date(year, month, 0).getDate();
   const cells: (number | null)[] = [

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles } from '../theme';
 
@@ -15,6 +15,7 @@ type Props = {
 // of where the account stands, with the deliberate restore and 登出. The API
 // refuses everything else until one of these is taken.
 export function DeactivatedScreen({ onRestore, onSignOut }: Props) {
+  const strings = useStrings();
   const [restoring, setRestoring] = useState(false);
   const [failed, setFailed] = useState(false);
 

@@ -32,7 +32,7 @@ import { CategoryEditorSheet } from '../categories/CategoryEditorSheet';
 import { decodeContent, encodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { clearDraft, newDraftId, saveDraft } from '../entries/drafts';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -68,6 +68,7 @@ export function EntryFormScreen({
   onDone,
   onCategoriesChanged,
 }: Props) {
+  const strings = useStrings();
   // The date the Entry saves onto (#24), editable through the date row's
   // compact picker; on edit, changing it moves the Entry to that day (#25).
   const [date, setDate] = useState(draft?.date ?? entry?.date ?? openedFor);
@@ -152,7 +153,7 @@ export function EntryFormScreen({
 
   const canSave = !saving && category !== null && title.trim() !== '';
 
-  const dateLabel = dateHeading(date);
+  const dateLabel = dateHeading(strings, date);
 
   const save = async () => {
     if (!canSave || category === null) return;

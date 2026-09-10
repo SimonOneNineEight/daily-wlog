@@ -5,7 +5,7 @@ import { Alert, Keyboard, Modal, ScrollView, Text, TextInput, View } from 'react
 import type { Category } from '../api/client';
 import { createCategory, deleteCategory, saveColorRecent, updateCategory } from '../api/client';
 import { CategoryIcon, glyphFor } from '../calendar/CategoryIcon';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -56,6 +56,7 @@ type Props = {
 // (Simon, 2026-08-20): the icon picker stays available when editing, and
 // subcategories stay an inline list.
 export function CategoryEditorSheet(props: Props) {
+  const strings = useStrings();
   return (
     <Modal transparent animationType="slide" onRequestClose={props.onClose}>
       <View style={styles.overlay}>
@@ -84,6 +85,7 @@ function CategoryEditor({
   onCategoriesChanged,
   onCreated,
 }: Props) {
+  const strings = useStrings();
   const [name, setName] = useState(target?.name ?? initialName ?? '');
   const [color, setColor] = useState(target?.color ?? firstPreset);
   const [icon, setIcon] = useState(target?.icon ?? 'tag');

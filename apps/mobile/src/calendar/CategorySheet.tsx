@@ -5,7 +5,7 @@ import { Modal, ScrollView, Text, View } from 'react-native';
 import type { Category } from '../api/client';
 import type { Editing } from '../categories/CategoryEditorSheet';
 import { CategoryEditorSheet } from '../categories/CategoryEditorSheet';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -57,6 +57,7 @@ export function CategorySheet({
   onCategoriesChanged,
   onClose,
 }: Props) {
+  const strings = useStrings();
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const topLevel = categories.filter((c) => !c.parentId);

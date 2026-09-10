@@ -1,7 +1,7 @@
 import { ChevronRight, Image as ImageIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -24,6 +24,7 @@ type Props = {
 /** The panel beneath the month grid: the selected day's entry titles with
  * category icons. Tapping anywhere on it opens the day view. */
 export function DayPanel({ dateLabel, entries, onOpen }: Props) {
+  const strings = useStrings();
   return (
     <View style={styles.panel}>
       <Pressable accessibilityRole="button" style={styles.header} onPress={onOpen}>

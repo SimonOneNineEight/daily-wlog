@@ -2,7 +2,7 @@ import { Palette } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 import { ColorDrawer } from './ColorDrawer';
@@ -27,6 +27,7 @@ type Props = {
 // selection is a ring, never a hue change. The custom swatch opens the color
 // drawer (#11) and shows the current custom color once one is chosen.
 export function ColorPresetPicker({ value, onChange, accessToken, existingColors, icon }: Props) {
+  const strings = useStrings();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isPreset = isPresetColor(value);
   return (

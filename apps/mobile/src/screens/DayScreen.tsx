@@ -16,7 +16,7 @@ import { decodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { listDrafts } from '../entries/drafts';
 import { EntryCard } from '../entries/EntryCard';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -54,6 +54,7 @@ export function DayScreen({
   onCategoriesChanged,
   hidden = nothingHidden,
 }: Props) {
+  const strings = useStrings();
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [reorderFailed, setReorderFailed] = useState(false);
@@ -139,7 +140,7 @@ export function DayScreen({
     }
   };
 
-  const heading = dateHeading(date);
+  const heading = dateHeading(strings, date);
   const visibleEntries = (entries ?? []).filter((entry) => entryIsVisible(entry, hidden));
   const partialDay = visibleEntries.length !== (entries?.length ?? 0);
 

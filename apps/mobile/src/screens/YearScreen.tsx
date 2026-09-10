@@ -10,7 +10,7 @@ import type { HiddenSet } from '../calendar/hidden';
 import { hiddenParams, nothingHidden } from '../calendar/hidden';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MiniMonth } from '../calendar/MiniMonth';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -48,6 +48,7 @@ export function YearScreen({
   onCategoriesChanged,
   onOpenMonth,
 }: Props) {
+  const strings = useStrings();
   const [year, setYear] = useState(today.getFullYear());
   const isCurrentYear = year === today.getFullYear();
   const [colorsByMonth, setColorsByMonth] = useState<Record<number, Record<number, string>>>({});

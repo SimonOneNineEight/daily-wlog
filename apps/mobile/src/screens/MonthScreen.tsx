@@ -13,7 +13,7 @@ import { CategorySheet } from '../calendar/CategorySheet';
 import { MonthGrid } from '../calendar/MonthGrid';
 import { monthKey, shiftMonth } from '../calendar/monthMath';
 import { decodeContent } from '../entries/content';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -60,6 +60,7 @@ export function MonthScreen({
   onChangeHidden,
   refresh = 0,
 }: Props) {
+  const strings = useStrings();
   const [sheetOpen, setSheetOpen] = useState(false);
   const todayParts = {
     year: today.getFullYear(),

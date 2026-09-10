@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { Modal, Text, View } from 'react-native';
 
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -23,6 +23,7 @@ type Props = {
 // system: the month grid the calendar already speaks, in a plain bottom
 // sheet with month steppers. Tapping a day picks it and closes.
 export function DatePickerSheet({ value, today = new Date(), onPick, onClose }: Props) {
+  const strings = useStrings();
   const [valueYear, valueMonth, valueDay] = value.split('-').map(Number);
   const [view, setView] = useState({ year: valueYear, month: valueMonth });
   const [todayYear, todayMonth, todayDay] = localDateString(today).split('-').map(Number);

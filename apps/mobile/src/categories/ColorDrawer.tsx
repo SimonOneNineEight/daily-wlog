@@ -3,7 +3,7 @@ import { Modal, PanResponder, Text, TextInput, View } from 'react-native';
 
 import { listColorRecents } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles } from '../theme';
 import type { Hsl } from './colorDerivation';
@@ -55,6 +55,7 @@ export function ColorDrawer({
   onCancel,
   onConfirm,
 }: Props) {
+  const strings = useStrings();
   // HSL floats are the working truth; hexToHsl/hslToHex round-trip exactly
   // (colorDerivation.test.ts), so tapping a saved color lands on its hex.
   const [hsl, setHsl] = useState<Hsl>(() => hexToHsl(initialColor));
@@ -276,6 +277,7 @@ function PreviewCard({
   icon: string;
   onPickHex: (hex: string) => void;
 }) {
+  const strings = useStrings();
   const [hexOpen, setHexOpen] = useState(false);
   const [hexText, setHexText] = useState('');
   const existing = existingColors.length > 0 ? existingColors : [color];

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { deactivateMe } from '../api/client';
 import { supabase } from '../auth/supabase';
 import { useSession } from '../auth/useSession';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -20,6 +20,7 @@ type Props = {
 // leaving is a right, so 刪除帳號 closes the screen with the grace spelled
 // out.
 export function SettingsScreen({ accessToken, onBack }: Props) {
+  const strings = useStrings();
   const session = useSession();
   const [failed, setFailed] = useState(false);
 

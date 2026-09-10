@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '../auth/supabase';
-import { strings } from '../i18n/strings';
+import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -22,6 +22,7 @@ const devEmail = process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL;
 const devPassword = process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD;
 
 export function SignInScreen() {
+  const strings = useStrings();
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [failed, setFailed] = useState(false);
   // Email lives on its own page (ratified): this screen stays providers-only.
