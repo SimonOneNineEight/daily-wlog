@@ -20,6 +20,10 @@ _Avoid_: tag, label, habit
 A user-defined refinement of a Category (Sport → basketball, gym, swim).
 _Avoid_: tag, sub-tag
 
+**Hidden**:
+A per-User visibility state on a Category or Subcategory: while hidden, its Entries are omitted from calendar views. Nothing is hidden by default; hiding is view state and never changes data.
+_Avoid_: filter, filtered out
+
 **Entry**:
 A record inside a Journal for a specific date: title, optional note, optional photos. Carries exactly one Category, optionally refined by a Subcategory. A date can hold several Entries. Written by one User, its author, which is not necessarily the Journal's owner.
 _Avoid_: journal (for a day's record), post, log
