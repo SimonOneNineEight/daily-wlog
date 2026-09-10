@@ -69,6 +69,8 @@ const zhTW = {
     cancel: '取消',
     save: '儲存',
     editTitle: '紀錄',
+    // The editable date row (#24, ratified 2026-09-10).
+    dateRow: '日期',
     delete: '刪除紀錄',
     deleteConfirmTitle: '刪除這筆紀錄？',
     deleteConfirm: '刪除',
@@ -129,6 +131,12 @@ const zhTW = {
     nextYear: '下一年',
     open: '年',
     today: '今天',
+  },
+  // The compact date picker behind the entry form's date row (#24).
+  datePicker: {
+    title: (year: number, month: number) => `${year}年${month}月`,
+    prevMonth: '上個月',
+    nextMonth: '下個月',
   },
   colorDrawer: {
     custom: '自訂顏色',

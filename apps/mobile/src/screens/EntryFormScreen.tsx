@@ -28,6 +28,7 @@ import { processPhoto } from '../photos/processPhoto';
 import { uploadPhotos } from '../photos/uploadPhotos';
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { dateHeading } from '../calendar/dateLabel';
+import { DatePickerSheet } from '../calendar/DatePickerSheet';
 import { ColorPresetPicker, isPresetColor } from '../categories/ColorPresetPicker';
 import { decodeContent, encodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
@@ -38,6 +39,7 @@ import { createStyles, theme } from '../theme';
 
 type Props = {
   accessToken: string;
+  /** The day the form was opened for; the date row starts here (#24). */
   date: string;
   categories: Category[];
   /** When present, the form edits this Entry instead of creating one. */
@@ -60,13 +62,17 @@ const firstPreset = Object.values(theme.categories)[0].base;
 // of creating. Photos arrive with #8.
 export function EntryFormScreen({
   accessToken,
-  date,
+  date: openedFor,
   categories,
   entry,
   draft,
   onDone,
   onCategoriesChanged,
 }: Props) {
+  // The date the Entry saves onto (#24): editable on create via the date
+  // row's compact picker; edit mode shows the Entry's own date.
+  const [date, setDate] = useState(draft?.date ?? entry?.date ?? openedFor);
+  const [pickingDate, setPickingDate] = useState(false);
   // A draft outranks the entry: it holds the newer, unsaved intent.
   const initialContent = draft
     ? decodeContent(draft.content)
@@ -375,6 +381,20 @@ export function EntryFormScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {creating === null ? (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.dateRow}
+            disabled={entry !== undefined}
+            onPress={() => setPickingDate(true)}
+          >
+            <Text style={styles.dateRowLabel}>{strings.entryForm.dateRow}</Text>
+            <Text style={styles.dateRowValue}>{dateLabel}</Text>
+            {entry === undefined ? (
+              <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
+            ) : null}
+          </Pressable>
+        ) : null}
         {creating !== null ? (
           <>
             <View style={styles.createPreview}>
@@ -564,6 +584,17 @@ export function EntryFormScreen({
           </>
         )}
       </ScrollView>
+
+      {pickingDate ? (
+        <DatePickerSheet
+          value={date}
+          onPick={(picked) => {
+            setDate(picked);
+            setPickingDate(false);
+          }}
+          onClose={() => setPickingDate(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -697,6 +728,26 @@ const styles = createStyles((t) => ({
   ghostLabel: {
     ...t.typography.entryTitle,
     color: t.colors.controlGhostFg,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.space5,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.card,
+    minHeight: t.spacing.rowHeight,
+    paddingVertical: t.spacing.rowPaddingY,
+    paddingHorizontal: t.spacing.cardPadding,
+  },
+  dateRowLabel: {
+    ...t.typography.entryTitle,
+    color: t.colors.textPrimary,
+  },
+  dateRowValue: {
+    ...t.typography.entryTitle,
+    color: t.colors.textSecondary,
+    flex: 1,
+    textAlign: 'right',
   },
   selectedRow: {
     flexDirection: 'row',
