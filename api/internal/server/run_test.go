@@ -33,7 +33,7 @@ func TestRunServesHealthzUntilContextCancelled(t *testing.T) {
 
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		resp, err := http.Get("http://" + addr + "/healthz")
+		resp, err := http.Get("http://" + addr + "/health")
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
@@ -41,7 +41,7 @@ func TestRunServesHealthzUntilContextCancelled(t *testing.T) {
 			}
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("server never answered /healthz with 200")
+			t.Fatal("server never answered /health with 200")
 		}
 		time.Sleep(20 * time.Millisecond)
 	}

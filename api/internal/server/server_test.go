@@ -46,9 +46,9 @@ func TestRequestsAreLoggedAsJSONWithRequestID(t *testing.T) {
 	ts := httptest.NewServer(server.New(logging.New(&buf), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL()), testStore()))
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/healthz")
+	resp, err := http.Get(ts.URL + "/health")
 	if err != nil {
-		t.Fatalf("GET /healthz: %v", err)
+		t.Fatalf("GET /health: %v", err)
 	}
 	resp.Body.Close()
 
@@ -59,8 +59,8 @@ func TestRequestsAreLoggedAsJSONWithRequestID(t *testing.T) {
 	if logLine["method"] != "GET" {
 		t.Errorf("method = %v, want GET", logLine["method"])
 	}
-	if logLine["route"] != "/healthz" {
-		t.Errorf("route = %v, want /healthz", logLine["route"])
+	if logLine["route"] != "/health" {
+		t.Errorf("route = %v, want /health", logLine["route"])
 	}
 	if logLine["status"] != float64(http.StatusOK) {
 		t.Errorf("status = %v, want 200", logLine["status"])
@@ -80,9 +80,9 @@ func TestHealthzReportsUnavailableWhenDatabaseUnreachable(t *testing.T) {
 	ts := httptest.NewServer(server.New(logging.New(&buf), testPool(t, "postgresql://postgres:postgres@127.0.0.1:1/postgres"), auth.NewVerifier(testJWKSURL()), testStore()))
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/healthz")
+	resp, err := http.Get(ts.URL + "/health")
 	if err != nil {
-		t.Fatalf("GET /healthz: %v", err)
+		t.Fatalf("GET /health: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -108,9 +108,9 @@ func TestHealthzReportsOKWithSchemaVersion(t *testing.T) {
 	ts := httptest.NewServer(server.New(discardLogger(), testPool(t, testDatabaseURL()), auth.NewVerifier(testJWKSURL()), testStore()))
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/healthz")
+	resp, err := http.Get(ts.URL + "/health")
 	if err != nil {
-		t.Fatalf("GET /healthz: %v", err)
+		t.Fatalf("GET /health: %v", err)
 	}
 	defer resp.Body.Close()
 

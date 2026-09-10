@@ -14,10 +14,10 @@ export function HealthScreen() {
 
   useEffect(() => {
     let active = true;
-    fetch(`${apiUrl}/healthz`)
+    fetch(`${apiUrl}/health`)
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`healthz responded ${response.status}`);
+          throw new Error(`health responded ${response.status}`);
         }
         return (await response.json()) as Health;
       })

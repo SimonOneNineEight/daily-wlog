@@ -8,7 +8,7 @@ describe('HealthScreen', () => {
     globalThis.fetch = realFetch;
   });
 
-  it('shows the API status and schema version from /healthz', async () => {
+  it('shows the API status and schema version from /health', async () => {
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ status: 'ok', schemaVersion: 1 }),

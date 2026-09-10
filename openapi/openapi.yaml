@@ -7,7 +7,7 @@ info:
     are both generated from this file; regenerate whenever it changes.
   version: 0.1.0
 paths:
-  /healthz:
+  /health:
     get:
       operationId: getHealth
       summary: Liveness and database health

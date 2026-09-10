@@ -47,7 +47,7 @@ beforeEach(() => {
   mockAuthState.listeners.length = 0;
   mockAuthState.session = null;
   globalThis.fetch = jest.fn(async (url: unknown, init?: { headers?: Record<string, string> }) => {
-    if (String(url).endsWith('/healthz')) {
+    if (String(url).endsWith('/health')) {
       return { ok: true, json: async () => ({ status: 'ok', schemaVersion: 1 }) };
     }
     if (String(url).endsWith('/me')) {
@@ -128,5 +128,5 @@ it('gates a deactivated account and restores only on the deliberate tap', async 
     String(u).endsWith('/me/reactivate'),
   );
   expect(reactivateCall).toBeTruthy();
-  expect(await screen.findByText('8月')).toBeTruthy();
+  expect(await screen.findByText(`${new Date().getMonth() + 1}月`)).toBeTruthy();
 });

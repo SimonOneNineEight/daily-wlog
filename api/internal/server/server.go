@@ -129,7 +129,7 @@ func NewWithQuerier(logger *slog.Logger, queries dbgen.Querier, verifier *auth.V
 	// the panic and repanics so Recoverer still sees it.
 	router.Use(middleware.Recoverer)
 	router.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
-	router.Use(auth.Middleware(verifier, map[string]bool{"/healthz": true}))
+	router.Use(auth.Middleware(verifier, map[string]bool{"/health": true}))
 	router.Use(deactivationGate(queries, logger))
 	h := handlers{logger: logger, queries: queries, store: store}
 	return apigen.HandlerFromMux(apigen.NewStrictHandler(h, nil), router)

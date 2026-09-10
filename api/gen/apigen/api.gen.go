@@ -329,7 +329,7 @@ type ServerInterface interface {
 	// (POST /entries/{id}/photos/presign)
 	PresignPhotos(w http.ResponseWriter, r *http.Request, id string)
 	// GetHealth Liveness and database health
-	// (GET /healthz)
+	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
 	// DeactivateMe Deactivate the signed-in User's account
 	// (DELETE /me)
@@ -434,7 +434,7 @@ func (_ Unimplemented) PresignPhotos(w http.ResponseWriter, r *http.Request, id 
 }
 
 // GetHealth Liveness and database health
-// (GET /healthz)
+// (GET /health)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -1087,7 +1087,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/healthz", wrapper.GetHealth)
+		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/me", wrapper.DeactivateMe)
@@ -2493,7 +2493,7 @@ type StrictServerInterface interface {
 	// (POST /entries/{id}/photos/presign)
 	PresignPhotos(ctx context.Context, request PresignPhotosRequestObject) (PresignPhotosResponseObject, error)
 	// GetHealth Liveness and database health
-	// (GET /healthz)
+	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
 	// DeactivateMe Deactivate the signed-in User's account
 	// (DELETE /me)
