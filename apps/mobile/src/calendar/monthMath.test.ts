@@ -1,4 +1,4 @@
-import { buildWeeks, dayDots, monthKey, shiftMonth } from './monthMath';
+import { buildWeeks, dayDots, monthKey, shiftDay, shiftMonth } from './monthMath';
 
 describe('buildWeeks', () => {
   it('lays out 2026-08 like Apple Calendar (weeks start on Sunday)', () => {
@@ -37,5 +37,15 @@ describe('month keys', () => {
     expect(monthKey(2026, 8)).toBe('2026-08');
     expect(shiftMonth(2026, 12, 1)).toEqual({ year: 2027, month: 1 });
     expect(shiftMonth(2026, 1, -1)).toEqual({ year: 2025, month: 12 });
+  });
+});
+
+describe('shiftDay', () => {
+  it('moves within a month and across month and year boundaries', () => {
+    expect(shiftDay('2026-08-17', 1)).toBe('2026-08-18');
+    expect(shiftDay('2026-08-17', -1)).toBe('2026-08-16');
+    expect(shiftDay('2026-08-31', 1)).toBe('2026-09-01');
+    expect(shiftDay('2026-01-01', -1)).toBe('2025-12-31');
+    expect(shiftDay('2024-02-28', 1)).toBe('2024-02-29');
   });
 });

@@ -1,6 +1,7 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Tags } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
@@ -72,86 +73,101 @@ export function YearScreen({
     };
   }, [accessToken, year, categories, filter]);
 
+  // Year ↔ year swipes (#26), the month pager's gesture family; the mini
+  // months' vertical scroll passes underneath the horizontal flings.
+  const flingNext = Gesture.Fling()
+    .direction(Directions.LEFT)
+    .runOnJS(true)
+    .withTestId('year-fling-next')
+    .onStart(() => setYear((current) => current + 1));
+  const flingPrev = Gesture.Fling()
+    .direction(Directions.RIGHT)
+    .runOnJS(true)
+    .withTestId('year-fling-prev')
+    .onStart(() => setYear((current) => current - 1));
+
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.navBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.day.back}
-          style={styles.navButton}
-          onPress={onBack}
-        >
-          <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
-        </Pressable>
-        <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
-        {onChangeFilter ? (
+    <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+        <View style={styles.navBar}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={strings.categories.title}
+            accessibilityLabel={strings.day.back}
             style={styles.navButton}
-            onPress={() => setFilterOpen(true)}
+            onPress={onBack}
           >
-            <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
           </Pressable>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.year.prevYear}
-          style={styles.navButton}
-          onPress={() => setYear(year - 1)}
-        >
-          <ChevronLeft size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.year.nextYear}
-          style={styles.navButton}
-          onPress={() => setYear(year + 1)}
-        >
-          <ChevronRight size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={strings.year.today}
-          style={styles.navButton}
-          onPress={() => onOpenMonth(today.getFullYear(), today.getMonth() + 1)}
-        >
-          <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={styles.body}>
-        <View style={styles.grid}>
-          {MONTHS.map((month) => (
-            <View key={month} style={styles.gridItem}>
-              <MiniMonth
-                year={year}
-                month={month}
-                colors={colorsByMonth[month] ?? {}}
-                todayDay={
-                  isCurrentYear && month === today.getMonth() + 1 ? today.getDate() : undefined
-                }
-                onPress={() => onOpenMonth(year, month)}
-              />
-            </View>
-          ))}
+          <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
+          {onChangeFilter ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.categories.title}
+              style={styles.navButton}
+              onPress={() => setFilterOpen(true)}
+            >
+              <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.year.prevYear}
+            style={styles.navButton}
+            onPress={() => setYear(year - 1)}
+          >
+            <ChevronLeft size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.year.nextYear}
+            style={styles.navButton}
+            onPress={() => setYear(year + 1)}
+          >
+            <ChevronRight size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.year.today}
+            style={styles.navButton}
+            onPress={() => onOpenMonth(today.getFullYear(), today.getMonth() + 1)}
+          >
+            <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+          </Pressable>
         </View>
-        <Text style={styles.countLabel}>
-          {isCurrentYear
-            ? strings.year.countLabel(totalEntries)
-            : strings.year.totalLabel(totalEntries)}
-        </Text>
-      </ScrollView>
-      {filterOpen && onChangeFilter ? (
-        <CategorySheet
-          accessToken={accessToken}
-          categories={categories}
-          filter={filter}
-          onChange={onChangeFilter}
-          onCategoriesChanged={() => onCategoriesChanged?.()}
-          onClose={() => setFilterOpen(false)}
-        />
-      ) : null}
-    </SafeAreaView>
+        <ScrollView contentContainerStyle={styles.body}>
+          <View style={styles.grid}>
+            {MONTHS.map((month) => (
+              <View key={month} style={styles.gridItem}>
+                <MiniMonth
+                  year={year}
+                  month={month}
+                  colors={colorsByMonth[month] ?? {}}
+                  todayDay={
+                    isCurrentYear && month === today.getMonth() + 1 ? today.getDate() : undefined
+                  }
+                  onPress={() => onOpenMonth(year, month)}
+                />
+              </View>
+            ))}
+          </View>
+          <Text style={styles.countLabel}>
+            {isCurrentYear
+              ? strings.year.countLabel(totalEntries)
+              : strings.year.totalLabel(totalEntries)}
+          </Text>
+        </ScrollView>
+        {filterOpen && onChangeFilter ? (
+          <CategorySheet
+            accessToken={accessToken}
+            categories={categories}
+            filter={filter}
+            onChange={onChangeFilter}
+            onCategoriesChanged={() => onCategoriesChanged?.()}
+            onClose={() => setFilterOpen(false)}
+          />
+        ) : null}
+      </SafeAreaView>
+    </GestureDetector>
   );
 }
 

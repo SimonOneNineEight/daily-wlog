@@ -37,3 +37,9 @@ export function shiftMonth(year: number, month: number, delta: number): { year: 
 export function localDateString(date: Date): string {
   return `${monthKey(date.getFullYear(), date.getMonth() + 1)}-${String(date.getDate()).padStart(2, '0')}`;
 }
+
+/** The date delta days from a YYYY-MM-DD date, as YYYY-MM-DD. */
+export function shiftDay(date: string, delta: number): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return localDateString(new Date(year, month - 1, day + delta));
+}

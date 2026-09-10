@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { State } from 'react-native-gesture-handler';
+import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
 import { YearScreen } from './YearScreen';
 
@@ -88,6 +90,30 @@ it('pages to earlier years through the chevrons', async () => {
   fireEvent.press(screen.getByLabelText('下一年'));
   expect(screen.getByText('2026年')).toBeTruthy();
   await waitFor(() => expect(screen.getByText('今年到目前為止 3 則紀錄')).toBeTruthy());
+});
+
+it('swipes to the neighboring years (#26)', async () => {
+  renderScreen();
+  await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
+
+  act(() => {
+    fireGestureHandler(getByGestureTestId('year-fling-prev'), [
+      { state: State.BEGAN },
+      { state: State.ACTIVE },
+      { state: State.END },
+    ]);
+  });
+  expect(screen.getByText('2025年')).toBeTruthy();
+  await waitFor(() => expect(screen.getByTestId('year-day-6-9')).toBeTruthy());
+
+  act(() => {
+    fireGestureHandler(getByGestureTestId('year-fling-next'), [
+      { state: State.BEGAN },
+      { state: State.ACTIVE },
+      { state: State.END },
+    ]);
+  });
+  expect(screen.getByText('2026年')).toBeTruthy();
 });
 
 it('jumps back to today through the trailing action', async () => {

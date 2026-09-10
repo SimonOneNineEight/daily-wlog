@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import { State } from 'react-native-gesture-handler';
+import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
 import { encodeContent } from '../entries/content';
 import { DayScreen } from './DayScreen';
@@ -83,6 +85,33 @@ it('shows the empty state when the day has no entries', async () => {
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   expect(await screen.findByText('今天還沒有紀錄')).toBeTruthy();
+});
+
+it('swipes to the neighboring dates (#26)', async () => {
+  const onChangeDate = jest.fn();
+  render(
+    <DayScreen
+      accessToken="tok"
+      categories={categories}
+      date="2026-08-19"
+      onChangeDate={onChangeDate}
+    />,
+  );
+  await screen.findByText('今天還沒有紀錄');
+
+  fireGestureHandler(getByGestureTestId('day-fling-next'), [
+    { state: State.BEGAN },
+    { state: State.ACTIVE },
+    { state: State.END },
+  ]);
+  expect(onChangeDate).toHaveBeenCalledWith('2026-08-20');
+
+  fireGestureHandler(getByGestureTestId('day-fling-prev'), [
+    { state: State.BEGAN },
+    { state: State.ACTIVE },
+    { state: State.END },
+  ]);
+  expect(onChangeDate).toHaveBeenCalledWith('2026-08-18');
 });
 
 it('does not save until a category is picked and a title is typed', async () => {

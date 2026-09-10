@@ -44,6 +44,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
         date={route.date}
         filter={filter}
         onBack={() => setRoute({ name: 'month' })}
+        onChangeDate={(date) => setRoute({ name: 'day', date })}
         onEntrySaved={bumpMonth}
         onCategoriesChanged={onCategoriesChanged}
       />

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import type { RenderItemParams } from 'react-native-draggable-flatlist';
+import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry } from '../api/client';
@@ -10,6 +11,7 @@ import { listEntries, reorderDay } from '../api/client';
 import type { CalendarFilter } from '../calendar/filter';
 import { emptyFilter, entryMatchesFilter, hasFilter } from '../calendar/filter';
 import { dateHeading } from '../calendar/dateLabel';
+import { shiftDay } from '../calendar/monthMath';
 import { decodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { listDrafts } from '../entries/drafts';
@@ -26,6 +28,8 @@ type Props = {
   /** The date whose Entries this screen shows, YYYY-MM-DD. */
   date: string;
   onBack?: () => void;
+  /** A horizontal swipe asks for the previous/next date (#26). */
+  onChangeDate?: (date: string) => void;
   /** Called after an Entry changes here (save, edit, delete, reorder). */
   onEntrySaved?: () => void;
   onCategoriesChanged?: () => void;
@@ -43,6 +47,7 @@ export function DayScreen({
   categories,
   date,
   onBack,
+  onChangeDate,
   onEntrySaved,
   onCategoriesChanged,
   filter = emptyFilter,
@@ -136,6 +141,20 @@ export function DayScreen({
   const filtering = hasFilter(filter);
   const visibleEntries = (entries ?? []).filter((entry) => entryMatchesFilter(entry, filter));
 
+  // Day ↔ day swipes (#26), the month pager's gesture family. Flings only
+  // recognize fast horizontal movement, so the list's vertical scroll and
+  // the long-press drag reorder keep working underneath.
+  const flingNext = Gesture.Fling()
+    .direction(Directions.LEFT)
+    .runOnJS(true)
+    .withTestId('day-fling-next')
+    .onStart(() => onChangeDate?.(shiftDay(date, 1)));
+  const flingPrev = Gesture.Fling()
+    .direction(Directions.RIGHT)
+    .runOnJS(true)
+    .withTestId('day-fling-prev')
+    .onStart(() => onChangeDate?.(shiftDay(date, -1)));
+
   const renderCard = ({ item, drag, isActive }: RenderItemParams<Entry>) => {
     const category = categories.find((c) => c.id === item.categoryId);
     const subcategory = categories.find((c) => c.id === item.subcategoryId);
@@ -159,63 +178,65 @@ export function DayScreen({
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.headerRow}>
-        {onBack ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.day.back}
-            style={styles.backButton}
-            onPress={onBack}
-          >
-            <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
-          </Pressable>
+    <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+        <View style={styles.headerRow}>
+          {onBack ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.day.back}
+              style={styles.backButton}
+              onPress={onBack}
+            >
+              <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
+          <Text style={styles.heading}>{heading}</Text>
+        </View>
+        {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
+        {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
+        {entries !== null && visibleEntries.length === 0 && !failed ? (
+          <Text style={styles.muted}>{strings.day.empty}</Text>
         ) : null}
-        <Text style={styles.heading}>{heading}</Text>
-      </View>
-      {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
-      {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
-      {entries !== null && visibleEntries.length === 0 && !failed ? (
-        <Text style={styles.muted}>{strings.day.empty}</Text>
-      ) : null}
-      {/* Kept drafts (#14). No canvas artboard exists for these, so the
-          quietest surface consistent with the day view: a plain card with
-          the title and a flat 尚未儲存 meta line. */}
-      {drafts.map((draft) => (
+        {/* Kept drafts (#14). No canvas artboard exists for these, so the
+            quietest surface consistent with the day view: a plain card with
+            the title and a flat 尚未儲存 meta line. */}
+        {drafts.map((draft) => (
+          <Pressable
+            key={draft.id}
+            accessibilityRole="button"
+            style={styles.draftCard}
+            onPress={() => setOpenDraft(draft)}
+          >
+            <Text style={styles.draftTitle}>
+              {decodeContent(draft.content)?.title ?? strings.day.unreadable}
+            </Text>
+            <Text style={styles.draftMeta}>{strings.day.draftUnsaved}</Text>
+          </Pressable>
+        ))}
+        <DraggableFlatList
+          data={visibleEntries}
+          keyExtractor={(entry) => entry.id}
+          renderItem={renderCard}
+          onDragEnd={({ data }) => {
+            if (filtering) return; // a lens shows a partial list; order is server truth
+            setEntries(data);
+            void persistOrder(data);
+          }}
+          containerStyle={styles.listContainer}
+          contentContainerStyle={styles.list}
+        />
         <Pressable
-          key={draft.id}
           accessibilityRole="button"
-          style={styles.draftCard}
-          onPress={() => setOpenDraft(draft)}
+          accessibilityLabel={strings.day.addEntry}
+          feedback="scale"
+          style={styles.fab}
+          onPress={() => setComposing(true)}
         >
-          <Text style={styles.draftTitle}>
-            {decodeContent(draft.content)?.title ?? strings.day.unreadable}
-          </Text>
-          <Text style={styles.draftMeta}>{strings.day.draftUnsaved}</Text>
+          <Plus size={24} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
         </Pressable>
-      ))}
-      <DraggableFlatList
-        data={visibleEntries}
-        keyExtractor={(entry) => entry.id}
-        renderItem={renderCard}
-        onDragEnd={({ data }) => {
-          if (filtering) return; // a lens shows a partial list; order is server truth
-          setEntries(data);
-          void persistOrder(data);
-        }}
-        containerStyle={styles.listContainer}
-        contentContainerStyle={styles.list}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={strings.day.addEntry}
-        feedback="scale"
-        style={styles.fab}
-        onPress={() => setComposing(true)}
-      >
-        <Plus size={24} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
-      </Pressable>
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureDetector>
   );
 }
 
