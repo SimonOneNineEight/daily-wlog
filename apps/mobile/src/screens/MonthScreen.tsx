@@ -243,11 +243,7 @@ export function MonthScreen({
 
       <View style={styles.panelHolder}>
         <DayPanel
-          dateLabel={strings.month.dateLabel(
-            visible.month,
-            selectedDay,
-            strings.month.weekdaysFull[weekdayOfSelected],
-          )}
+          dateLabel={strings.month.dateLabel(visible.month, selectedDay, weekdayOfSelected)}
           entries={panelEntries}
           onOpen={() => onOpenDay(selectedDate)}
         />

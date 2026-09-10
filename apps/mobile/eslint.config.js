@@ -22,8 +22,8 @@ module.exports = defineConfig([
     files: ['**/*.tsx'],
     plugins: { i18next },
     rules: {
-      // String-catalog discipline: user-facing JSX text lives in
-      // src/i18n/strings.ts, never inline.
+      // String-catalog discipline: user-facing JSX text lives in the
+      // src/i18n catalogs, never inline.
       'i18next/no-literal-string': 'error',
     },
   },
@@ -45,7 +45,7 @@ module.exports = defineConfig([
         {
           patterns: [
             {
-              group: ['**/i18n/strings'],
+              group: ['**/i18n/strings', '**/i18n/strings.en'],
               message: 'Read strings via useStrings() (src/i18n/AppLanguageProvider).',
             },
           ],

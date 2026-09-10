@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { en } from './strings.en';
 import { type StringCatalog, strings as zhTW } from './strings';
 
 export type { StringCatalog } from './strings';
@@ -24,9 +25,7 @@ export function resolveAppLanguage(
   return locales[0]?.languageCode === 'zh' ? 'zh-TW' : 'en';
 }
 
-// Until the English catalog lands (#34), en temporarily serves the zh-TW
-// catalog, so the app renders exactly as today for every user.
-const catalogs: Record<AppLanguage, StringCatalog> = { 'zh-TW': zhTW, en: zhTW };
+const catalogs: Record<AppLanguage, StringCatalog> = { 'zh-TW': zhTW, en };
 
 export function catalogFor(language: AppLanguage): StringCatalog {
   return catalogs[language];

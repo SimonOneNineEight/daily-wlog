@@ -1,8 +1,12 @@
 // String-catalog discipline (MVP spec): components never hardcode
 // user-facing text; every label lives here, enforced by
-// i18next/no-literal-string. zh-TW is the app's primary and only MVP
-// language. English later is a second catalog typed as StringCatalog, so the
-// compiler enforces its completeness.
+// i18next/no-literal-string. zh-TW is the app's primary language; the
+// English catalog (strings.en.ts) is typed as StringCatalog, so the
+// compiler enforces its completeness. Date labels and titles are catalog
+// functions: word order belongs to the language, never to a shared
+// template.
+const weekdaysFull = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
 const zhTW = {
   signIn: {
     wordmark: 'daily-wlog',
@@ -42,9 +46,11 @@ const zhTW = {
     title: (month: number) => `${month}月`,
     yearLabel: (year: number) => `${year}年`,
     emptyDay: '這天沒有紀錄',
-    dateLabel: (month: number, day: number, weekday: string) => `${month}月${day}日 ${weekday}`,
+    // weekday is a 0-Sunday index, per Date#getDay.
+    dateLabel: (month: number, day: number, weekday: number) =>
+      `${month}月${day}日 ${weekdaysFull[weekday]}`,
     weekdaysShort: ['日', '一', '二', '三', '四', '五', '六'],
-    weekdaysFull: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'],
+    weekdaysFull,
   },
   day: {
     addEntry: '新增紀錄',
@@ -164,7 +170,7 @@ const zhTW = {
     typeSample: '週末去河濱公園騎車,傍晚和朋友吃了火鍋',
     yearBoxNumeral: '8',
   },
-} as const;
+};
 
 export type StringCatalog = typeof zhTW;
 export const strings: StringCatalog = zhTW;
