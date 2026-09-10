@@ -107,7 +107,7 @@ func TestMonthValidation(t *testing.T) {
 	}
 }
 
-func TestMonthFilter(t *testing.T) {
+func TestMonthHiddenSet(t *testing.T) {
 	ts := newTestServer(t)
 	token := signUpTestUser(t)
 	me := decodeMe(t, postMe(t, ts, token))
@@ -130,26 +130,28 @@ func TestMonthFilter(t *testing.T) {
 		return out
 	}
 
-	// A parent includes its children's entries.
-	byParent := decodeMonth(t, getMonth(t, ts, token, "2026-05?categories="+work))
-	if got := dates(byParent); len(got) != 2 || got[0] != "2026-05-01" || got[1] != "2026-05-02" {
-		t.Errorf("parent filter days = %v, want the two work days", got)
+	// A hidden category omits its unrefined entries; a refined entry
+	// follows its subcategory and stays visible under the hidden parent.
+	hideWork := decodeMonth(t, getMonth(t, ts, token, "2026-05?hiddenCategories="+work))
+	if got := dates(hideWork); len(got) != 2 || got[0] != "2026-05-02" || got[1] != "2026-05-03" {
+		t.Errorf("hidden-parent days = %v, want the sub day and the sport day", got)
 	}
-	// A subcategory matches only its own entries.
-	bySub := decodeMonth(t, getMonth(t, ts, token, "2026-05?subcategories="+sub.ID))
-	if got := dates(bySub); len(got) != 1 || got[0] != "2026-05-02" {
-		t.Errorf("subcategory filter days = %v, want only the sub day", got)
+	// A hidden subcategory omits only its own entries.
+	hideSub := decodeMonth(t, getMonth(t, ts, token, "2026-05?hiddenSubcategories="+sub.ID))
+	if got := dates(hideSub); len(got) != 2 || got[0] != "2026-05-01" || got[1] != "2026-05-03" {
+		t.Errorf("hidden-sub days = %v, want the unrefined work day and the sport day", got)
 	}
-	// Union across both kinds of selection.
-	union := decodeMonth(t, getMonth(t, ts, token, "2026-05?categories="+sport+"&subcategories="+sub.ID))
-	if got := dates(union); len(got) != 2 || got[0] != "2026-05-02" || got[1] != "2026-05-03" {
-		t.Errorf("union filter days = %v, want sub day and sport day", got)
+	// The whole family hidden plus the rest: an empty month is legal.
+	allHidden := decodeMonth(t, getMonth(t, ts, token,
+		"2026-05?hiddenCategories="+work+","+sport+"&hiddenSubcategories="+sub.ID))
+	if got := dates(allHidden); len(got) != 0 {
+		t.Errorf("all-hidden days = %v, want none", got)
 	}
 
-	resp := getMonth(t, ts, token, "2026-05?categories=not-a-uuid")
+	resp := getMonth(t, ts, token, "2026-05?hiddenCategories=not-a-uuid")
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("malformed filter status = %d, want 400", resp.StatusCode)
+		t.Errorf("malformed hidden ids status = %d, want 400", resp.StatusCode)
 	}
 }
 

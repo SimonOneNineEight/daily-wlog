@@ -685,7 +685,7 @@ paths:
           schema:
             type: string
           description: The month, YYYY-MM.
-        - name: categories
+        - name: hiddenCategories
           in: query
           required: false
           style: form
@@ -695,9 +695,10 @@ paths:
             items:
               type: string
           description: >
-            Filter (#13): top-level Category ids. An Entry matches when its
-            category is any of these — a parent always includes its children.
-        - name: subcategories
+            The per-User hidden-set (#30): Category ids whose unrefined
+            Entries are omitted. An Entry with a Subcategory follows its
+            refinement instead. Empty means nothing is hidden.
+        - name: hiddenSubcategories
           in: query
           required: false
           style: form
@@ -707,8 +708,9 @@ paths:
             items:
               type: string
           description: >
-            Filter (#13): Subcategory ids, matched against the Entry's
-            subcategory. Union with categories; empty filters mean no lens.
+            Hidden Subcategory ids: a refined Entry is omitted when its
+            subcategory is any of these, and shown otherwise — even under
+            a hidden parent.
       responses:
         "200":
           description: The month's days that have Entries, in date order.
@@ -751,7 +753,7 @@ paths:
           schema:
             type: string
           description: The year, YYYY.
-        - name: categories
+        - name: hiddenCategories
           in: query
           required: false
           style: form
@@ -761,9 +763,10 @@ paths:
             items:
               type: string
           description: >
-            Filter (#13): top-level Category ids. A filtered day takes its
-            first MATCHING Entry's category; days with no match drop out.
-        - name: subcategories
+            The per-User hidden-set (#30): Category ids whose unrefined
+            Entries are omitted. A day's color comes from its first VISIBLE
+            Entry; days with none drop out.
+        - name: hiddenSubcategories
           in: query
           required: false
           style: form
@@ -773,8 +776,8 @@ paths:
             items:
               type: string
           description: >
-            Filter (#13): Subcategory ids. Union with categories; the Entry
-            count follows the same lens.
+            Hidden Subcategory ids: a refined Entry follows its refinement.
+            The Entry count follows the same visibility.
       responses:
         "200":
           description: The year's recorded days, in date order.

@@ -209,86 +209,53 @@ it('opens settings from the nav bar gear', async () => {
   expect(onOpenSettings).toHaveBeenCalled();
 });
 
-describe('calendar filter (#13)', () => {
+describe('visibility (#30)', () => {
   const withSub = [
     ...categories,
     { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport' },
   ];
 
-  it('opens the sheet from the funnel and toggles selections', async () => {
-    const onChangeFilter = jest.fn();
+  it('opens the 類別 sheet and toggles rows into the hidden-set', async () => {
+    const onChangeHidden = jest.fn();
     renderMonth({
       categories: withSub,
-      filter: { categoryIds: [], subcategoryIds: [] },
-      onChangeFilter,
+      hidden: { categoryIds: [], subcategoryIds: [] },
+      onChangeHidden,
     });
     await act(async () => {});
 
     fireEvent.press(screen.getByLabelText('類別'));
     expect(screen.getByText('類別')).toBeTruthy();
     fireEvent.press(screen.getByText('工作'));
-    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: ['c-work'], subcategoryIds: [] });
+    expect(onChangeHidden).toHaveBeenCalledWith({ categoryIds: ['c-work'], subcategoryIds: [] });
 
-    // Subcategories are always visible and toggle independently.
+    // A parent with children is the family master switch.
+    fireEvent.press(screen.getByText('運動'));
+    expect(onChangeHidden).toHaveBeenCalledWith({
+      categoryIds: ['c-sport'],
+      subcategoryIds: ['c-gym'],
+    });
+
+    // Subcategory rows toggle only themselves.
     fireEvent.press(screen.getByText('健身房'));
-    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
+    expect(onChangeHidden).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
   });
 
-  it('sends the lens to the API and shows removable chips', async () => {
-    const onChangeFilter = jest.fn();
+  it('sends the hidden-set to the month endpoint', async () => {
     renderMonth({
       categories: withSub,
-      filter: { categoryIds: ['c-work'], subcategoryIds: ['c-gym'] },
-      onChangeFilter,
+      hidden: { categoryIds: ['c-work'], subcategoryIds: ['c-gym'] },
+      onChangeHidden: jest.fn(),
     });
     await act(async () => {});
 
     const monthCalls = (globalThis.fetch as jest.Mock).mock.calls
       .map(([u]) => String(u))
       .filter((u) => u.includes('/months/'));
-    expect(monthCalls.some((u) => u.includes('categories=c-work') && u.includes('subcategories=c-gym'))).toBe(true);
-
-    // Chips: one per selection, tap removes; 全部清除 clears.
-    fireEvent.press(screen.getByLabelText('工作'));
-    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
-    fireEvent.press(screen.getByText('全部清除'));
-    expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: [] });
+    expect(
+      monthCalls.some(
+        (u) => u.includes('hiddenCategories=c-work') && u.includes('hiddenSubcategories=c-gym'),
+      ),
+    ).toBe(true);
   });
-});
-
-it('normalizes parent and child selections like the canvas', async () => {
-  const withSub = [
-    ...categories,
-    { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport' },
-  ];
-  const onChangeFilter = jest.fn();
-  renderMonth({
-    categories: withSub,
-    filter: { categoryIds: ['c-sport'], subcategoryIds: [] },
-    onChangeFilter,
-  });
-  await act(async () => {});
-
-  fireEvent.press(screen.getByLabelText('類別'));
-  // Picking a child narrows the lens: its parent's selection drops.
-  fireEvent.press(screen.getByText('健身房'));
-  expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
-});
-
-it('turning a parent on clears its own children picks', async () => {
-  const withSub = [
-    ...categories,
-    { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport' },
-  ];
-  const onChangeFilter = jest.fn();
-  renderMonth({
-    categories: withSub,
-    filter: { categoryIds: [], subcategoryIds: ['c-gym'] },
-    onChangeFilter,
-  });
-  await act(async () => {});
-
-  fireEvent.press(screen.getByLabelText('類別'));
-  fireEvent.press(screen.getByText('運動'));
-  expect(onChangeFilter).toHaveBeenCalledWith({ categoryIds: ['c-sport'], subcategoryIds: [] });
 });

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
-import type { CalendarFilter } from '../calendar/filter';
-import { emptyFilter } from '../calendar/filter';
+import type { HiddenSet } from '../calendar/hidden';
+import { loadHidden, nothingHidden, saveHidden } from '../calendar/hidden';
 import { createStyles } from '../theme';
 
 import { DayScreen } from './DayScreen';
@@ -32,9 +32,25 @@ type Route =
 export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Props) {
   const [route, setRoute] = useState<Route>({ name: 'month' });
   const [monthRefresh, setMonthRefresh] = useState(0);
-  // One lens across every calendar surface (#13); resets on cold launch.
-  const [filter, setFilter] = useState<CalendarFilter>(emptyFilter);
+  // The hidden-set (#30): one visibility state across every calendar
+  // surface, persisted so it survives launches.
+  const [hidden, setHidden] = useState<HiddenSet>(nothingHidden);
   const bumpMonth = () => setMonthRefresh((n) => n + 1);
+
+  useEffect(() => {
+    let active = true;
+    void loadHidden().then((stored) => {
+      if (active) setHidden(stored);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const changeHidden = (next: HiddenSet) => {
+    setHidden(next);
+    void saveHidden(next);
+  };
 
   if (route.name === 'day') {
     return (
@@ -42,7 +58,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
         accessToken={accessToken}
         categories={categories}
         date={route.date}
-        filter={filter}
+        hidden={hidden}
         onBack={() => setRoute({ name: 'month' })}
         onChangeDate={(date) => setRoute({ name: 'day', date })}
         onEntrySaved={bumpMonth}
@@ -55,8 +71,8 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
       <YearScreen
         accessToken={accessToken}
         categories={categories}
-        filter={filter}
-        onChangeFilter={setFilter}
+        hidden={hidden}
+        onChangeHidden={changeHidden}
         onCategoriesChanged={onCategoriesChanged}
         onOpenMonth={(year, month) => setRoute({ name: 'month', focus: { year, month } })}
       />
@@ -92,8 +108,8 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
           categories={categories}
           refresh={monthRefresh}
           initialMonth={route.focus}
-          filter={filter}
-          onChangeFilter={setFilter}
+          hidden={hidden}
+          onChangeHidden={changeHidden}
           onOpenDay={(date) => setRoute({ name: 'day', date })}
           onAddEntry={(date) => setRoute({ name: 'form', date })}
           onOpenSettings={() => setRoute({ name: 'settings' })}

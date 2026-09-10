@@ -8,8 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry } from '../api/client';
 import { listEntries, reorderDay } from '../api/client';
-import type { CalendarFilter } from '../calendar/filter';
-import { emptyFilter, entryMatchesFilter, hasFilter } from '../calendar/filter';
+import type { HiddenSet } from '../calendar/hidden';
+import { entryIsVisible, nothingHidden } from '../calendar/hidden';
 import { dateHeading } from '../calendar/dateLabel';
 import { shiftDay } from '../calendar/monthMath';
 import { decodeContent } from '../entries/content';
@@ -34,10 +34,12 @@ type Props = {
   onEntrySaved?: () => void;
   onCategoriesChanged?: () => void;
   /**
-   * The shared calendar filter (#13). Non-matching cards hide; drag-reorder
-   * disables under a lens, since ordering a partial view is undefined.
+   * The persistent hidden-set (#30). Hidden cards drop out; drag-reorder
+   * disables only while THIS day shows a partial list, since ordering a
+   * partial view is undefined — a fully visible day reorders freely even
+   * while other categories hide.
    */
-  filter?: CalendarFilter;
+  hidden?: HiddenSet;
 };
 
 // The day view (#7): the date's Entries as cards; long-press drag reorders
@@ -50,7 +52,7 @@ export function DayScreen({
   onChangeDate,
   onEntrySaved,
   onCategoriesChanged,
-  filter = emptyFilter,
+  hidden = nothingHidden,
 }: Props) {
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -138,8 +140,8 @@ export function DayScreen({
   };
 
   const heading = dateHeading(date);
-  const filtering = hasFilter(filter);
-  const visibleEntries = (entries ?? []).filter((entry) => entryMatchesFilter(entry, filter));
+  const visibleEntries = (entries ?? []).filter((entry) => entryIsVisible(entry, hidden));
+  const partialDay = visibleEntries.length !== (entries?.length ?? 0);
 
   // Day ↔ day swipes (#26), the month pager's gesture family. Flings only
   // recognize fast horizontal movement, so the list's vertical scroll and
@@ -171,7 +173,7 @@ export function DayScreen({
           photos={item.photos?.map((p) => ({ id: p.id, thumbUrl: p.thumbUrl }))}
           dragging={isActive}
           onPress={() => setEditing(item)}
-          onLongPress={filtering ? undefined : drag}
+          onLongPress={partialDay ? undefined : drag}
         />
       </View>
     );
@@ -224,7 +226,7 @@ export function DayScreen({
           activationDistance={20}
           renderItem={renderCard}
           onDragEnd={({ data }) => {
-            if (filtering) return; // a lens shows a partial list; order is server truth
+            if (partialDay) return; // a partial list can't define the order
             setEntries(data);
             void persistOrder(data);
           }}

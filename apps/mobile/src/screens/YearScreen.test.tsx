@@ -52,7 +52,7 @@ function renderScreen(overrides: Partial<React.ComponentProps<typeof YearScreen>
       categories={categories}
       today={new Date(2026, 7, 5)}
       onOpenMonth={jest.fn()}
-      onChangeFilter={jest.fn()}
+      onChangeHidden={jest.fn()}
       {...overrides}
     />,
   );
@@ -157,13 +157,12 @@ it('jumps back to today through the trailing action', async () => {
   expect(onOpenMonth).toHaveBeenCalledWith(2026, 8);
 });
 
-it('sends the lens to the year endpoint', async () => {
+it('sends the hidden-set to the year endpoint (#30)', async () => {
   renderScreen({
-    filter: { categoryIds: ['c-work'], subcategoryIds: [] },
-    onChangeFilter: jest.fn(),
+    hidden: { categoryIds: ['c-work'], subcategoryIds: [] },
   });
   await waitFor(() => {
     const calls = (globalThis.fetch as jest.Mock).mock.calls.map(([u]) => String(u));
-    expect(calls.some((u) => u.includes('/years/2026?categories=c-work'))).toBe(true);
+    expect(calls.some((u) => u.includes('/years/2026?hiddenCategories=c-work'))).toBe(true);
   });
 });

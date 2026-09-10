@@ -247,20 +247,20 @@ type ListEntriesParams struct {
 
 // GetMonthParams defines parameters for GetMonth.
 type GetMonthParams struct {
-	// Categories Filter (#13): top-level Category ids. An Entry matches when its category is any of these — a parent always includes its children.
-	Categories *[]string `form:"categories,omitempty" json:"categories,omitempty"`
+	// HiddenCategories The per-User hidden-set (#30): Category ids whose unrefined Entries are omitted. An Entry with a Subcategory follows its refinement instead. Empty means nothing is hidden.
+	HiddenCategories *[]string `form:"hiddenCategories,omitempty" json:"hiddenCategories,omitempty"`
 
-	// Subcategories Filter (#13): Subcategory ids, matched against the Entry's subcategory. Union with categories; empty filters mean no lens.
-	Subcategories *[]string `form:"subcategories,omitempty" json:"subcategories,omitempty"`
+	// HiddenSubcategories Hidden Subcategory ids: a refined Entry is omitted when its subcategory is any of these, and shown otherwise — even under a hidden parent.
+	HiddenSubcategories *[]string `form:"hiddenSubcategories,omitempty" json:"hiddenSubcategories,omitempty"`
 }
 
 // GetYearParams defines parameters for GetYear.
 type GetYearParams struct {
-	// Categories Filter (#13): top-level Category ids. A filtered day takes its first MATCHING Entry's category; days with no match drop out.
-	Categories *[]string `form:"categories,omitempty" json:"categories,omitempty"`
+	// HiddenCategories The per-User hidden-set (#30): Category ids whose unrefined Entries are omitted. A day's color comes from its first VISIBLE Entry; days with none drop out.
+	HiddenCategories *[]string `form:"hiddenCategories,omitempty" json:"hiddenCategories,omitempty"`
 
-	// Subcategories Filter (#13): Subcategory ids. Union with categories; the Entry count follows the same lens.
-	Subcategories *[]string `form:"subcategories,omitempty" json:"subcategories,omitempty"`
+	// HiddenSubcategories Hidden Subcategory ids: a refined Entry follows its refinement. The Entry count follows the same visibility.
+	HiddenSubcategories *[]string `form:"hiddenSubcategories,omitempty" json:"hiddenSubcategories,omitempty"`
 }
 
 // CreateCategoryJSONRequestBody defines body for CreateCategory for application/json ContentType.
@@ -858,28 +858,28 @@ func (siw *ServerInterfaceWrapper) GetMonth(w http.ResponseWriter, r *http.Reque
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetMonthParams
 
-	// ------------- Optional query parameter "categories" -------------
+	// ------------- Optional query parameter "hiddenCategories" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", false, false, "categories", r.URL.Query(), &params.Categories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "hiddenCategories", r.URL.Query(), &params.HiddenCategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "categories"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "hiddenCategories"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categories", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hiddenCategories", Err: err})
 		}
 		return
 	}
 
-	// ------------- Optional query parameter "subcategories" -------------
+	// ------------- Optional query parameter "hiddenSubcategories" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", false, false, "subcategories", r.URL.Query(), &params.Subcategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "hiddenSubcategories", r.URL.Query(), &params.HiddenSubcategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "subcategories"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "hiddenSubcategories"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subcategories", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hiddenSubcategories", Err: err})
 		}
 		return
 	}
@@ -939,28 +939,28 @@ func (siw *ServerInterfaceWrapper) GetYear(w http.ResponseWriter, r *http.Reques
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetYearParams
 
-	// ------------- Optional query parameter "categories" -------------
+	// ------------- Optional query parameter "hiddenCategories" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", false, false, "categories", r.URL.Query(), &params.Categories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "hiddenCategories", r.URL.Query(), &params.HiddenCategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "categories"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "hiddenCategories"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "categories", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hiddenCategories", Err: err})
 		}
 		return
 	}
 
-	// ------------- Optional query parameter "subcategories" -------------
+	// ------------- Optional query parameter "hiddenSubcategories" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", false, false, "subcategories", r.URL.Query(), &params.Subcategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "hiddenSubcategories", r.URL.Query(), &params.HiddenSubcategories, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "subcategories"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "hiddenSubcategories"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subcategories", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hiddenSubcategories", Err: err})
 		}
 		return
 	}

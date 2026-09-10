@@ -7,10 +7,9 @@ import type { Category } from '../api/client';
 import { getMonth, listEntries } from '../api/client';
 import type { PanelEntry } from '../calendar/DayPanel';
 import { DayPanel } from '../calendar/DayPanel';
-import type { CalendarFilter } from '../calendar/filter';
-import { emptyFilter, entryMatchesFilter, filterParams } from '../calendar/filter';
+import type { HiddenSet } from '../calendar/hidden';
+import { entryIsVisible, hiddenParams, nothingHidden } from '../calendar/hidden';
 import { CategorySheet } from '../calendar/CategorySheet';
-import { FilterChips } from '../calendar/FilterChips';
 import { MonthGrid } from '../calendar/MonthGrid';
 import { monthKey, shiftMonth } from '../calendar/monthMath';
 import { decodeContent } from '../entries/content';
@@ -34,9 +33,9 @@ type Props = {
   onOpenYear?: () => void;
   /** Land on this month instead of today's (year view tap-through, #12). */
   initialMonth?: { year: number; month: number };
-  /** The shared calendar filter (#13), owned by HomeScreen. */
-  filter?: CalendarFilter;
-  onChangeFilter?: (filter: CalendarFilter) => void;
+  /** The persistent hidden-set (#30), owned by HomeScreen. */
+  hidden?: HiddenSet;
+  onChangeHidden?: (hidden: HiddenSet) => void;
   /** Bump to refetch the visible month (after a save elsewhere). */
   refresh?: number;
 };
@@ -57,11 +56,11 @@ export function MonthScreen({
   onCategoriesChanged,
   onOpenYear,
   initialMonth,
-  filter = emptyFilter,
-  onChangeFilter,
+  hidden = nothingHidden,
+  onChangeHidden,
   refresh = 0,
 }: Props) {
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const todayParts = {
     year: today.getFullYear(),
     month: today.getMonth() + 1,
@@ -86,7 +85,7 @@ export function MonthScreen({
 
   useEffect(() => {
     let active = true;
-    getMonth(accessToken, monthKey(visible.year, visible.month), filterParams(filter))
+    getMonth(accessToken, monthKey(visible.year, visible.month), hiddenParams(hidden))
       .then((month) => {
         if (!active) return;
         const byDay: Record<number, string[]> = {};
@@ -103,7 +102,7 @@ export function MonthScreen({
     };
     // colorOf changes only with categories, which arrive with the token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, visible.year, visible.month, categories, refresh, filter]);
+  }, [accessToken, visible.year, visible.month, categories, refresh, hidden]);
 
   useEffect(() => {
     let active = true;
@@ -112,7 +111,7 @@ export function MonthScreen({
         if (!active) return;
         setPanelEntries(
           list.entries
-            .filter((entry) => entryMatchesFilter(entry, filter))
+            .filter((entry) => entryIsVisible(entry, hidden))
             .map((entry) => ({
             id: entry.id,
             title: decodeContent(entry.content)?.title ?? strings.day.unreadable,
@@ -130,7 +129,7 @@ export function MonthScreen({
     };
     // refresh is an intentional extra trigger, not a data dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, selectedDate, categories, refresh, filter]);
+  }, [accessToken, selectedDate, categories, refresh, hidden]);
 
   // Functional update: consecutive chevron presses (or a fast swipe after a
   // press) must each move from the latest month, not a stale closure.
@@ -181,12 +180,12 @@ export function MonthScreen({
         {/* Full Apple (ratified 2026-08-20): months change by swipe alone,
             so the nav holds just the lens and the utility. */}
         <View style={styles.navActions}>
-          {onChangeFilter ? (
+          {onChangeHidden ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={strings.categories.title}
               style={styles.navButton}
-              onPress={() => setFilterOpen(true)}
+              onPress={() => setSheetOpen(true)}
             >
               <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
@@ -203,10 +202,6 @@ export function MonthScreen({
           ) : null}
         </View>
       </View>
-
-      {onChangeFilter ? (
-        <FilterChips categories={categories} filter={filter} onChange={onChangeFilter} />
-      ) : null}
 
       <ScrollView
         ref={pagerRef}
@@ -267,14 +262,14 @@ export function MonthScreen({
         <Plus size={24} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
       </Pressable>
 
-      {filterOpen && onChangeFilter ? (
+      {sheetOpen && onChangeHidden ? (
         <CategorySheet
           accessToken={accessToken}
           categories={categories}
-          filter={filter}
-          onChange={onChangeFilter}
+          hidden={hidden}
+          onChange={onChangeHidden}
           onCategoriesChanged={() => onCategoriesChanged?.()}
-          onClose={() => setFilterOpen(false)}
+          onClose={() => setSheetOpen(false)}
         />
       ) : null}
     </View>

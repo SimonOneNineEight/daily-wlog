@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import { CategorySheet } from './CategorySheet';
+import { nothingHidden } from './hidden';
 
 const categories = [
   { id: 'c-work', name: '工作', color: '#4A93C4', icon: 'briefcase', position: 1, inUse: true, hasChildren: false },
@@ -58,7 +59,7 @@ function renderSheet(overrides: Partial<React.ComponentProps<typeof CategoryShee
     <CategorySheet
       accessToken="tok"
       categories={categories}
-      filter={{ categoryIds: [], subcategoryIds: [] }}
+      hidden={nothingHidden}
       onChange={onChange}
       onCategoriesChanged={onCategoriesChanged}
       onClose={jest.fn()}
@@ -68,16 +69,50 @@ function renderSheet(overrides: Partial<React.ComponentProps<typeof CategoryShee
   return { onChange, onCategoriesChanged };
 }
 
-it('splits each row into a filter zone and an edit zone', () => {
+it('splits each row into a visibility zone and an edit zone (#30)', () => {
   const { onChange } = renderSheet();
 
-  // Tapping the row toggles the lens; tapping ✎ opens the editor instead.
+  // Tapping a parent row is the family master switch: the whole family
+  // hides together. Tapping ✎ opens the editor instead.
   fireEvent.press(screen.getByText('運動'));
-  expect(onChange).toHaveBeenCalledWith({ categoryIds: ['c-sport'], subcategoryIds: [] });
+  expect(onChange).toHaveBeenCalledWith({
+    categoryIds: ['c-sport'],
+    subcategoryIds: ['c-gym'],
+  });
 
   fireEvent.press(screen.getAllByLabelText('編輯類別')[1]);
   expect(screen.getByDisplayValue('運動')).toBeTruthy();
   expect(onChange).toHaveBeenCalledTimes(1);
+});
+
+it('a subcategory row toggles only itself (#30)', () => {
+  const { onChange } = renderSheet();
+
+  fireEvent.press(screen.getByText('健身房'));
+  expect(onChange).toHaveBeenCalledWith({ categoryIds: [], subcategoryIds: ['c-gym'] });
+});
+
+it('the header toggle flips between 全部隱藏 and 全部顯示 (#30)', () => {
+  const { onChange } = renderSheet();
+
+  fireEvent.press(screen.getByText('全部隱藏'));
+  expect(onChange).toHaveBeenCalledWith({
+    categoryIds: ['c-work', 'c-sport', 'c-food'],
+    subcategoryIds: ['c-gym'],
+  });
+
+  render(
+    <CategorySheet
+      accessToken="tok"
+      categories={categories}
+      hidden={{ categoryIds: ['c-work', 'c-sport', 'c-food'], subcategoryIds: ['c-gym'] }}
+      onChange={onChange}
+      onCategoriesChanged={jest.fn()}
+      onClose={jest.fn()}
+    />,
+  );
+  fireEvent.press(screen.getByText('全部顯示'));
+  expect(onChange).toHaveBeenLastCalledWith(nothingHidden);
 });
 
 it('renames a category through the row editor', async () => {

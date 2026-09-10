@@ -6,8 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category } from '../api/client';
 import { getYear } from '../api/client';
-import type { CalendarFilter } from '../calendar/filter';
-import { emptyFilter, filterParams } from '../calendar/filter';
+import type { HiddenSet } from '../calendar/hidden';
+import { hiddenParams, nothingHidden } from '../calendar/hidden';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MiniMonth } from '../calendar/MiniMonth';
 import { strings } from '../i18n/strings';
@@ -19,9 +19,9 @@ type Props = {
   categories: Category[];
   /** Injectable for tests; defaults to the device's now. */
   today?: Date;
-  /** The shared calendar filter (#13), owned by HomeScreen. */
-  filter?: CalendarFilter;
-  onChangeFilter?: (filter: CalendarFilter) => void;
+  /** The persistent hidden-set (#30), owned by HomeScreen. */
+  hidden?: HiddenSet;
+  onChangeHidden?: (hidden: HiddenSet) => void;
   /** Fired after the 類別 sheet changes a category, so /me refetches. */
   onCategoriesChanged?: () => void;
   onOpenMonth: (year: number, month: number) => void;
@@ -43,8 +43,8 @@ export function YearScreen({
   accessToken,
   categories,
   today = new Date(),
-  filter = emptyFilter,
-  onChangeFilter,
+  hidden = nothingHidden,
+  onChangeHidden,
   onCategoriesChanged,
   onOpenMonth,
 }: Props) {
@@ -52,12 +52,12 @@ export function YearScreen({
   const isCurrentYear = year === today.getFullYear();
   const [colorsByMonth, setColorsByMonth] = useState<Record<number, Record<number, string>>>({});
   const [totalEntries, setTotalEntries] = useState(0);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
-    getYear(accessToken, String(year), filterParams(filter))
+    getYear(accessToken, String(year), hiddenParams(hidden))
       .then((data) => {
         if (!active) return;
         const byMonth: Record<number, Record<number, string>> = {};
@@ -77,7 +77,7 @@ export function YearScreen({
     return () => {
       active = false;
     };
-  }, [accessToken, year, categories, filter]);
+  }, [accessToken, year, categories, hidden]);
 
   // Year ↔ year swipes (#26), the month pager's gesture family; the mini
   // months' vertical scroll passes underneath the horizontal flings.
@@ -106,12 +106,12 @@ export function YearScreen({
           >
             <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
           </Pressable>
-          {onChangeFilter ? (
+          {onChangeHidden ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={strings.categories.title}
               style={styles.navButton}
-              onPress={() => setFilterOpen(true)}
+              onPress={() => setSheetOpen(true)}
             >
               <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
@@ -147,14 +147,14 @@ export function YearScreen({
               : strings.year.totalLabel(totalEntries)}
           </Text>
         </ScrollView>
-        {filterOpen && onChangeFilter ? (
+        {sheetOpen && onChangeHidden ? (
           <CategorySheet
             accessToken={accessToken}
             categories={categories}
-            filter={filter}
-            onChange={onChangeFilter}
+            hidden={hidden}
+            onChange={onChangeHidden}
             onCategoriesChanged={() => onCategoriesChanged?.()}
-            onClose={() => setFilterOpen(false)}
+            onClose={() => setSheetOpen(false)}
           />
         ) : null}
         {wheelOpen ? (

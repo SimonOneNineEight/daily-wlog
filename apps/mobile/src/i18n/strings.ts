@@ -113,11 +113,10 @@ const zhTW = {
     // Derived copy: the canvas specifies only the in-use case.
     hasChildrenExplanation: '請先刪除底下的子類別。',
     saveFailed: '儲存失敗，請再試一次',
-  },
-  // The 類別 sheet's filter half (the sheet itself is titled 類別).
-  filter: {
-    clearAll: '全部清除',
-    done: '完成',
+    // The 類別 sheet's visibility toggle (#30): one header button whose
+    // label flips with the state.
+    hideAll: '全部隱藏',
+    showAll: '全部顯示',
   },
   year: {
     title: (year: number) => `${year}年`,

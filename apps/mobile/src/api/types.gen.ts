@@ -1302,10 +1302,10 @@ export interface operations {
     getMonth: {
         parameters: {
             query?: {
-                /** @description Filter (#13): top-level Category ids. An Entry matches when its category is any of these — a parent always includes its children. */
-                categories?: string[];
-                /** @description Filter (#13): Subcategory ids, matched against the Entry's subcategory. Union with categories; empty filters mean no lens. */
-                subcategories?: string[];
+                /** @description The per-User hidden-set (#30): Category ids whose unrefined Entries are omitted. An Entry with a Subcategory follows its refinement instead. Empty means nothing is hidden. */
+                hiddenCategories?: string[];
+                /** @description Hidden Subcategory ids: a refined Entry is omitted when its subcategory is any of these, and shown otherwise — even under a hidden parent. */
+                hiddenSubcategories?: string[];
             };
             header?: never;
             path: {
@@ -1357,10 +1357,10 @@ export interface operations {
     getYear: {
         parameters: {
             query?: {
-                /** @description Filter (#13): top-level Category ids. A filtered day takes its first MATCHING Entry's category; days with no match drop out. */
-                categories?: string[];
-                /** @description Filter (#13): Subcategory ids. Union with categories; the Entry count follows the same lens. */
-                subcategories?: string[];
+                /** @description The per-User hidden-set (#30): Category ids whose unrefined Entries are omitted. A day's color comes from its first VISIBLE Entry; days with none drop out. */
+                hiddenCategories?: string[];
+                /** @description Hidden Subcategory ids: a refined Entry follows its refinement. The Entry count follows the same visibility. */
+                hiddenSubcategories?: string[];
             };
             header?: never;
             path: {

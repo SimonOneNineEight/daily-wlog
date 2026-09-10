@@ -107,7 +107,7 @@ func TestYearColorFollowsEntryOrder(t *testing.T) {
 	}
 }
 
-func TestYearFilter(t *testing.T) {
+func TestYearHiddenSet(t *testing.T) {
 	ts := newTestServer(t)
 	token := signUpTestUser(t)
 	me := decodeMe(t, postMe(t, ts, token))
@@ -118,22 +118,23 @@ func TestYearFilter(t *testing.T) {
 	mustCreateEntry(t, ts, token, "2026-04-10", work)
 	mustCreateEntry(t, ts, token, "2026-04-20", sport)
 
-	// Filtered, the day wears its first MATCHING entry's category, and days
-	// with no match drop out; the count follows the lens.
-	filtered := decodeYear(t, getYear(t, ts, token, "2026?categories="+work))
-	if len(filtered.Days) != 1 || filtered.Days[0].Date != "2026-04-10" || filtered.Days[0].CategoryID != work {
-		t.Errorf("filtered year days = %+v, want only 04-10 in work", filtered.Days)
+	// Hiding sport: 04-10's color falls through to its topmost VISIBLE
+	// entry (work), the sport-only day drops out, the count follows.
+	hidden := decodeYear(t, getYear(t, ts, token, "2026?hiddenCategories="+sport))
+	if len(hidden.Days) != 1 || hidden.Days[0].Date != "2026-04-10" || hidden.Days[0].CategoryID != work {
+		t.Errorf("hidden-sport year days = %+v, want only 04-10 in work", hidden.Days)
 	}
-	if filtered.TotalEntries != 1 {
-		t.Errorf("filtered totalEntries = %d, want 1", filtered.TotalEntries)
+	if hidden.TotalEntries != 1 {
+		t.Errorf("hidden-sport totalEntries = %d, want 1", hidden.TotalEntries)
 	}
-	// Unfiltered, the same day wears the topmost entry's category.
+	// Nothing hidden: the same day wears the topmost entry's category.
 	full := decodeYear(t, getYear(t, ts, token, "2026"))
 	if len(full.Days) != 2 || full.Days[0].CategoryID != sport {
-		t.Errorf("unfiltered year days = %+v, want 04-10 in sport first", full.Days)
+		t.Errorf("year days = %+v, want 04-10 in sport first", full.Days)
 	}
 
-	// Subcategory expansion and union on the year lens.
+	// A refined entry follows its subcategory, visible under a hidden
+	// parent — and hidden on its own even when the parent is visible.
 	sub := decodeCategory(t, createCategory(t, ts, token, map[string]string{
 		"name": "會議", "color": me.Categories[0].Color, "parentId": work,
 	}))
@@ -141,19 +142,27 @@ func TestYearFilter(t *testing.T) {
 		"date": "2026-07-07", "categoryId": work, "subcategoryId": sub.ID, "content": "x",
 	}).Body.Close()
 
-	bySub := decodeYear(t, getYear(t, ts, token, "2026?subcategories="+sub.ID))
-	if len(bySub.Days) != 1 || bySub.Days[0].Date != "2026-07-07" || bySub.TotalEntries != 1 {
-		t.Errorf("subcategory year lens = %+v (%d), want only 07-07", bySub.Days, bySub.TotalEntries)
+	subUnderHiddenParent := decodeYear(t, getYear(t, ts, token, "2026?hiddenCategories="+work))
+	sawSubDay := false
+	for _, day := range subUnderHiddenParent.Days {
+		if day.Date == "2026-07-07" {
+			sawSubDay = true
+		}
 	}
-	union := decodeYear(t, getYear(t, ts, token, "2026?categories="+sport+"&subcategories="+sub.ID))
-	if len(union.Days) != 3 || union.TotalEntries != 3 {
-		t.Errorf("union year lens = %+v (%d), want three days / three entries", union.Days, union.TotalEntries)
+	if !sawSubDay {
+		t.Errorf("hidden-parent year days = %+v, want the refined 07-07 still visible", subUnderHiddenParent.Days)
+	}
+	hiddenSub := decodeYear(t, getYear(t, ts, token, "2026?hiddenSubcategories="+sub.ID))
+	for _, day := range hiddenSub.Days {
+		if day.Date == "2026-07-07" {
+			t.Errorf("hidden-sub year days still show 07-07: %+v", hiddenSub.Days)
+		}
 	}
 
-	resp := getYear(t, ts, token, "2026?subcategories=nope")
+	resp := getYear(t, ts, token, "2026?hiddenSubcategories=nope")
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("malformed filter status = %d, want 400", resp.StatusCode)
+		t.Errorf("malformed hidden ids status = %d, want 400", resp.StatusCode)
 	}
 }
 
