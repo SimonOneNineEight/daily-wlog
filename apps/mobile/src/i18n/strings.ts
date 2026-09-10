@@ -144,6 +144,8 @@ const zhTW = {
     saved: '已存的顏色',
     previewTitle: '在月曆上的樣子',
     sideBySide: '與現有類別並排',
+    // The tappable hex readout (#29).
+    hexLabel: '色號',
     // Accessibility-only labels for the area and hue strip.
     hue: '色相',
     areaLabel: '飽和度與亮度',

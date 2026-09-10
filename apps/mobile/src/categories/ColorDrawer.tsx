@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, PanResponder, Text, View } from 'react-native';
+import { Modal, PanResponder, Text, TextInput, View } from 'react-native';
 
 import { listColorRecents } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
@@ -246,7 +246,12 @@ export function ColorDrawer({
               />
             </View>
 
-            <PreviewCard color={color} existingColors={existingColors} icon={icon} />
+            <PreviewCard
+              color={color}
+              existingColors={existingColors}
+              icon={icon}
+              onPickHex={(hex) => setHsl(hexToHsl(hex))}
+            />
           </View>
         </View>
       </View>
@@ -256,16 +261,21 @@ export function ColorDrawer({
 
 // The canvas preview card: one real week of numerals with the chosen color
 // dropped in as live dots, then the side-by-side row against the user's
-// existing category colors, with the hex readout.
+// existing category colors, with the hex readout — tappable (#29): a typed
+// or pasted #RRGGBB, with or without the #, jumps the picker to that color.
 function PreviewCard({
   color,
   existingColors,
   icon,
+  onPickHex,
 }: {
   color: string;
   existingColors: string[];
   icon: string;
+  onPickHex: (hex: string) => void;
 }) {
+  const [hexOpen, setHexOpen] = useState(false);
+  const [hexText, setHexText] = useState('');
   const existing = existingColors.length > 0 ? existingColors : [color];
   const at = (i: number) => existing[i % existing.length];
   // Days 11–17 per the canvas; the chosen color leads on two of them.
@@ -316,7 +326,36 @@ function PreviewCard({
             <View style={[styles.previewDot, { backgroundColor: color }]} />
           </View>
         </View>
-        <Text style={styles.hexReadout}>{color}</Text>
+        {hexOpen ? (
+          <TextInput
+            testID="hex-input"
+            accessibilityLabel={strings.colorDrawer.hexLabel}
+            style={styles.hexInput}
+            autoFocus
+            selectTextOnFocus
+            autoCapitalize="characters"
+            autoCorrect={false}
+            value={hexText}
+            onChangeText={(text) => {
+              setHexText(text);
+              // Anything but a complete hex is ignored quietly.
+              const match = text.trim().match(/^#?([0-9a-fA-F]{6})$/);
+              if (match) onPickHex(`#${match[1].toUpperCase()}`);
+            }}
+            onBlur={() => setHexOpen(false)}
+          />
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.colorDrawer.hexLabel}
+            onPress={() => {
+              setHexText(color);
+              setHexOpen(true);
+            }}
+          >
+            <Text style={styles.hexReadout}>{color}</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -528,5 +567,18 @@ const styles = createStyles((t) => ({
     ...t.typography.meta,
     color: t.colors.textTertiary,
     fontVariant: ['tabular-nums'],
+  },
+  // Padding-based sizing like subInput: no forced height, natural line box.
+  hexInput: {
+    fontSize: t.typography.meta.fontSize,
+    color: t.colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+    backgroundColor: t.colors.background,
+    borderRadius: t.radius.r2,
+    borderWidth: t.border.hairline,
+    borderColor: t.colors.lineField,
+    paddingHorizontal: t.spacing.space3,
+    paddingVertical: t.spacing.space1,
+    minWidth: 84,
   },
 }));
