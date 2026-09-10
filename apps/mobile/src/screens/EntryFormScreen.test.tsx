@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import { encodeContent } from '../entries/content';
+import { listDrafts } from '../entries/drafts';
 import { EntryFormScreen } from './EntryFormScreen';
 
 const categories = [
@@ -210,6 +211,33 @@ describe('category step (#28)', () => {
     expect(postedEntry).toBeNull();
     expect(onDone).not.toHaveBeenCalled();
     expect(screen.getByText('儲存失敗，請再試一次')).toBeTruthy();
+
+    // The kept draft carries the typed name, so a reopened draft retries it.
+    const kept = await listDrafts('2026-08-17');
+    expect(kept.some((d) => d.pendingSubcategoryName === '夜跑')).toBe(true);
+  });
+
+  it('restores a draft with a pending subcategory and creates it on retry', async () => {
+    renderForm({
+      draft: {
+        id: 'd-restore',
+        date: '2026-08-17',
+        categoryId: 'c-sport',
+        pendingSubcategoryName: '夜跑',
+        content: encodeContent({ title: '晨跑', note: '' }),
+        photos: [],
+        savedAt: '2026-09-10T12:00:00.000Z',
+      },
+    });
+
+    // The pending name comes back as the same pick-shaped pill.
+    expect(screen.getByText('夜跑')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('儲存'));
+    });
+    expect(categoryPosts).toEqual([{ name: '夜跑', color: '#73B062', parentId: 'c-sport' }]);
+    expect(postedEntry?.subcategoryId).toBe('c-new-1');
   });
 
   it('pins a 新增類別 row that opens the in-form creation step without typing', async () => {

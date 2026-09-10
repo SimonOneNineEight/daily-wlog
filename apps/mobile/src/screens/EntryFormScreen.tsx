@@ -93,7 +93,8 @@ export function EntryFormScreen({
   // string, not TokenColor: the color drawer's custom picks are free values.
   const [newColor, setNewColor] = useState<string>(firstPreset);
   const [addingSub, setAddingSub] = useState(false);
-  const [subName, setSubName] = useState('');
+  // A restored draft brings its typed-but-uncreated subcategory back (#28).
+  const [subName, setSubName] = useState(draft?.pendingSubcategoryName ?? '');
   // Categories created in this form session, until the parent refetches /me.
   const [created, setCreated] = useState<Category[]>([]);
   const [title, setTitle] = useState(initialContent?.title ?? '');
@@ -162,8 +163,15 @@ export function EntryFormScreen({
     const content = encodeContent({ title: title.trim(), note });
     let sub = subcategory;
     let refinement: { subcategoryId?: string } = sub !== null ? { subcategoryId: sub.id } : {};
-    // Draft retention (#14): any failure keeps the full Entry — words and the
-    // staged photos' local copies — locally, and 儲存 stays the retry.
+    // Save-time subcategory creation (#28): a typed-but-unconfirmed name is
+    // created together with the entry at 儲存. Read without the render
+    // path's !addingSub guard on purpose — pressing 儲存 while the field is
+    // still open must not lose the typed name.
+    const pendingName = sub === null ? subName.trim() : '';
+    let pendingLeft = pendingName;
+    // Draft retention (#14): any failure keeps the full Entry — words, the
+    // staged photos' local copies, and a still-uncreated subcategory name —
+    // locally, and 儲存 stays the retry.
     const keepDraft = (entryId: string | undefined) =>
       saveDraft({
         id: draftId,
@@ -171,16 +179,12 @@ export function EntryFormScreen({
         ...(entryId !== undefined ? { entryId } : {}),
         categoryId: category.id,
         ...refinement,
+        ...(pendingLeft !== '' ? { pendingSubcategoryName: pendingLeft } : {}),
         content,
         photos: stagedPhotos,
         savedAt: new Date().toISOString(),
       });
     let entryId = entry?.id ?? draft?.entryId ?? savedEntryId;
-    // Save-time subcategory creation (#28): a typed-but-unconfirmed name is
-    // created together with the entry at 儲存. Its failure fails the whole
-    // save into the retained-draft path; the typed name stays in the form,
-    // so the retry attempts the creation again.
-    const pendingName = sub === null ? subName.trim() : '';
     if (pendingName !== '') {
       try {
         const made = await createCategory(accessToken, {
@@ -195,6 +199,7 @@ export function EntryFormScreen({
         onCategoriesChanged?.();
         sub = made;
         refinement = { subcategoryId: made.id };
+        pendingLeft = '';
       } catch {
         setFailed(true);
         setSaving(false);

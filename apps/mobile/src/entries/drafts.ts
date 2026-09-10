@@ -18,6 +18,8 @@ export type EntryDraft = {
   entryId?: string;
   categoryId: string;
   subcategoryId?: string;
+  /** A typed-but-uncreated subcategory (#28): the retry creates it at save. */
+  pendingSubcategoryName?: string;
   /** The encoded content blob, exactly as it would travel on the wire. */
   content: string;
   /** Staged photos' local copies. The OS may purge these cache files; restore tolerates it. */

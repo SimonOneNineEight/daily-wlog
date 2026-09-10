@@ -121,6 +121,7 @@ const styles = createStyles((t) => ({
   },
   gridHolder: {
     paddingHorizontal: t.spacing.screenGutter,
+    // Home-indicator clearance, same off-token value as the other sheets.
     paddingBottom: 28,
   },
 }));

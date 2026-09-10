@@ -243,6 +243,7 @@ const styles = createStyles((t) => ({
     position: 'absolute',
     top: t.spacing.navBarHeight,
     left: t.spacing.space4,
+    // Wide enough for a four-digit 年 row plus card padding; not a token.
     width: 132,
     height: WHEEL_ROW_HEIGHT * 5,
     backgroundColor: t.colors.surface,
