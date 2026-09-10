@@ -217,6 +217,9 @@ type UpdateEntry struct {
 	// Content The full replacement content blob (opaque, ADR-0004).
 	Content string `json:"content"`
 
+	// Date Optional move (YYYY-MM-DD): the Entry leaves its day and appends to the end of this day's order. Omitted or unchanged, the Entry stays where it is.
+	Date *string `json:"date,omitempty"`
+
 	// SubcategoryId Optional refinement; must be a child of categoryId.
 	SubcategoryId *string `json:"subcategoryId,omitempty"`
 }

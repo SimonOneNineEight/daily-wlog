@@ -69,8 +69,8 @@ export function EntryFormScreen({
   onDone,
   onCategoriesChanged,
 }: Props) {
-  // The date the Entry saves onto (#24): editable on create via the date
-  // row's compact picker; edit mode shows the Entry's own date.
+  // The date the Entry saves onto (#24), editable through the date row's
+  // compact picker; on edit, changing it moves the Entry to that day (#25).
   const [date, setDate] = useState(draft?.date ?? entry?.date ?? openedFor);
   const [pickingDate, setPickingDate] = useState(false);
   // A draft outranks the entry: it holds the newer, unsaved intent.
@@ -174,10 +174,13 @@ export function EntryFormScreen({
     let entryId = entry?.id ?? draft?.entryId ?? savedEntryId;
     try {
       if (entryId !== undefined) {
+        // date rides along on every update; the server only moves the Entry
+        // when it actually differs from its current day (#25).
         await updateEntry(accessToken, entryId, {
           categoryId: category.id,
           ...refinement,
           content,
+          date,
         });
       } else {
         const created = await createEntry(accessToken, {
@@ -385,14 +388,11 @@ export function EntryFormScreen({
           <Pressable
             accessibilityRole="button"
             style={styles.dateRow}
-            disabled={entry !== undefined}
             onPress={() => setPickingDate(true)}
           >
             <Text style={styles.dateRowLabel}>{strings.entryForm.dateRow}</Text>
             <Text style={styles.dateRowValue}>{dateLabel}</Text>
-            {entry === undefined ? (
-              <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
-            ) : null}
+            <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
           </Pressable>
         ) : null}
         {creating !== null ? (

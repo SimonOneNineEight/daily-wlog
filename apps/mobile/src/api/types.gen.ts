@@ -348,6 +348,8 @@ export interface components {
             subcategoryId?: string;
             /** @description The full replacement content blob (opaque, ADR-0004). */
             content: string;
+            /** @description Optional move (YYYY-MM-DD): the Entry leaves its day and appends to the end of this day's order. Omitted or unchanged, the Entry stays where it is. */
+            date?: string;
         };
         ReorderDay: {
             /** @description Every Entry id of the date, once, in the new order. */

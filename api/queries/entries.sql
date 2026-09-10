@@ -30,11 +30,26 @@ returning id, position;
 
 -- name: UpdateEntry :one
 -- Full replacement of the editable fields; journal_id scoping means a User
--- can only ever touch their own Entries (no rows = not found).
+-- can only ever touch their own Entries (no rows = not found). A non-null
+-- entry_date moves the Entry to that day, appended to the end of the target
+-- day's order; the source day keeps its relative order (position gaps are
+-- fine — ReorderEntries rewrites 1..n). SET expressions read the old row,
+-- so the position CASE and the entry_date assignment don't interact.
 update entries
 set category_id = @category_id::uuid,
     subcategory_id = sqlc.narg(subcategory_id)::uuid,
     content = @content,
+    position = case
+        when sqlc.narg(entry_date)::date is null or sqlc.narg(entry_date)::date = entry_date
+            then position
+        else (
+            select coalesce(max(others.position), 0) + 1
+            from entries others
+            where others.journal_id = @journal_id::uuid
+              and others.entry_date = sqlc.narg(entry_date)::date
+        )
+    end,
+    entry_date = coalesce(sqlc.narg(entry_date)::date, entry_date),
     updated_at = now()
 where id = @id::uuid and journal_id = @journal_id::uuid
 returning

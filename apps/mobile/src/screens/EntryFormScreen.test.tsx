@@ -9,10 +9,26 @@ const categories = [
 
 const realFetch = globalThis.fetch;
 let postedEntry: { date?: string } | null = null;
+let patchedEntry: { date?: string } | null = null;
 
 beforeEach(() => {
   postedEntry = null;
+  patchedEntry = null;
   globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+    if (String(url).includes('/entries/') && init?.method === 'PATCH') {
+      patchedEntry = JSON.parse(init.body ?? '{}');
+      return {
+        ok: true,
+        json: async () => ({
+          id: 'e1',
+          date: patchedEntry?.date,
+          position: 1,
+          categoryId: 'c-sport',
+          authorId: 'u1',
+          content: encodeContent({ title: '晨跑', note: '' }),
+        }),
+      };
+    }
     if (String(url).includes('/entries') && init?.method === 'POST') {
       postedEntry = JSON.parse(init.body ?? '{}');
       return {
@@ -96,7 +112,7 @@ describe('date row (#24)', () => {
     expect(postedEntry?.date).toBe('2026-09-02');
   });
 
-  it("edit mode shows the entry's date read-only", () => {
+  it("edit mode shows the entry's date and picking a new one drives the move (#25)", async () => {
     renderForm({
       entry: {
         id: 'e1',
@@ -110,6 +126,14 @@ describe('date row (#24)', () => {
 
     expect(screen.getAllByText('8月10日 星期一').length).toBeGreaterThan(0);
     fireEvent.press(screen.getByText('日期'));
-    expect(screen.queryByTestId('date-picker-sheet')).toBeNull();
+    const sheet = within(screen.getByTestId('date-picker-sheet'));
+    await act(async () => {
+      fireEvent.press(sheet.getAllByText('12')[0]);
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('儲存'));
+    });
+    expect(patchedEntry?.date).toBe('2026-08-12');
   });
 });

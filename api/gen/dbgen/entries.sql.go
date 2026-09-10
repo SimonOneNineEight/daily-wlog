@@ -221,8 +221,19 @@ update entries
 set category_id = $1::uuid,
     subcategory_id = $2::uuid,
     content = $3,
+    position = case
+        when $4::date is null or $4::date = entry_date
+            then position
+        else (
+            select coalesce(max(others.position), 0) + 1
+            from entries others
+            where others.journal_id = $5::uuid
+              and others.entry_date = $4::date
+        )
+    end,
+    entry_date = coalesce($4::date, entry_date),
     updated_at = now()
-where id = $4::uuid and journal_id = $5::uuid
+where id = $6::uuid and journal_id = $5::uuid
 returning
     id,
     to_char(entry_date, 'YYYY-MM-DD') as entry_date,
@@ -237,8 +248,9 @@ type UpdateEntryParams struct {
 	CategoryID    string
 	SubcategoryID *string
 	Content       []byte
-	ID            string
+	EntryDate     pgtype.Date
 	JournalID     string
+	ID            string
 }
 
 type UpdateEntryRow struct {
@@ -252,14 +264,19 @@ type UpdateEntryRow struct {
 }
 
 // Full replacement of the editable fields; journal_id scoping means a User
-// can only ever touch their own Entries (no rows = not found).
+// can only ever touch their own Entries (no rows = not found). A non-null
+// entry_date moves the Entry to that day, appended to the end of the target
+// day's order; the source day keeps its relative order (position gaps are
+// fine — ReorderEntries rewrites 1..n). SET expressions read the old row,
+// so the position CASE and the entry_date assignment don't interact.
 func (q *Queries) UpdateEntry(ctx context.Context, arg UpdateEntryParams) (UpdateEntryRow, error) {
 	row := q.db.QueryRow(ctx, updateEntry,
 		arg.CategoryID,
 		arg.SubcategoryID,
 		arg.Content,
-		arg.ID,
+		arg.EntryDate,
 		arg.JournalID,
+		arg.ID,
 	)
 	var i UpdateEntryRow
 	err := row.Scan(

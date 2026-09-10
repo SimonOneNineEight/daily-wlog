@@ -958,6 +958,12 @@ components:
         content:
           type: string
           description: The full replacement content blob (opaque, ADR-0004).
+        date:
+          type: string
+          description: >
+            Optional move (YYYY-MM-DD): the Entry leaves its day and appends
+            to the end of this day's order. Omitted or unchanged, the Entry
+            stays where it is.
     ReorderDay:
       type: object
       required:

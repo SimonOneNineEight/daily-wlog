@@ -22,6 +22,16 @@ func (h handlers) UpdateEntry(ctx context.Context, request apigen.UpdateEntryReq
 	if msg := validateEntryInput(body.CategoryId, body.SubcategoryId, body.Content); msg != "" {
 		return apigen.UpdateEntry400JSONResponse{Message: msg}, nil
 	}
+	// An optional date moves the Entry to that day (appended last); a null
+	// pgtype.Date leaves entry_date and position untouched.
+	var moveDate pgtype.Date
+	if body.Date != nil {
+		parsed, err := time.Parse(dateLayout, *body.Date)
+		if err != nil {
+			return apigen.UpdateEntry400JSONResponse{Message: "date must be YYYY-MM-DD"}, nil
+		}
+		moveDate = pgtype.Date{Time: parsed, Valid: true}
+	}
 
 	userID := auth.UserID(ctx)
 	journalID, err := h.queries.GetJournal(ctx, userID)
@@ -41,6 +51,7 @@ func (h handlers) UpdateEntry(ctx context.Context, request apigen.UpdateEntryReq
 		CategoryID:    body.CategoryId,
 		SubcategoryID: body.SubcategoryId,
 		Content:       []byte(body.Content),
+		EntryDate:     moveDate,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return apigen.UpdateEntry404JSONResponse{Message: "entry not found"}, nil

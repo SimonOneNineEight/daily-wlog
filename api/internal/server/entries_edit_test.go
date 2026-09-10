@@ -153,6 +153,79 @@ func TestUpdateEntryValidation(t *testing.T) {
 	}
 }
 
+func TestUpdateEntryMovesToAnotherDate(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	work := provisionedCategory(t, ts, token)
+
+	first := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-05-10", "categoryId": work, "content": "moving",
+	}))
+	second := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-05-10", "categoryId": work, "content": "staying",
+	}))
+	target := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-05-11", "categoryId": work, "content": "already there",
+	}))
+
+	resp := patchEntry(t, ts, token, first.ID, map[string]string{
+		"categoryId": work, "content": "moving", "date": "2026-05-11",
+	})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	moved := decodeEntry(t, resp)
+	if moved.Date != "2026-05-11" {
+		t.Errorf("date = %q, want 2026-05-11", moved.Date)
+	}
+
+	// The entry appends to the target day's order and leaves the source day.
+	targetDay := listDay(t, ts, token, "2026-05-11")
+	if len(targetDay) != 2 || targetDay[0].ID != target.ID || targetDay[1].ID != first.ID {
+		t.Errorf("target day = %+v, want [%s, %s]", targetDay, target.ID, first.ID)
+	}
+	sourceDay := listDay(t, ts, token, "2026-05-10")
+	if len(sourceDay) != 1 || sourceDay[0].ID != second.ID {
+		t.Errorf("source day = %+v, want only %s", sourceDay, second.ID)
+	}
+
+	// The source day's order stays consistent: no orphan id blocks a reorder.
+	reorder := reorderDay(t, ts, token, "2026-05-10", []string{second.ID})
+	reorder.Body.Close()
+	if reorder.StatusCode != http.StatusOK {
+		t.Fatalf("source reorder status = %d, want 200", reorder.StatusCode)
+	}
+}
+
+func TestUpdateEntryDateValidation(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	work := provisionedCategory(t, ts, token)
+	created := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-05-12", "categoryId": work, "content": "x",
+	}))
+
+	bad := patchEntry(t, ts, token, created.ID, map[string]string{
+		"categoryId": work, "content": "x", "date": "05-13-2026",
+	})
+	bad.Body.Close()
+	if bad.StatusCode != http.StatusBadRequest {
+		t.Fatalf("malformed date status = %d, want 400", bad.StatusCode)
+	}
+
+	// Date omitted: behavior unchanged, the entry stays where it is.
+	same := patchEntry(t, ts, token, created.ID, map[string]string{
+		"categoryId": work, "content": "still here",
+	})
+	if same.StatusCode != http.StatusOK {
+		t.Fatalf("dateless status = %d, want 200", same.StatusCode)
+	}
+	kept := decodeEntry(t, same)
+	if kept.Date != "2026-05-12" || kept.Position != created.Position {
+		t.Errorf("dateless update moved the entry: %+v", kept)
+	}
+}
+
 func TestDeleteEntry(t *testing.T) {
 	ts := newTestServer(t)
 	token := signUpTestUser(t)
