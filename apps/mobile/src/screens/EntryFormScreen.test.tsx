@@ -8,13 +8,35 @@ const categories = [
 ];
 
 const realFetch = globalThis.fetch;
-let postedEntry: { date?: string } | null = null;
+let postedEntry: { date?: string; subcategoryId?: string } | null = null;
 let patchedEntry: { date?: string } | null = null;
+let categoryPosts: { name?: string; parentId?: string; color?: string }[] = [];
+let failCategoryPost = false;
 
 beforeEach(() => {
   postedEntry = null;
   patchedEntry = null;
+  categoryPosts = [];
+  failCategoryPost = false;
   globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+    if (String(url).includes('/categories') && init?.method === 'POST') {
+      const body = JSON.parse(init.body ?? '{}');
+      if (failCategoryPost) {
+        return { ok: false, status: 500, json: async () => ({ message: 'nope' }) };
+      }
+      categoryPosts.push(body);
+      return {
+        ok: true,
+        json: async () => ({
+          id: `c-new-${categoryPosts.length}`,
+          name: body.name,
+          color: body.color,
+          icon: body.parentId ? 'tag' : (body.icon ?? 'tag'),
+          parentId: body.parentId,
+          position: 9,
+        }),
+      };
+    }
     if (String(url).includes('/entries/') && init?.method === 'PATCH') {
       patchedEntry = JSON.parse(init.body ?? '{}');
       return {
@@ -135,5 +157,73 @@ describe('date row (#24)', () => {
       fireEvent.press(screen.getByText('儲存'));
     });
     expect(patchedEntry?.date).toBe('2026-08-12');
+  });
+});
+
+describe('category step (#28)', () => {
+  it('creates a typed-but-unconfirmed subcategory together with the entry at 儲存', async () => {
+    renderForm();
+    fireEvent.press(screen.getByText('運動'));
+    fireEvent.press(screen.getByLabelText('新增子類別'));
+    fireEvent.changeText(screen.getByPlaceholderText('子類別'), '夜跑');
+    fireEvent(screen.getByPlaceholderText('子類別'), 'blur');
+
+    // The pending name renders in the category line like a confirmed pick.
+    expect(screen.getByText('夜跑')).toBeTruthy();
+
+    fireEvent.changeText(screen.getByPlaceholderText('標題'), '晨跑');
+    await act(async () => {
+      fireEvent.press(screen.getByText('儲存'));
+    });
+
+    expect(categoryPosts).toEqual([{ name: '夜跑', color: '#73B062', parentId: 'c-sport' }]);
+    expect(postedEntry?.subcategoryId).toBe('c-new-1');
+  });
+
+  it('creates nothing when the subcategory field is whitespace or cleared', async () => {
+    renderForm();
+    fireEvent.press(screen.getByText('運動'));
+    fireEvent.press(screen.getByLabelText('新增子類別'));
+    fireEvent.changeText(screen.getByPlaceholderText('子類別'), '   ');
+    fireEvent(screen.getByPlaceholderText('子類別'), 'blur');
+
+    fireEvent.changeText(screen.getByPlaceholderText('標題'), '晨跑');
+    await act(async () => {
+      fireEvent.press(screen.getByText('儲存'));
+    });
+    expect(categoryPosts).toEqual([]);
+    expect(postedEntry?.subcategoryId).toBeUndefined();
+  });
+
+  it('fails the whole save into the draft path when the subcategory create fails', async () => {
+    failCategoryPost = true;
+    const onDone = jest.fn();
+    renderForm({ onDone });
+    fireEvent.press(screen.getByText('運動'));
+    fireEvent.press(screen.getByLabelText('新增子類別'));
+    fireEvent.changeText(screen.getByPlaceholderText('子類別'), '夜跑');
+    fireEvent.changeText(screen.getByPlaceholderText('標題'), '晨跑');
+    await act(async () => {
+      fireEvent.press(screen.getByText('儲存'));
+    });
+
+    expect(postedEntry).toBeNull();
+    expect(onDone).not.toHaveBeenCalled();
+    expect(screen.getByText('儲存失敗，請再試一次')).toBeTruthy();
+  });
+
+  it('pins a 新增類別 row that opens the in-form creation step without typing', async () => {
+    renderForm();
+
+    fireEvent.press(screen.getByText('新增類別'));
+    fireEvent.changeText(screen.getByPlaceholderText('名稱'), '閱讀');
+    await act(async () => {
+      fireEvent.press(screen.getByText('建立類別'));
+    });
+
+    expect(categoryPosts).toEqual([{ name: '閱讀', color: expect.any(String) }]);
+    // The step closes into the chosen-category state.
+    expect(screen.getByText('閱讀')).toBeTruthy();
+    expect(screen.getByPlaceholderText('標題')).toBeTruthy();
   });
 });

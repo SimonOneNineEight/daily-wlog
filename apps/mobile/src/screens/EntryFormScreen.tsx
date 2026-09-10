@@ -146,6 +146,9 @@ export function EntryFormScreen({
   );
   const exactMatch = topLevel.some((c) => c.name.toLowerCase() === trimmedQuery.toLowerCase());
   const children = category ? all.filter((c) => c.parentId === category.id) : [];
+  // A typed name whose field has closed: the pending subcategory (#28),
+  // created with the entry at save.
+  const pendingSubName = subcategory === null && !addingSub ? subName.trim() : '';
 
   const canSave = !saving && category !== null && title.trim() !== '';
 
@@ -157,7 +160,8 @@ export function EntryFormScreen({
     setFailed(false);
     setPhotosFailed(false);
     const content = encodeContent({ title: title.trim(), note });
-    const refinement = subcategory !== null ? { subcategoryId: subcategory.id } : {};
+    let sub = subcategory;
+    let refinement: { subcategoryId?: string } = sub !== null ? { subcategoryId: sub.id } : {};
     // Draft retention (#14): any failure keeps the full Entry — words and the
     // staged photos' local copies — locally, and 儲存 stays the retry.
     const keepDraft = (entryId: string | undefined) =>
@@ -172,6 +176,32 @@ export function EntryFormScreen({
         savedAt: new Date().toISOString(),
       });
     let entryId = entry?.id ?? draft?.entryId ?? savedEntryId;
+    // Save-time subcategory creation (#28): a typed-but-unconfirmed name is
+    // created together with the entry at 儲存. Its failure fails the whole
+    // save into the retained-draft path; the typed name stays in the form,
+    // so the retry attempts the creation again.
+    const pendingName = sub === null ? subName.trim() : '';
+    if (pendingName !== '') {
+      try {
+        const made = await createCategory(accessToken, {
+          name: pendingName,
+          color: category.color,
+          parentId: category.id,
+        });
+        setCreated((prev) => [...prev, made]);
+        setSubcategory(made);
+        setSubName('');
+        setAddingSub(false);
+        onCategoriesChanged?.();
+        sub = made;
+        refinement = { subcategoryId: made.id };
+      } catch {
+        setFailed(true);
+        setSaving(false);
+        await keepDraft(entryId);
+        return;
+      }
+    }
     try {
       if (entryId !== undefined) {
         // date rides along on every update; the server only moves the Entry
@@ -316,10 +346,11 @@ export function EntryFormScreen({
   };
 
   const confirmCreateCategory = async () => {
-    if (creating === null) return;
+    const name = creating?.trim() ?? '';
+    if (name === '') return;
     setFailed(false);
     try {
-      const made = await createCategory(accessToken, { name: creating, color: newColor });
+      const made = await createCategory(accessToken, { name, color: newColor });
       // A custom color earns its recents slot only once a category wears it.
       if (!isPresetColor(newColor)) {
         void saveColorRecent(accessToken, newColor).catch(() => undefined);
@@ -399,7 +430,16 @@ export function EntryFormScreen({
           <>
             <View style={styles.createPreview}>
               <CategoryIcon icon="tag" color={newColor} size={36} />
-              <Text style={styles.selectedName}>{creating}</Text>
+              {/* Editable: the pinned 新增類別 row (#28) opens this step
+                  with no name typed yet. */}
+              <TextInput
+                style={styles.createNameInput}
+                placeholder={strings.categories.namePlaceholder}
+                placeholderTextColor={styles.placeholder.color}
+                autoFocus={creating === ''}
+                value={creating}
+                onChangeText={setCreating}
+              />
             </View>
             <ColorPresetPicker
               value={newColor}
@@ -410,10 +450,21 @@ export function EntryFormScreen({
             <View style={styles.createActions}>
               <Pressable
                 accessibilityRole="button"
-                style={styles.confirmButton}
+                disabled={creating.trim() === ''}
+                style={[
+                  styles.confirmButton,
+                  creating.trim() === '' && styles.confirmButtonDisabled,
+                ]}
                 onPress={() => void confirmCreateCategory()}
               >
-                <Text style={styles.confirmLabel}>{strings.entryForm.confirmCreate}</Text>
+                <Text
+                  style={[
+                    styles.confirmLabel,
+                    creating.trim() === '' && styles.confirmLabelDisabled,
+                  ]}
+                >
+                  {strings.entryForm.confirmCreate}
+                </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -457,7 +508,10 @@ export function EntryFormScreen({
                     key={sub.id}
                     accessibilityRole="button"
                     style={[styles.subPill, selected && styles.subPillSelected]}
-                    onPress={() => setSubcategory(selected ? null : sub)}
+                    onPress={() => {
+                      setSubcategory(selected ? null : sub);
+                      setSubName('');
+                    }}
                   >
                     <View style={[styles.subDot, { backgroundColor: category.color }]} />
                     <Text style={styles.subLabel}>{sub.name}</Text>
@@ -473,6 +527,12 @@ export function EntryFormScreen({
                     autoFocus
                     value={subName}
                     onChangeText={setSubName}
+                    // Leaving the field keeps the typed name as a pending
+                    // pick; blur and the return key never create (#28).
+                    onBlur={() => {
+                      setAddingSub(false);
+                      setSubName((name) => name.trim());
+                    }}
                   />
                   <Pressable
                     accessibilityRole="button"
@@ -484,6 +544,18 @@ export function EntryFormScreen({
                     </Text>
                   </Pressable>
                 </View>
+              ) : pendingSubName !== '' ? (
+                // The typed-but-unconfirmed subcategory, rendered exactly
+                // like a confirmed pick and created with the entry at 儲存;
+                // tapping deselects it like any selected pill.
+                <Pressable
+                  accessibilityRole="button"
+                  style={[styles.subPill, styles.subPillSelected]}
+                  onPress={() => setSubName('')}
+                >
+                  <View style={[styles.subDot, { backgroundColor: category.color }]} />
+                  <Text style={styles.subLabel}>{pendingSubName}</Text>
+                </Pressable>
               ) : (
                 <Pressable
                   accessibilityRole="button"
@@ -546,15 +618,13 @@ export function EntryFormScreen({
               />
             </View>
             <View style={styles.pickerCard}>
-              {filtered.map((c, index) => (
+              {/* The pinned 新增類別 row is always last, so every row above
+                  it wears a divider. */}
+              {filtered.map((c) => (
                 <Pressable
                   key={c.id}
                   accessibilityRole="button"
-                  style={[
-                    styles.pickerRow,
-                    (index < filtered.length - 1 || (trimmedQuery !== '' && !exactMatch)) &&
-                      styles.pickerRowDivided,
-                  ]}
+                  style={[styles.pickerRow, styles.pickerRowDivided]}
                   onPress={() => {
                     setCategory(c);
                     setSubcategory(null);
@@ -568,7 +638,7 @@ export function EntryFormScreen({
               {trimmedQuery !== '' && !exactMatch ? (
                 <Pressable
                   accessibilityRole="button"
-                  style={styles.pickerRow}
+                  style={[styles.pickerRow, styles.pickerRowDivided]}
                   onPress={() => {
                     setNewColor(firstPreset);
                     setCreating(trimmedQuery);
@@ -580,6 +650,21 @@ export function EntryFormScreen({
                   <Text style={styles.pickerName}>{strings.entryForm.createRow(trimmedQuery)}</Text>
                 </Pressable>
               ) : null}
+              {/* Pinned 新增類別 (#28): creation is discoverable before
+                  typing; type-to-create above stays. */}
+              <Pressable
+                accessibilityRole="button"
+                style={styles.pickerRow}
+                onPress={() => {
+                  setNewColor(firstPreset);
+                  setCreating(trimmedQuery);
+                }}
+              >
+                <View style={styles.createGlyph}>
+                  <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
+                </View>
+                <Text style={styles.pickerName}>{strings.categories.add}</Text>
+              </Pressable>
             </View>
           </>
         )}
@@ -706,6 +791,15 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     gap: t.spacing.space5,
   },
+  createNameInput: {
+    ...t.typography.entryTitle,
+    color: t.colors.textPrimary,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.r3,
+    paddingHorizontal: t.spacing.cardPadding,
+    height: t.spacing.rowHeight,
+    flex: 1,
+  },
   createActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -717,9 +811,15 @@ const styles = createStyles((t) => ({
     paddingHorizontal: t.spacing.space7,
     paddingVertical: t.spacing.space4,
   },
+  confirmButtonDisabled: {
+    backgroundColor: t.colors.controlDisabledBg,
+  },
   confirmLabel: {
     ...t.typography.entryTitle,
     color: t.colors.controlPrimaryFg,
+  },
+  confirmLabelDisabled: {
+    color: t.colors.controlDisabledFg,
   },
   ghostButton: {
     paddingHorizontal: t.spacing.space5,
