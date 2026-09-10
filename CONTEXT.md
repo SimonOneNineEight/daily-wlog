@@ -27,3 +27,11 @@ _Avoid_: filter, filtered out
 **Entry**:
 A record inside a Journal for a specific date: title, optional note, optional photos. Carries exactly one Category, optionally refined by a Subcategory. A date can hold several Entries. Written by one User, its author, which is not necessarily the Journal's owner.
 _Avoid_: journal (for a day's record), post, log
+
+**App Language**:
+The language the interface renders in: Traditional Chinese or English. Follows the phone's language (any Chinese → Traditional Chinese, anything else → English) unless the User overrides it with an explicit per-device choice. Changing it never changes data: Categories and Entries keep their names.
+_Avoid_: locale, system language (for the app's own setting)
+
+**Starter Category**:
+One of the five Categories created for a new User at signup, named in the App Language in effect at that moment. An ordinary Category from then on: renameable, hideable, deletable, and never retranslated.
+_Avoid_: default category, seed category
