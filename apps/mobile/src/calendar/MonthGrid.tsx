@@ -42,16 +42,17 @@ export function MonthGrid({ year, month, days, today, selected, onSelectDay }: P
                 onPress={() => onSelectDay(cell.day)}
               >
                 <View
+                  testID={cell.outside ? undefined : `day-holder-${cell.day}`}
                   style={[
                     styles.numeralHolder,
-                    isToday && styles.numeralToday,
-                    isSelected && !isToday && styles.numeralSelected,
+                    isSelected && styles.numeralSelected,
+                    isToday && !isSelected && styles.numeralToday,
                   ]}
                 >
                   <Text
                     style={[
                       isToday || isSelected ? styles.numeralStrong : styles.numeral,
-                      isToday && styles.numeralOnDark,
+                      isSelected && styles.numeralOnDark,
                       cell.outside && styles.numeralOutside,
                     ]}
                   >
@@ -68,8 +69,10 @@ export function MonthGrid({ year, month, days, today, selected, onSelectDay }: P
   );
 }
 
-// The 26px numeral circle and its 1.5px selection ring are the canvas's own
-// values (DayCell.jsx); neither is a spacing token.
+// The 26px numeral circle and its 1.5px ring are the canvas's own values
+// (DayCell.jsx); neither is a spacing token. Glyph semantics per the ratified
+// swap (#23, 2026-09-10): the filled circle is the selection and moves with
+// taps; today, when not selected, wears the thin ring.
 const styles = createStyles((t) => ({
   weekdayRow: {
     flexDirection: 'row',
@@ -104,10 +107,10 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  numeralToday: {
+  numeralSelected: {
     backgroundColor: t.colors.surfaceToday,
   },
-  numeralSelected: {
+  numeralToday: {
     borderWidth: 1.5,
     borderColor: t.colors.textPrimary,
   },

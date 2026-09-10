@@ -24,7 +24,8 @@ type Props = {
   /** Injectable for tests; defaults to the device's now. */
   today?: Date;
   onOpenDay: (date: string) => void;
-  onAddEntry: () => void;
+  /** Opens the entry form for the selected date (#23). */
+  onAddEntry: (date: string) => void;
   /** Opens settings (#15). */
   onOpenSettings?: () => void;
   /** Fired after the 類別 sheet changes a category, so /me refetches. */
@@ -261,7 +262,7 @@ export function MonthScreen({
         accessibilityLabel={strings.day.addEntry}
         feedback="scale"
         style={styles.fab}
-        onPress={onAddEntry}
+        onPress={() => onAddEntry(selectedDate)}
       >
         <Plus size={24} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
       </Pressable>

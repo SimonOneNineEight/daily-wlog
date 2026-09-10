@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Category } from '../api/client';
 import type { CalendarFilter } from '../calendar/filter';
 import { emptyFilter } from '../calendar/filter';
-import { localDateString } from '../calendar/monthMath';
 import { createStyles } from '../theme';
 
 import { DayScreen } from './DayScreen';
@@ -96,7 +95,7 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
           filter={filter}
           onChangeFilter={setFilter}
           onOpenDay={(date) => setRoute({ name: 'day', date })}
-          onAddEntry={() => setRoute({ name: 'form', date: localDateString(new Date()) })}
+          onAddEntry={(date) => setRoute({ name: 'form', date })}
           onOpenSettings={() => setRoute({ name: 'settings' })}
           onCategoriesChanged={onCategoriesChanged}
           onOpenYear={() => setRoute({ name: 'year' })}

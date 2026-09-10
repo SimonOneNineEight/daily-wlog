@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react-n
 import { Dimensions } from 'react-native';
 
 import { encodeContent } from '../entries/content';
+import { theme } from '../theme';
 import { MonthScreen } from './MonthScreen';
 
 // The month screen is pinned to a fixed "today" so assertions are stable.
@@ -121,6 +122,31 @@ it('moves between months by swipe alone and fetches the new month', async () => 
   expect(await screen.findByText('7月')).toBeTruthy();
 });
 
+it('gives the selection the filled circle and today the thin ring (#23)', async () => {
+  renderMonth();
+  await screen.findByText('8月');
+  const page = within(screen.getByTestId('month-page-current'));
+
+  // Selection defaults to today on open: today filled, no ring anywhere.
+  expect(page.getByTestId('day-holder-17')).toHaveStyle({
+    backgroundColor: theme.colors.surfaceToday,
+  });
+  expect(page.getByTestId('day-holder-17')).not.toHaveStyle({ borderWidth: 1.5 });
+
+  // Tapping the 3rd moves the filled circle; today keeps only the thin ring.
+  // ('3' also exists as September's outside cell; the first match is August.)
+  await act(async () => {
+    fireEvent.press(page.getAllByText('3')[0]);
+  });
+  expect(page.getByTestId('day-holder-3')).toHaveStyle({
+    backgroundColor: theme.colors.surfaceToday,
+  });
+  expect(page.getByTestId('day-holder-17')).not.toHaveStyle({
+    backgroundColor: theme.colors.surfaceToday,
+  });
+  expect(page.getByTestId('day-holder-17')).toHaveStyle({ borderWidth: 1.5 });
+});
+
 it('opens the day view when the already-selected day is tapped again', async () => {
   const onOpenDay = jest.fn();
   renderMonth({ onOpenDay });
@@ -158,7 +184,20 @@ it('opens the day view from the panel and the form from the +', async () => {
   expect(onOpenDay).toHaveBeenCalledWith('2026-08-17');
 
   fireEvent.press(screen.getByLabelText('新增紀錄'));
-  expect(onAddEntry).toHaveBeenCalled();
+  expect(onAddEntry).toHaveBeenCalledWith('2026-08-17');
+});
+
+it('creates into the selected day, not blindly into today (#23)', async () => {
+  const onAddEntry = jest.fn();
+  renderMonth({ onAddEntry });
+  await screen.findByText('8月');
+
+  await act(async () => {
+    fireEvent.press(within(screen.getByTestId('month-page-current')).getAllByText('3')[0]);
+  });
+  fireEvent.press(screen.getByLabelText('新增紀錄'));
+  expect(onAddEntry).toHaveBeenCalledWith('2026-08-03');
+  expect(onAddEntry).not.toHaveBeenCalledWith('2026-08-17');
 });
 
 it('opens settings from the nav bar gear', async () => {
