@@ -19,7 +19,6 @@ import {
   deleteEntry,
   deletePhoto,
   reorderPhotos,
-  saveColorRecent,
   updateEntry,
 } from '../api/client';
 import { MAX_PHOTOS, PhotoGrid } from '../entries/PhotoGrid';
@@ -29,7 +28,7 @@ import { uploadPhotos } from '../photos/uploadPhotos';
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { dateHeading } from '../calendar/dateLabel';
 import { DatePickerSheet } from '../calendar/DatePickerSheet';
-import { ColorPresetPicker, isPresetColor } from '../categories/ColorPresetPicker';
+import { CategoryEditorSheet } from '../categories/CategoryEditorSheet';
 import { decodeContent, encodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { clearDraft, newDraftId, saveDraft } from '../entries/drafts';
@@ -51,15 +50,15 @@ type Props = {
   onCategoriesChanged?: () => void;
 };
 
-const firstPreset = Object.values(theme.categories)[0].base;
-
 // The entry form per the canvas: category comes first (search field + list),
-// and only a chosen category reveals the title and note fields. Typing an
-// unmatched name offers 建立「…」 into the in-form quick step (name → color
-// pick → 建立類別) with the auto-assigned tag glyph. Title is required by
-// this form, not by the server — it lives inside the opaque content blob the
-// server never parses (ADR-0004). With an entry prop the form edits instead
-// of creating. Photos arrive with #8.
+// and only a chosen category reveals the title and note fields. The pinned
+// 新增類別 row and the 建立「…」 row an unmatched name offers both open the
+// full 分類表單 sheet, prefilled with any typed name (ratified 2026-09-10,
+// overturning the 2026-08-18 in-form quick step: reuse the complete editor
+// over a second creation surface). Title is required by this form, not by
+// the server — it lives inside the opaque content blob the server never
+// parses (ADR-0004). With an entry prop the form edits instead of creating.
+// Photos arrive with #8.
 export function EntryFormScreen({
   accessToken,
   date: openedFor,
@@ -88,10 +87,10 @@ export function EntryFormScreen({
     initialSubcategoryId ? (categories.find((c) => c.id === initialSubcategoryId) ?? null) : null,
   );
   const [query, setQuery] = useState('');
-  // The quick step's pending top-level category name, or null when not creating.
-  const [creating, setCreating] = useState<string | null>(null);
-  // string, not TokenColor: the color drawer's custom picks are free values.
-  const [newColor, setNewColor] = useState<string>(firstPreset);
+  // Non-null opens the 分類表單 sheet prefilled with this name (ratified
+  // 2026-09-10: the creation rows reuse the complete editor; the in-form
+  // quick step is retired).
+  const [creatingName, setCreatingName] = useState<string | null>(null);
   const [addingSub, setAddingSub] = useState(false);
   // A restored draft brings its typed-but-uncreated subcategory back (#28).
   const [subName, setSubName] = useState(draft?.pendingSubcategoryName ?? '');
@@ -350,27 +349,6 @@ export function EntryFormScreen({
     ]);
   };
 
-  const confirmCreateCategory = async () => {
-    const name = creating?.trim() ?? '';
-    if (name === '') return;
-    setFailed(false);
-    try {
-      const made = await createCategory(accessToken, { name, color: newColor });
-      // A custom color earns its recents slot only once a category wears it.
-      if (!isPresetColor(newColor)) {
-        void saveColorRecent(accessToken, newColor).catch(() => undefined);
-      }
-      setCreated((prev) => [...prev, made]);
-      setCategory(made);
-      setSubcategory(null);
-      setCreating(null);
-      setQuery('');
-      onCategoriesChanged?.();
-    } catch {
-      setFailed(true);
-    }
-  };
-
   const confirmCreateSubcategory = async () => {
     const name = subName.trim();
     if (category === null || name === '') return;
@@ -420,71 +398,16 @@ export function EntryFormScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {creating === null ? (
-          <Pressable
-            accessibilityRole="button"
-            style={styles.dateRow}
-            onPress={() => setPickingDate(true)}
-          >
-            <Text style={styles.dateRowLabel}>{strings.entryForm.dateRow}</Text>
-            <Text style={styles.dateRowValue}>{dateLabel}</Text>
-            <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
-          </Pressable>
-        ) : null}
-        {creating !== null ? (
-          <>
-            <View style={styles.createPreview}>
-              <CategoryIcon icon="tag" color={newColor} size={36} />
-              {/* Editable: the pinned 新增類別 row (#28) opens this step
-                  with no name typed yet. */}
-              <TextInput
-                style={styles.createNameInput}
-                placeholder={strings.categories.namePlaceholder}
-                placeholderTextColor={styles.placeholder.color}
-                autoFocus={creating === ''}
-                value={creating}
-                onChangeText={setCreating}
-              />
-            </View>
-            <ColorPresetPicker
-              value={newColor}
-              onChange={setNewColor}
-              accessToken={accessToken}
-              existingColors={topLevel.map((c) => c.color)}
-            />
-            <View style={styles.createActions}>
-              <Pressable
-                accessibilityRole="button"
-                disabled={creating.trim() === ''}
-                style={[
-                  styles.confirmButton,
-                  creating.trim() === '' && styles.confirmButtonDisabled,
-                ]}
-                onPress={() => void confirmCreateCategory()}
-              >
-                <Text
-                  style={[
-                    styles.confirmLabel,
-                    creating.trim() === '' && styles.confirmLabelDisabled,
-                  ]}
-                >
-                  {strings.entryForm.confirmCreate}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                style={styles.ghostButton}
-                onPress={() => {
-                  setCreating(null);
-                  setFailed(false);
-                }}
-              >
-                <Text style={styles.ghostLabel}>{strings.entryForm.createBack}</Text>
-              </Pressable>
-            </View>
-            {failed ? <Text style={styles.error}>{strings.entryForm.saveFailed}</Text> : null}
-          </>
-        ) : category ? (
+        <Pressable
+          accessibilityRole="button"
+          style={styles.dateRow}
+          onPress={() => setPickingDate(true)}
+        >
+          <Text style={styles.dateRowLabel}>{strings.entryForm.dateRow}</Text>
+          <Text style={styles.dateRowValue}>{dateLabel}</Text>
+          <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
+        </Pressable>
+        {category ? (
           <>
             <Pressable
               accessibilityRole="button"
@@ -644,10 +567,7 @@ export function EntryFormScreen({
                 <Pressable
                   accessibilityRole="button"
                   style={[styles.pickerRow, styles.pickerRowDivided]}
-                  onPress={() => {
-                    setNewColor(firstPreset);
-                    setCreating(trimmedQuery);
-                  }}
+                  onPress={() => setCreatingName(trimmedQuery)}
                 >
                   <View style={styles.createGlyph}>
                     <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
@@ -660,10 +580,7 @@ export function EntryFormScreen({
               <Pressable
                 accessibilityRole="button"
                 style={styles.pickerRow}
-                onPress={() => {
-                  setNewColor(firstPreset);
-                  setCreating(trimmedQuery);
-                }}
+                onPress={() => setCreatingName(trimmedQuery)}
               >
                 <View style={styles.createGlyph}>
                   <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
@@ -683,6 +600,37 @@ export function EntryFormScreen({
             setPickingDate(false);
           }}
           onClose={() => setPickingDate(false)}
+        />
+      ) : null}
+
+      {creatingName !== null ? (
+        <CategoryEditorSheet
+          accessToken={accessToken}
+          parentChoices={topLevel}
+          childrenOfTarget={[]}
+          initialName={creatingName}
+          // Create mode never reaches the child-editor rows.
+          onOpen={() => undefined}
+          onClose={() => setCreatingName(null)}
+          onCategoriesChanged={() => onCategoriesChanged?.()}
+          onCreated={(made) => {
+            setCreated((prev) => [...prev, made]);
+            // A subcategory made here selects its parent with itself as
+            // the refinement; a top-level pick stands alone.
+            const madeParent = made.parentId
+              ? topLevel.find((c) => c.id === made.parentId)
+              : undefined;
+            if (madeParent) {
+              setCategory(madeParent);
+              setSubcategory(made);
+            } else {
+              setCategory(made);
+              setSubcategory(null);
+            }
+            setSubName('');
+            setQuery('');
+            setCreatingName(null);
+          }}
         />
       ) : null}
     </SafeAreaView>
@@ -790,49 +738,6 @@ const styles = createStyles((t) => ({
     backgroundColor: t.colors.surfaceFill,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  createPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: t.spacing.space5,
-  },
-  createNameInput: {
-    ...t.typography.entryTitle,
-    color: t.colors.textPrimary,
-    backgroundColor: t.colors.surface,
-    borderRadius: t.radius.r3,
-    paddingHorizontal: t.spacing.cardPadding,
-    height: t.spacing.rowHeight,
-    flex: 1,
-  },
-  createActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: t.spacing.space4,
-  },
-  confirmButton: {
-    backgroundColor: t.colors.controlPrimaryBg,
-    borderRadius: t.radius.pill,
-    paddingHorizontal: t.spacing.space7,
-    paddingVertical: t.spacing.space4,
-  },
-  confirmButtonDisabled: {
-    backgroundColor: t.colors.controlDisabledBg,
-  },
-  confirmLabel: {
-    ...t.typography.entryTitle,
-    color: t.colors.controlPrimaryFg,
-  },
-  confirmLabelDisabled: {
-    color: t.colors.controlDisabledFg,
-  },
-  ghostButton: {
-    paddingHorizontal: t.spacing.space5,
-    paddingVertical: t.spacing.space4,
-  },
-  ghostLabel: {
-    ...t.typography.entryTitle,
-    color: t.colors.controlGhostFg,
   },
   dateRow: {
     flexDirection: 'row',

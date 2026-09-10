@@ -76,8 +76,6 @@ const zhTW = {
     deleteConfirm: '刪除',
     categoryPlaceholder: '類別',
     createRow: (name: string) => `建立「${name}」`,
-    confirmCreate: '建立類別',
-    createBack: '返回',
     addSubcategory: '新增子類別',
     subcategoryPlaceholder: '子類別',
     confirmSubcategory: '建立',

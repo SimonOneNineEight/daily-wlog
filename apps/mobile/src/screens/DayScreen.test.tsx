@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
@@ -248,8 +248,12 @@ it('creates a category inline from an unmatched search', async () => {
   await act(async () => {
     fireEvent.press(screen.getByText('建立「園藝」'));
   });
+  // The full category editor sheet opens, name prefilled (ratified
+  // 2026-09-10, replacing the in-form quick step).
+  const sheet = within(screen.getByTestId('category-editor-sheet'));
+  expect(sheet.getByDisplayValue('園藝')).toBeTruthy();
   await act(async () => {
-    fireEvent.press(screen.getByText('建立類別'));
+    fireEvent.press(sheet.getByText('儲存'));
   });
 
   const post = (globalThis.fetch as jest.Mock).mock.calls.find(

@@ -240,18 +240,42 @@ describe('category step (#28)', () => {
     expect(postedEntry?.subcategoryId).toBe('c-new-1');
   });
 
-  it('pins a 新增類別 row that opens the in-form creation step without typing', async () => {
+  it('pins a 新增類別 row that opens the category editor sheet without typing', async () => {
     renderForm();
 
     fireEvent.press(screen.getByText('新增類別'));
-    fireEvent.changeText(screen.getByPlaceholderText('名稱'), '閱讀');
+    const sheet = within(screen.getByTestId('category-editor-sheet'));
+    fireEvent.changeText(sheet.getByPlaceholderText('名稱'), '閱讀');
     await act(async () => {
-      fireEvent.press(screen.getByText('建立類別'));
+      fireEvent.press(sheet.getByText('儲存'));
     });
 
-    expect(categoryPosts).toEqual([{ name: '閱讀', color: expect.any(String) }]);
-    // The step closes into the chosen-category state.
+    expect(categoryPosts).toEqual([
+      { name: '閱讀', color: expect.any(String), icon: expect.any(String) },
+    ]);
+    // The sheet closes into the chosen-category state.
     expect(screen.getByText('閱讀')).toBeTruthy();
+    expect(screen.getByPlaceholderText('標題')).toBeTruthy();
+  });
+
+  it('a subcategory made in the sheet selects its parent and itself', async () => {
+    renderForm();
+
+    fireEvent.press(screen.getByText('新增類別'));
+    const sheet = within(screen.getByTestId('category-editor-sheet'));
+    fireEvent.changeText(sheet.getByPlaceholderText('名稱'), '夜跑');
+    fireEvent.press(sheet.getByText('無'));
+    fireEvent.press(sheet.getByText('運動'));
+    await act(async () => {
+      fireEvent.press(sheet.getByText('儲存'));
+    });
+
+    expect(categoryPosts).toEqual([
+      { name: '夜跑', color: '#73B062', parentId: 'c-sport' },
+    ]);
+    // The form lands on 運動 refined by the new 夜跑.
+    expect(screen.getByText('運動')).toBeTruthy();
+    expect(screen.getByText('夜跑')).toBeTruthy();
     expect(screen.getByPlaceholderText('標題')).toBeTruthy();
   });
 });

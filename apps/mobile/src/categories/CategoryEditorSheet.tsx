@@ -41,14 +41,20 @@ type Props = {
   /** Top-level categories offered as the optional parent at creation. */
   parentChoices: Category[];
   childrenOfTarget: Category[];
+  /** Prefills the name in create mode (the entry form's 建立「…」 row). */
+  initialName?: string;
   onOpen: (editing: Editing) => void;
   onClose: () => void;
   onCategoriesChanged: () => void;
+  /** Hands the created Category back, so the entry form can select it. */
+  onCreated?: (created: Category) => void;
 };
 
 // The 分類表單 sheet (#10, canvas artboard), extracted for reuse by the 類別
-// sheet. Ratified deviations (Simon, 2026-08-20): the icon picker stays
-// available when editing, and subcategories stay an inline list.
+// sheet and, since 2026-09-10 (ratified, overturning the 2026-08-18 in-form
+// quick step), by the entry form's creation rows. Ratified deviations
+// (Simon, 2026-08-20): the icon picker stays available when editing, and
+// subcategories stay an inline list.
 export function CategoryEditorSheet(props: Props) {
   return (
     <Modal transparent animationType="slide" onRequestClose={props.onClose}>
@@ -72,11 +78,13 @@ function CategoryEditor({
   parent,
   parentChoices,
   childrenOfTarget,
+  initialName,
   onOpen,
   onClose,
   onCategoriesChanged,
+  onCreated,
 }: Props) {
-  const [name, setName] = useState(target?.name ?? '');
+  const [name, setName] = useState(target?.name ?? initialName ?? '');
   const [color, setColor] = useState(target?.color ?? firstPreset);
   const [icon, setIcon] = useState(target?.icon ?? 'tag');
   // Create mode offers the optional parent; editing keeps parenthood fixed.
@@ -109,7 +117,7 @@ function CategoryEditor({
           onCategoriesChanged();
         }
       } else {
-        await createCategory(
+        const made = await createCategory(
           accessToken,
           isSub
             ? { name: trimmed, color: activeParent.color, parentId: activeParent.id }
@@ -117,6 +125,7 @@ function CategoryEditor({
         );
         colorApplied = !isSub;
         onCategoriesChanged();
+        onCreated?.(made);
       }
       // A custom color earns its recents slot only once a category actually
       // wears it; the save is best-effort.
@@ -155,7 +164,7 @@ function CategoryEditor({
   ];
 
   return (
-    <View style={styles.sheet}>
+    <View style={styles.sheet} testID="category-editor-sheet">
       <View style={styles.sheetHeader}>
         <Pressable accessibilityRole="button" style={styles.headerButton} onPress={onClose}>
           <Text style={styles.headerCancel}>{strings.entryForm.cancel}</Text>
