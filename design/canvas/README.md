@@ -3,6 +3,28 @@
 Pulled from the Claude Design project **"Daily-wlog iOS prototype"**
 (`https://claude.ai/design/p/9dca8ca9-1042-4f06-ae22-137ec2d24c04`), 2026-08-18.
 
+> **Stale for several surfaces since 2026-09-10** (PM feedback round 1,
+> commits 8244699..02cffd8 — Simon waived canvas-first for that round's
+> ratified changes). Where this canvas disagrees with the app, the app and
+> DESIGN.md are current truth for:
+>
+> - **月曆視圖**: the filled circle is the selection (moves with taps);
+>   today wears the thin ring; + creates into the selected day.
+> - **新增日記**: a 日期 row with a compact picker heads the form; the
+>   creation rows open the full 分類表單 sheet (the in-form quick step is
+>   retired); a typed-but-unconfirmed subcategory renders as a pending pill.
+> - **年視圖**: no back button, no chevrons; swipe-only paging; the title
+>   opens an endless year wheel.
+> - **分類 sheet (篩選 A/B)**: both filter explorations are retired — the
+>   類別 sheet is a visibility checklist over a persistent hidden-set
+>   (DESIGN.md §9): icon-fill toggles, check-circles for subcategories,
+>   family master switch, 全部隱藏/全部顯示.
+> - **新增/編輯分類 sheet**: the parent list swaps in for its summary row
+>   (accordion); sheet titles center on the sheet, not the button gap.
+>
+> The prototype project still shows the pre-round designs; redrawing those
+> artboards there (then re-pulling) is open design debt.
+
 `daily-wlog-核心畫面.dc.html` is the canvas holding **all nine designed surfaces** as
 design-system-driven markup. The project's own screen map:
 
