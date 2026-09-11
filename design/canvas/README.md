@@ -1,7 +1,8 @@
 # daily-wlog 核心畫面 — design canvas
 
 Pulled from the Claude Design project **"Daily-wlog iOS prototype"**
-(`https://claude.ai/design/p/9dca8ca9-1042-4f06-ae22-137ec2d24c04`), 2026-08-18.
+(`https://claude.ai/design/p/9dca8ca9-1042-4f06-ae22-137ec2d24c04`), 2026-08-18;
+canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 
 > **Stale for several surfaces since 2026-09-10** (PM feedback round 1,
 > commits 8244699..02cffd8 — Simon waived canvas-first for that round's
@@ -25,7 +26,7 @@ Pulled from the Claude Design project **"Daily-wlog iOS prototype"**
 > The prototype project still shows the pre-round designs; redrawing those
 > artboards there (then re-pulling) is open design debt.
 
-`daily-wlog-核心畫面.dc.html` is the canvas holding **all nine designed surfaces** as
+`daily-wlog-核心畫面.dc.html` is the canvas holding **all ten designed surfaces** as
 design-system-driven markup. The project's own screen map:
 
 | Screen (in the canvas) | Built from |
@@ -39,6 +40,7 @@ design-system-driven markup. The project's own screen map:
 | 自訂顏色 drawer | DESIGN.md § Color (custom picker, dot-size legibility) |
 | 登入 (Sign-in) | DESIGN.md § Screens 7, bans 6 & 9 |
 | 篩選 A / 篩選 B (Filter explorations) | Both directions mocked; **direction A (filter sheet) is the ratified decision** per spec issue #1 |
+| 設定 (Settings) + 語言選單 sheet | DESIGN.md primary-language amendment (2026-09-10), issue #35: 語言 row under 一般 with value readout; bottom-sheet picker, exactly 系統預設 / 繁體中文 / English (endonyms fixed), trailing check, tap applies instantly |
 
 Notes:
 

@@ -236,6 +236,51 @@ input::placeholder,textarea::placeholder{color:var(--text-quaternary)}
       </div>
     </sc-if>
 
+    <sc-if value="{{ isSettings }}">
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <x-import component-from-global-scope="DailyWlogDesignSystem_afe7e1.NavBar" title="設定" leading="{{ backToMonth }}" trailing="{{ navSpacer }}" hint-size="100%,44px"></x-import>
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:var(--space-5) var(--screen-gutter) 40px;display:flex;flex-direction:column;gap:var(--space-7)">
+          <div>
+            <p style="margin:0 var(--space-2) var(--space-4);font:var(--type-meta);color:var(--text-tertiary)">帳號</p>
+            <div style="border-radius:var(--radius-card);overflow:hidden">
+              <x-import component-from-global-scope="DailyWlogDesignSystem_afe7e1.ListRow" first="{{ true }}" last="{{ true }}" title="電子郵件" value="wei.chen@gmail.com" hint-size="100%,44px"></x-import>
+            </div>
+          </div>
+          <div>
+            <p style="margin:0 var(--space-2) var(--space-4);font:var(--type-meta);color:var(--text-tertiary)">一般</p>
+            <div style="border-radius:var(--radius-card);overflow:hidden">
+              <x-import component-from-global-scope="DailyWlogDesignSystem_afe7e1.ListRow" first="{{ true }}" last="{{ true }}" title="語言" value="{{ langValue }}" chevron="{{ true }}" onClick="{{ openLangSheet }}" hint-size="100%,44px"></x-import>
+            </div>
+          </div>
+          <div style="border-radius:var(--radius-card);overflow:hidden">
+            <x-import component-from-global-scope="DailyWlogDesignSystem_afe7e1.ListRow" first="{{ true }}" last="{{ true }}" title="登出" dc-props="{{ centerRow }}" onClick="{{ signOut }}" hint-size="100%,44px"></x-import>
+          </div>
+          <div style="display:flex;justify-content:center;padding-top:var(--space-4)">
+            <x-import component-from-global-scope="DailyWlogDesignSystem_afe7e1.Button" variant="destructive" icon="trash-2" onClick="{{ noop }}" hint-size="auto,40px">刪除帳號</x-import>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ langSheetOpen }}">
+      <div style="position:absolute;inset:0;z-index:11;display:flex;flex-direction:column;justify-content:flex-end">
+        <div onClick="{{ closeLangSheet }}" style="position:absolute;inset:0;background:rgba(0,0,0,0.28)"></div>
+        <div style="position:relative;background:var(--background);border-radius:var(--radius-sheet) var(--radius-sheet) 0 0;box-shadow:var(--shadow-panel);display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-4);padding:var(--space-4) var(--space-4) var(--space-5)">
+            <span style="width:36px;height:5px;border-radius:var(--radius-pill);background:var(--line-separator)"></span>
+            <span style="font:var(--weight-semibold) var(--size-headline) / 22px var(--font-display);color:var(--text-primary)">語言</span>
+          </div>
+          <div style="padding:0 var(--screen-gutter) 32px">
+            <div style="border-radius:var(--radius-card);overflow:hidden">
+              <sc-for list="{{ langOptions }}" as="l" hint-placeholder-count="3">
+                <x-import component-from-global-scope="DailyWlogDesignSystem_afe7e1.ListRow" title="{{ l.label }}" first="{{ l.first }}" last="{{ l.last }}" trailing="{{ l.trailing }}" onClick="{{ l.onClick }}" hint-size="100%,44px"></x-import>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
     <sc-if value="{{ isSignin }}">
       <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface);padding:0 var(--screen-gutter) 46px">
         <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:var(--space-4);padding-bottom:72px">
@@ -473,6 +518,7 @@ class Component extends DCLogic {
     shCustomOpen: false, shCustomValue: '#7A6E8F', shCustomApplied: false, parentListOpen: false,
     drawer: false, dh: 268, ds: 18, dl: 49, savedCustoms: [],
     filterDir: 'A', filterSheet: false, fCats: [], fSubs: [], expanded: [],
+    lang: 'system', langSheet: false,
   };
   ICON_OPTIONS = [
     'dumbbell', 'volleyball', 'bike', 'waves-ladder', 'mountain', 'footprints',
@@ -873,8 +919,8 @@ class Component extends DCLogic {
     const monthTotal = Object.keys(s.entries || {}).filter((k) => Number(k.split('-')[0]) <= this.CUR_MONTH)
       .reduce((n, k) => n + (s.entries[k] || []).filter((e) => this.matches(e)).length, 0);
 
-    const tabDefs = [['month', '月曆'], ['day', '日'], ['form', '新增'], ['year', '年'], ['categories', '類別'], ['sheet', '分類表單'], ['filter', '篩選'], ['signin', '登入']];
-    const activeTab = s.sheet ? 'sheet' : (s.screen === 'catdetail' || s.screen === 'cats' ? 'categories'
+    const tabDefs = [['month', '月曆'], ['day', '日'], ['form', '新增'], ['year', '年'], ['categories', '類別'], ['sheet', '分類表單'], ['filter', '篩選'], ['settings', '設定'], ['langsheet', '語言選單'], ['signin', '登入']];
+    const activeTab = s.langSheet ? 'langsheet' : s.sheet ? 'sheet' : (s.screen === 'catdetail' || s.screen === 'cats' ? 'categories'
       : ((this.filterActive() || s.filterSheet) && s.screen === 'month' ? 'filter' : s.screen));
 
     return {
@@ -885,6 +931,20 @@ class Component extends DCLogic {
       isCats: s.screen === 'cats',
       isCatDetail: s.screen === 'catdetail' && Boolean(edit),
       isSignin: s.screen === 'signin',
+      isSettings: s.screen === 'settings',
+      navSpacer: h ? h('span', { 'aria-hidden': 'true', style: { display: 'block', width: 44, height: 44 } }) : null,
+      noop: () => {},
+      signOut: () => this.go('signin'),
+      centerRow: { style: { textAlign: 'center', boxSizing: 'border-box', minHeight: 'var(--row-height)' } },
+      langValue: (s.lang || 'system') === 'system' ? '系統預設' : (s.lang === 'zh-TW' ? '繁體中文' : 'English'),
+      langSheetOpen: Boolean(s.langSheet),
+      openLangSheet: () => this.setState({ langSheet: true }),
+      closeLangSheet: () => this.setState({ langSheet: false }),
+      langOptions: [['system', '系統預設'], ['zh-TW', '繁體中文'], ['en', 'English']].map((o, i, arr) => ({
+        key: o[0], label: o[1], first: i === 0, last: i === arr.length - 1,
+        trailing: (s.lang || 'system') === o[0] ? el('Icon', { name: 'check', size: 18, color: 'var(--text-primary)', strokeWidth: 2 }) : null,
+        onClick: () => this.setState({ lang: o[0], langSheet: false }),
+      })),
       signIn: () => this.go('month', { month: this.CUR_MONTH, selected: this.TODAY }),
 
       sheetOpen: Boolean(s.sheet),
@@ -1154,6 +1214,8 @@ class Component extends DCLogic {
           if (id === 'categories') return this.go('cats', { editCat: null, sheet: null });
           if (id === 'sheet') { this.go('cats', { editCat: null }); return this.openSheet('create'); }
           if (id === 'filter') return this.seedFilter('A');
+          if (id === 'settings') return this.go('settings', { langSheet: false, sheet: null });
+          if (id === 'langsheet') return this.go('settings', { langSheet: true, sheet: null });
           if (id === 'month') return this.go('month', { drag: null, sheet: null, fCats: [], fSubs: [], expanded: [], filterSheet: false });
           this.go(id, { drag: null, sheet: null });
         },
@@ -1164,3 +1226,4 @@ class Component extends DCLogic {
 </script>
 </body>
 </html>
+
