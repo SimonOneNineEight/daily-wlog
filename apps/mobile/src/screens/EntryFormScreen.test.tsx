@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import { encodeContent } from '../entries/content';
-import { listDrafts } from '../entries/drafts';
 import { EntryFormScreen } from './EntryFormScreen';
 
 const categories = [
@@ -196,7 +195,10 @@ describe('category step (#28)', () => {
     expect(postedEntry?.subcategoryId).toBeUndefined();
   });
 
-  it('fails the whole save into the draft path when the subcategory create fails', async () => {
+  it('renders the save failure when the subcategory create fails', async () => {
+    // The branching itself (no entry write, the Draft keeping the typed
+    // name) is unit-tested at the pipeline's interface in entries/save.test;
+    // the screen's job is mapping subcategoryFailed onto the error line.
     failCategoryPost = true;
     const onDone = jest.fn();
     renderForm({ onDone });
@@ -208,13 +210,8 @@ describe('category step (#28)', () => {
       fireEvent.press(screen.getByText('儲存'));
     });
 
-    expect(postedEntry).toBeNull();
     expect(onDone).not.toHaveBeenCalled();
     expect(screen.getByText('儲存失敗，請再試一次')).toBeTruthy();
-
-    // The kept draft carries the typed name, so a reopened draft retries it.
-    const kept = await listDrafts('2026-08-17');
-    expect(kept.some((d) => d.pendingSubcategoryName === '夜跑')).toBe(true);
   });
 
   it('restores a draft with a pending subcategory and creates it on retry', async () => {

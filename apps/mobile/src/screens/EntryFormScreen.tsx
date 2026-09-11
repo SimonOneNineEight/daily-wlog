@@ -13,25 +13,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry, Photo } from '../api/client';
-import {
-  createCategory,
-  createEntry,
-  deleteEntry,
-  deletePhoto,
-  reorderPhotos,
-  updateEntry,
-} from '../api/client';
+import { createCategory, deleteEntry, deletePhoto, reorderPhotos } from '../api/client';
 import { MAX_PHOTOS, PhotoGrid } from '../entries/PhotoGrid';
 import type { ProcessedPhoto } from '../photos/processPhoto';
 import { processPhoto } from '../photos/processPhoto';
-import { uploadPhotos } from '../photos/uploadPhotos';
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { dateHeading } from '../calendar/dateLabel';
 import { DatePickerSheet } from '../calendar/DatePickerSheet';
 import { CategoryEditorSheet } from '../categories/CategoryEditorSheet';
 import { decodeContent, encodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
-import { clearDraft, newDraftId, saveDraft } from '../entries/drafts';
+import { newDraftId } from '../entries/drafts';
+import { saveEntry } from '../entries/save';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
@@ -111,8 +104,8 @@ export function EntryFormScreen({
   // Where a failed save is kept (#14). A restored draft keeps its id so the
   // retry overwrites in place and success clears the right slot.
   const [draftId] = useState(() => draft?.id ?? newDraftId());
-  // Set once createEntry lands, so a photo-failure retry updates instead of
-  // creating a duplicate Entry.
+  // Set when photos fail after the Entry landed, so the in-session retry
+  // updates that Entry instead of creating a duplicate.
   const [savedEntryId, setSavedEntryId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -155,118 +148,52 @@ export function EntryFormScreen({
 
   const dateLabel = dateHeading(strings, date);
 
+  // The pipeline itself lives in entries/save.ts; the screen gathers the
+  // intent from its fields and renders the result.
   const save = async () => {
     if (!canSave || category === null) return;
     setSaving(true);
     setFailed(false);
     setPhotosFailed(false);
-    const content = encodeContent({ title: title.trim(), note });
-    let sub = subcategory;
-    let refinement: { subcategoryId?: string } = sub !== null ? { subcategoryId: sub.id } : {};
-    // Save-time subcategory creation (#28): a typed-but-unconfirmed name is
-    // created together with the entry at 儲存. Read without the render
-    // path's !addingSub guard on purpose — pressing 儲存 while the field is
-    // still open must not lose the typed name.
-    const pendingName = sub === null ? subName.trim() : '';
-    let pendingLeft = pendingName;
-    // Draft retention (#14): any failure keeps the full Entry — words, the
-    // staged photos' local copies, and a still-uncreated subcategory name —
-    // locally, and 儲存 stays the retry.
-    const keepDraft = (entryId: string | undefined) =>
-      saveDraft({
-        id: draftId,
-        date,
-        ...(entryId !== undefined ? { entryId } : {}),
-        categoryId: category.id,
-        ...refinement,
-        ...(pendingLeft !== '' ? { pendingSubcategoryName: pendingLeft } : {}),
-        content,
-        photos: stagedPhotos,
-        savedAt: new Date().toISOString(),
-      });
-    let entryId = entry?.id ?? draft?.entryId ?? savedEntryId;
-    if (pendingName !== '') {
-      try {
-        const made = await createCategory(accessToken, {
-          name: pendingName,
-          color: category.color,
-          parentId: category.id,
-        });
-        setCreated((prev) => [...prev, made]);
-        setSubcategory(made);
-        setSubName('');
-        setAddingSub(false);
-        onCategoriesChanged?.();
-        sub = made;
-        refinement = { subcategoryId: made.id };
-        pendingLeft = '';
-      } catch {
+    // Read without the render path's !addingSub guard on purpose — pressing
+    // 儲存 while the field is still open must not lose the typed name (#28).
+    const pendingName = subcategory === null ? subName.trim() : '';
+    const result = await saveEntry({
+      accessToken,
+      date,
+      categoryId: category.id,
+      categoryColor: category.color,
+      ...(subcategory !== null ? { subcategoryId: subcategory.id } : {}),
+      ...(pendingName !== '' ? { pendingSubcategoryName: pendingName } : {}),
+      content: encodeContent({ title: title.trim(), note }),
+      photos: stagedPhotos,
+      draftId,
+      existingEntryId: entry?.id ?? draft?.entryId ?? savedEntryId,
+    });
+    if ('createdSubcategory' in result && result.createdSubcategory !== undefined) {
+      const made = result.createdSubcategory;
+      setCreated((prev) => [...prev, made]);
+      setSubcategory(made);
+      setSubName('');
+      setAddingSub(false);
+      onCategoriesChanged?.();
+    }
+    switch (result.kind) {
+      case 'saved':
+        onDone(true);
+        return;
+      case 'photosFailed':
+        // The Entry's words reached the server; retrying updates it.
+        setSavedEntryId(result.entryId);
+        setPhotosFailed(true);
+        setSaving(false);
+        return;
+      case 'subcategoryFailed':
+      case 'entryFailed':
         setFailed(true);
         setSaving(false);
-        await keepDraft(entryId);
         return;
-      }
     }
-    try {
-      if (entryId !== undefined) {
-        // date rides along on every update; the server only moves the Entry
-        // when it actually differs from its current day (#25).
-        await updateEntry(accessToken, entryId, {
-          categoryId: category.id,
-          ...refinement,
-          content,
-          date,
-        });
-      } else {
-        const created = await createEntry(accessToken, {
-          date,
-          categoryId: category.id,
-          ...refinement,
-          content,
-          // The draft id doubles as the retry key (#17): it survives the
-          // relaunch with the kept draft, so a create whose response was
-          // lost replays onto the original Entry instead of duplicating.
-          idempotencyKey: draftId,
-        });
-        entryId = created.id;
-        setSavedEntryId(created.id);
-        // A replay hands back the original Entry. If the kept draft was
-        // edited before this retry, the save carries newer values — push
-        // them onto the original rather than losing them with the draft.
-        if (
-          created.content !== content ||
-          created.date !== date ||
-          created.categoryId !== category.id ||
-          (created.subcategoryId ?? undefined) !== refinement.subcategoryId
-        ) {
-          await updateEntry(accessToken, created.id, {
-            categoryId: category.id,
-            ...refinement,
-            content,
-            date,
-          });
-        }
-      }
-    } catch {
-      setFailed(true);
-      setSaving(false);
-      await keepDraft(entryId);
-      return;
-    }
-    try {
-      if (entryId !== undefined && stagedPhotos.length > 0) {
-        await uploadPhotos(accessToken, entryId, stagedPhotos);
-      }
-    } catch {
-      // The Entry's words reached the server; the photos wait in the draft,
-      // pinned to entryId so the retry updates instead of duplicating.
-      setPhotosFailed(true);
-      setSaving(false);
-      await keepDraft(entryId);
-      return;
-    }
-    await clearDraft(draftId);
-    onDone(true);
   };
 
   const photoCount = existingPhotos.length + stagedPhotos.length;

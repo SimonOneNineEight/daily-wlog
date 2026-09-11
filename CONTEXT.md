@@ -35,3 +35,7 @@ _Avoid_: locale, system language (for the app's own setting)
 **Starter Category**:
 One of the five Categories created for a new User at signup, named in the App Language in effect at that moment. An ordinary Category from then on: renameable, hideable, deletable, and never retranslated.
 _Avoid_: default category, seed category
+
+**Draft**:
+A failed save kept on the device: the full Entry — words, staged photos' local copies, a still-uncreated Subcategory name — resurfacing on its day until a retry succeeds. Its id doubles as the create's idempotency key, so a lost-response retry lands on the original Entry. Per-device, never on the server.
+_Avoid_: unsaved entry, pending entry
