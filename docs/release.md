@@ -12,10 +12,25 @@ exist.
 2. **Simon — hosted Supabase project** (supabase.com, free tier).
    Do not paste keys into the repo or the chat; they go into EAS/hosting
    secret stores in step 4.
-3. **API host: Simon's home Linux box** (ratified 2026-08-21 for the
-   TestFlight phase; migrate to Fly/Railway/Render later by moving the
-   same four env vars). deploy/home/ has everything. One-time setup on
-   the box:
+3. **API host: Cloud Run** (superseded the home box, live by 2026-09-11):
+   service `daily-wlog-api`, project `daily-wlog-198`, region us-west1.
+   Env rides the revision: `SUPABASE_JWKS_URL` / `SUPABASE_STORAGE_URL`
+   as plain vars, `DATABASE_URL` / `SUPABASE_SECRET_KEY` from Secret
+   Manager (`database-url`, `supabase-secret-key`). Per-release deploy:
+
+   ```sh
+   gcloud run deploy daily-wlog-api --source api --region us-west1
+   ```
+
+   Gotchas: health lives at `/health` (Google's front end swallows
+   `/healthz`), and `DATABASE_URL` must use Supabase's session pooler
+   (direct db hosts are IPv6-only). Schema changes ship separately with
+   `supabase db push` before the deploy.
+
+   <details><summary>Former host: Simon's home Linux box (ratified
+   2026-08-21 for the TestFlight phase; kept as fallback runbook)</summary>
+
+   deploy/home/ has everything. One-time setup on the box:
 
    ```sh
    sudo useradd --system --no-create-home daily-wlog
@@ -34,6 +49,8 @@ exist.
    Then from the Mac: `DEPLOY_HOST=user@homebox deploy/home/deploy.sh`
    (cross-compiles api + purge, ships them, restarts the service). The
    ts.net URL becomes `EXPO_PUBLIC_API_URL`.
+
+   </details>
 
    Gotchas baked into api.env.example: use the **session pooler**
    connection string (direct db.<ref> hosts are IPv6-only, and pgx needs
