@@ -74,11 +74,15 @@ type Querier interface {
 	// Entry follows its Subcategory, an unrefined one its Category.
 	ListYearFirstCategories(ctx context.Context, arg ListYearFirstCategoriesParams) ([]ListYearFirstCategoriesRow, error)
 	// First-sign-in provisioning in one atomic statement: User, Journal, and the
-	// five seeded categories (colors/icons per the design canvas). Every level
-	// conflict-skips, so re-sign-in and concurrent first sign-ins are no-ops.
-	// CTE chaining (each part reads the_user) forces execution order; FK checks
-	// fire at end of statement, when the user row exists.
-	ProvisionUser(ctx context.Context, userID string) error
+	// five Starter Categories (colors/icons per the design canvas), named in the
+	// signup-time App Language (#36: zh-TW or en; the handler normalizes).
+	// Every level conflict-skips, so re-sign-in and concurrent first sign-ins
+	// are no-ops. Seeding is guarded on "no categories yet": the language is a
+	// one-time hint, so a later call in another App Language (or after renames)
+	// never inserts a second set. CTE chaining (each part reads the_user)
+	// forces execution order; FK checks fire at end of statement, when the user
+	// row exists.
+	ProvisionUser(ctx context.Context, arg ProvisionUserParams) error
 	PurgeUserChildCategories(ctx context.Context, userID string) (int64, error)
 	PurgeUserColorRecents(ctx context.Context, userID string) (int64, error)
 	// The purge cascade (#15) runs child-to-parent because the schema's FKs do

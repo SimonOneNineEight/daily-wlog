@@ -36,6 +36,19 @@ paths:
         POST /me/reactivate, never a mere session restore.
       security:
         - bearerAuth: []
+      requestBody:
+        required: false
+        description: >
+          Optional one-time seeding hint (#36): the App Language in effect
+          at signup names the five Starter Categories. Absent or zh-TW
+          seeds the Traditional Chinese set; en seeds Work, Exercise, Food,
+          Travel, Personal with the same icons and colors. Only the first
+          provisioning seeds — an account that already has Categories is
+          never reseeded or renamed, whatever language later calls carry.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProvisionMe"
       responses:
         "200":
           description: The signed-in User's provisioned world.
@@ -880,6 +893,13 @@ components:
       bearerFormat: JWT
       description: Supabase Auth access token, verified against the project JWKS.
   schemas:
+    ProvisionMe:
+      type: object
+      properties:
+        language:
+          type: string
+          enum: ["zh-TW", "en"]
+          description: The client's resolved App Language at signup.
     Me:
       type: object
       required:

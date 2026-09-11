@@ -1,9 +1,13 @@
 -- name: ProvisionUser :exec
 -- First-sign-in provisioning in one atomic statement: User, Journal, and the
--- five seeded categories (colors/icons per the design canvas). Every level
--- conflict-skips, so re-sign-in and concurrent first sign-ins are no-ops.
--- CTE chaining (each part reads the_user) forces execution order; FK checks
--- fire at end of statement, when the user row exists.
+-- five Starter Categories (colors/icons per the design canvas), named in the
+-- signup-time App Language (#36: zh-TW or en; the handler normalizes).
+-- Every level conflict-skips, so re-sign-in and concurrent first sign-ins
+-- are no-ops. Seeding is guarded on "no categories yet": the language is a
+-- one-time hint, so a later call in another App Language (or after renames)
+-- never inserts a second set. CTE chaining (each part reads the_user)
+-- forces execution order; FK checks fire at end of statement, when the user
+-- row exists.
 with new_user as (
     insert into users (id)
     values (@user_id::uuid)
@@ -23,12 +27,19 @@ insert into categories (user_id, name, color, icon, position)
 select u.id, seed.name, seed.color, seed.icon, seed.position
 from the_user u
 cross join (values
-    ('工作', '#4A93C4', 'briefcase', 1),
-    ('運動', '#73B062', 'dumbbell', 2),
-    ('美食', '#D3AE40', 'utensils', 3),
-    ('旅遊', '#D56E5C', 'plane', 4),
-    ('個人', '#A26FBD', 'book-open', 5)
-) as seed (name, color, icon, position)
+    ('zh-TW', '工作', '#4A93C4', 'briefcase', 1),
+    ('zh-TW', '運動', '#73B062', 'dumbbell', 2),
+    ('zh-TW', '美食', '#D3AE40', 'utensils', 3),
+    ('zh-TW', '旅遊', '#D56E5C', 'plane', 4),
+    ('zh-TW', '個人', '#A26FBD', 'book-open', 5),
+    ('en', 'Work', '#4A93C4', 'briefcase', 1),
+    ('en', 'Exercise', '#73B062', 'dumbbell', 2),
+    ('en', 'Food', '#D3AE40', 'utensils', 3),
+    ('en', 'Travel', '#D56E5C', 'plane', 4),
+    ('en', 'Personal', '#A26FBD', 'book-open', 5)
+) as seed (language, name, color, icon, position)
+where seed.language = @language::text
+  and not exists (select 1 from categories c where c.user_id = @user_id::uuid)
 on conflict do nothing;
 
 -- name: GetJournal :one

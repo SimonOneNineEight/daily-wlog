@@ -46,7 +46,7 @@ const realFetch = globalThis.fetch;
 beforeEach(() => {
   mockAuthState.listeners.length = 0;
   mockAuthState.session = null;
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { headers?: Record<string, string> }) => {
+  globalThis.fetch = jest.fn(async (url: unknown, init?: { headers?: Record<string, string>; body?: string }) => {
     if (String(url).endsWith('/health')) {
       return { ok: true, json: async () => ({ status: 'ok', schemaVersion: 1 }) };
     }
@@ -82,6 +82,9 @@ it('shows the app and provisions the world when a session exists', async () => {
   const meCall = (globalThis.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/me'));
   expect(meCall).toBeTruthy();
   expect(meCall?.[1]?.headers?.Authorization).toBe('Bearer token-1');
+  // The resolved App Language rides along as the Starter Category seeding
+  // hint (#36); the harness pins it to zh-TW.
+  expect(JSON.parse(meCall?.[1]?.body ?? '')).toEqual({ language: 'zh-TW' });
 });
 
 it('returns to the sign-in screen on sign-out through settings', async () => {

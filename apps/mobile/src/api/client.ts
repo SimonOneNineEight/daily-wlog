@@ -45,9 +45,17 @@ async function request<T>(
   return (await response.json()) as T;
 }
 
-/** Idempotent: provisions the signed-in User's world on first sign-in. */
-export function provisionMe(accessToken: string): Promise<Me> {
-  return request<Me>(accessToken, '/me', { method: 'POST' });
+type ProvisionLanguage = NonNullable<
+  NonNullable<paths['/me']['post']['requestBody']>['content']['application/json']['language']
+>;
+
+/**
+ * Idempotent: provisions the signed-in User's world on first sign-in. The
+ * resolved App Language is a one-time seeding hint naming the Starter
+ * Categories (#36); the server ignores it once Categories exist.
+ */
+export function provisionMe(accessToken: string, language: ProvisionLanguage): Promise<Me> {
+  return request<Me>(accessToken, '/me', { method: 'POST', body: { language } });
 }
 
 /** Deactivates the account (#15); the permanent purge follows 30 days later. */
