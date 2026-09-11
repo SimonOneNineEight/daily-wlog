@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { versionedStore } from '../storage/versionedStore';
 
 import { en } from './strings.en';
 import { type StringCatalog, strings as zhTW } from './strings';
@@ -31,37 +31,33 @@ export function catalogFor(language: AppLanguage): StringCatalog {
   return catalogs[language];
 }
 
-// Versioned like the hidden-set store: an unreadable or future-versioned
-// store reads as System Default instead of crashing the app.
-const STORAGE_KEY = 'appLanguage.v1';
-
+// Persistence rides the shared versioned envelope (storage/versionedStore):
+// an unreadable or future-versioned store reads as System Default.
 // System Default is the absence of a store, never a stored value: only an
 // explicit language choice is written.
 type Store = { v: 1; override: AppLanguage };
 
-export async function loadOverride(): Promise<LanguageOverride> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw === null) return null;
-    const parsed = JSON.parse(raw) as Store;
+const store = versionedStore<LanguageOverride>({
+  key: 'appLanguage.v1',
+  fallback: null,
+  decode: (envelope) => {
+    const parsed = envelope as Store;
     if (parsed.v !== 1 || (parsed.override !== 'zh-TW' && parsed.override !== 'en')) {
       return null;
     }
     return parsed.override;
-  } catch {
-    return null;
-  }
+  },
+  encode: (override) => ({ v: 1, override }),
+});
+
+export function loadOverride(): Promise<LanguageOverride> {
+  return store.load();
 }
 
 export async function saveOverride(override: LanguageOverride): Promise<void> {
-  try {
-    if (override === null) {
-      await AsyncStorage.removeItem(STORAGE_KEY);
-    } else {
-      const store: Store = { v: 1, override };
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-    }
-  } catch {
-    // Storage refused the write; the choice still holds for this session.
+  if (override === null) {
+    await store.remove();
+  } else {
+    await store.save(override);
   }
 }

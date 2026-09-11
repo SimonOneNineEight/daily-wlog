@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { versionedStore } from '../storage/versionedStore';
 
 // The per-User hidden-set (#30, DESIGN.md §9): Apple Calendar visibility,
 // not a filter. Nothing is hidden by default, new categories are born
@@ -91,31 +91,28 @@ export function hiddenParams(
   return { hiddenCategories: hidden.categoryIds, hiddenSubcategories: hidden.subcategoryIds };
 }
 
-// Versioned like the drafts store: an unreadable or future-versioned store
-// reads as nothing hidden instead of crashing the calendar.
-const STORAGE_KEY = 'hiddenCategories.v1';
-
+// Persistence rides the shared versioned envelope (storage/versionedStore):
+// an unreadable or future-versioned store reads as nothing hidden instead
+// of crashing the calendar.
 type Store = { v: 1 } & HiddenSet;
 
-export async function loadHidden(): Promise<HiddenSet> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw === null) return nothingHidden;
-    const parsed = JSON.parse(raw) as Store;
+const store = versionedStore<HiddenSet>({
+  key: 'hiddenCategories.v1',
+  fallback: nothingHidden,
+  decode: (envelope) => {
+    const parsed = envelope as Store;
     if (parsed.v !== 1 || !Array.isArray(parsed.categoryIds) || !Array.isArray(parsed.subcategoryIds)) {
-      return nothingHidden;
+      return null;
     }
     return { categoryIds: parsed.categoryIds, subcategoryIds: parsed.subcategoryIds };
-  } catch {
-    return nothingHidden;
-  }
+  },
+  encode: (hidden): Store => ({ v: 1, ...hidden }),
+});
+
+export function loadHidden(): Promise<HiddenSet> {
+  return store.load();
 }
 
-export async function saveHidden(hidden: HiddenSet): Promise<void> {
-  try {
-    const store: Store = { v: 1, ...hidden };
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  } catch {
-    // Storage refused the write; visibility still holds for this session.
-  }
+export function saveHidden(hidden: HiddenSet): Promise<void> {
+  return store.save(hidden);
 }

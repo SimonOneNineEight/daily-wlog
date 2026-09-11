@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {
   allHidden,
   entryIsVisible,
@@ -91,5 +93,20 @@ describe('persistence', () => {
     await saveHidden(hidden);
     expect(await loadHidden()).toEqual(hidden);
     await saveHidden(nothingHidden);
+  });
+
+  it('an unreadable store reads as nothing hidden', async () => {
+    await AsyncStorage.setItem('hiddenCategories.v1', 'not json');
+    expect(await loadHidden()).toEqual(nothingHidden);
+    await AsyncStorage.removeItem('hiddenCategories.v1');
+  });
+
+  it('a future-versioned store reads as nothing hidden', async () => {
+    await AsyncStorage.setItem(
+      'hiddenCategories.v1',
+      JSON.stringify({ v: 2, categoryIds: ['c-sport'], subcategoryIds: [] }),
+    );
+    expect(await loadHidden()).toEqual(nothingHidden);
+    await AsyncStorage.removeItem('hiddenCategories.v1');
   });
 });
