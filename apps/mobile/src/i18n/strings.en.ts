@@ -75,6 +75,12 @@ export const en: StringCatalog = {
       'Your account can be restored within 30 days. After that, all entries, photos, and categories are permanently deleted.',
     restore: 'Restore account',
     restoreFailed: 'Restore failed. Please try again',
+    // 系統預設 translates with the UI; the endonyms never do.
+    generalHeader: 'General',
+    language: 'Language',
+    systemDefault: 'System Default',
+    zhHant: '繁體中文',
+    english: 'English',
   },
   month: {
     title: (month: number) => monthsFull[month - 1],
