@@ -2,47 +2,34 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
+import { cat } from '../testing/fixtures';
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { YearScreen } from './YearScreen';
 
-const categories = [
-  { id: 'c-work', name: '工作', color: '#4A93C4', icon: 'briefcase', position: 1 },
-  { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 2 },
-];
+const categories = [cat.work, { ...cat.sport, position: 2 }];
 
-const realFetch = globalThis.fetch;
+let api: MockApi;
 
 beforeEach(() => {
-  globalThis.fetch = jest.fn(async (url: unknown) => {
-    if (String(url).includes('/years/2026')) {
-      return {
-        ok: true,
-        json: async () => ({
-          days: [
-            { date: '2026-03-15', categoryId: 'c-sport' },
-            { date: '2026-08-02', categoryId: 'c-work' },
-          ],
-          totalEntries: 3,
-        }),
-      };
-    }
-    if (String(url).includes('/years/2025')) {
-      return {
-        ok: true,
-        json: async () => ({
-          days: [{ date: '2025-06-09', categoryId: 'c-work' }],
-          totalEntries: 1,
-        }),
-      };
-    }
-    if (String(url).includes('/years/')) {
-      return { ok: true, json: async () => ({ days: [], totalEntries: 0 }) };
-    }
-    throw new Error(`unexpected fetch ${String(url)}`);
-  }) as jest.Mock;
+  api = installMockApi({
+    years: {
+      '2026': {
+        days: [
+          { date: '2026-03-15', categoryId: 'c-sport' },
+          { date: '2026-08-02', categoryId: 'c-work' },
+        ],
+        totalEntries: 3,
+      },
+      '2025': {
+        days: [{ date: '2025-06-09', categoryId: 'c-work' }],
+        totalEntries: 1,
+      },
+    },
+  });
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 function renderScreen(overrides: Partial<React.ComponentProps<typeof YearScreen>> = {}) {

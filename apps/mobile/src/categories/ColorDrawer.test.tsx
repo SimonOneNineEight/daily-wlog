@@ -1,18 +1,16 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { ColorDrawer } from './ColorDrawer';
 
-const realFetch = globalThis.fetch;
+let api: MockApi;
 
 beforeEach(() => {
-  globalThis.fetch = jest.fn(async () => ({
-    ok: true,
-    json: async () => ({ colors: [] }),
-  })) as jest.Mock;
+  api = installMockApi();
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 async function renderDrawer() {

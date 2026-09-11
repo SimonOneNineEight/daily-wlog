@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { SettingsScreen } from './SettingsScreen';
 
 const mockSignOut = jest.fn(async () => ({ error: null }));
@@ -11,20 +12,15 @@ jest.mock('../auth/useSession', () => ({
   useSession: () => ({ access_token: 'tok', user: { id: 'u1', email: 'simon@wlog.local' } }),
 }));
 
-const realFetch = globalThis.fetch;
+let api: MockApi;
 
 beforeEach(() => {
   mockSignOut.mockClear();
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string }) => {
-    if (String(url).includes('/me') && init?.method === 'DELETE') {
-      return { ok: true, status: 204, json: async () => ({}) };
-    }
-    throw new Error(`unexpected fetch ${String(url)}`);
-  }) as jest.Mock;
+  api = installMockApi();
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 function renderSettings(overrides: Partial<React.ComponentProps<typeof SettingsScreen>> = {}) {

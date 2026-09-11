@@ -3,38 +3,23 @@ import { Dimensions } from 'react-native';
 
 import { encodeContent } from '../entries/content';
 import { theme } from '../theme';
+import { cat } from '../testing/fixtures';
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { MonthScreen } from './MonthScreen';
 
 // The month screen is pinned to a fixed "today" so assertions are stable.
 const TODAY = new Date(2026, 7, 17); // 2026-08-17, a Monday
 
-const categories = [
-  { id: 'c-work', name: '工作', color: '#4A93C4', icon: 'briefcase', position: 1 },
-  { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 2 },
-];
+const categories = [cat.work, cat.sport];
 
-const realFetch = globalThis.fetch;
-let monthDays: object[] = [];
-let dayEntries: Record<string, object[]> = {};
+let api: MockApi;
 
 beforeEach(() => {
-  monthDays = [];
-  dayEntries = {};
-  globalThis.fetch = jest.fn(async (url: unknown) => {
-    const u = String(url);
-    if (u.includes('/months/')) {
-      return { ok: true, json: async () => ({ days: monthDays }) };
-    }
-    if (u.includes('/entries?date=')) {
-      const date = u.split('date=')[1];
-      return { ok: true, json: async () => ({ entries: dayEntries[date] ?? [] }) };
-    }
-    throw new Error(`unexpected fetch ${u}`);
-  }) as jest.Mock;
+  api = installMockApi();
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 function renderMonth(overrides: Partial<React.ComponentProps<typeof MonthScreen>> = {}) {
@@ -61,7 +46,7 @@ it('renders the month title and the weekday header', async () => {
 });
 
 it('collapses a day with more than four entries into a plain +', async () => {
-  monthDays = [
+  api.world.monthDays = [
     {
       date: '2026-08-12',
       categoryIds: ['c-work', 'c-sport', 'c-work', 'c-sport', 'c-work', 'c-sport'],
@@ -72,7 +57,7 @@ it('collapses a day with more than four entries into a plain +', async () => {
 });
 
 it("shows today's entries in the panel by default and the empty line otherwise", async () => {
-  dayEntries['2026-08-17'] = [
+  api.world.entries['2026-08-17'] = [
     {
       id: 'e1',
       date: '2026-08-17',

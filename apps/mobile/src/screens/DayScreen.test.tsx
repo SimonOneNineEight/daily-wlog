@@ -4,72 +4,32 @@ import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
 import { encodeContent } from '../entries/content';
+import { cat } from '../testing/fixtures';
+import { installMockApi, type MockApi, type MockEntry } from '../testing/mockApi';
 import { DayScreen } from './DayScreen';
 
 const categories = [
-  { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 1 },
-  { id: 'c-food', name: '美食', color: '#D3AE40', icon: 'utensils', position: 2 },
-  { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport' },
+  { ...cat.sport, position: 1 },
+  { ...cat.food, position: 2 },
+  cat.gym,
 ];
 
-const realFetch = globalThis.fetch;
-let listedEntries: object[] = [];
+let api: MockApi;
+// The day's entries, mirrored into the mock world; tests reference rows
+// directly (drag simulation) so the local name stays.
+let listedEntries: MockEntry[] = [];
 
 beforeEach(() => {
   listedEntries = [];
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
-    if (init?.method === 'PUT') {
-      const body = JSON.parse(init.body ?? '{}');
-      const byId = Object.fromEntries(listedEntries.map((e: { id?: string }) => [e.id, e]));
-      return { ok: true, json: async () => ({ entries: body.entryIds.map((id: string) => byId[id]) }) };
-    }
-    if (init?.method === 'PATCH') {
-      return { ok: true, json: async () => ({ ...listedEntries[0], content: JSON.parse(init.body ?? '{}').content }) };
-    }
-    if (init?.method === 'DELETE') {
-      return { ok: true, status: 204, json: async () => ({}) };
-    }
-    if (String(url).includes('/categories') && init?.method === 'POST') {
-      const body = JSON.parse(init.body ?? '{}');
-      return {
-        ok: true,
-        json: async () => ({
-          id: 'c-new',
-          name: body.name,
-          color: body.color,
-          icon: 'tag',
-          parentId: body.parentId,
-          position: 9,
-        }),
-      };
-    }
-    if (String(url).includes('/entries') && init?.method === 'POST') {
-      const body = JSON.parse(init.body ?? '{}');
-      return {
-        ok: true,
-        json: async () => ({
-          id: 'e-new',
-          date: body.date,
-          position: listedEntries.length + 1,
-          categoryId: body.categoryId,
-          authorId: 'u1',
-          content: body.content,
-        }),
-      };
-    }
-    if (String(url).includes('/entries')) {
-      return { ok: true, json: async () => ({ entries: listedEntries }) };
-    }
-    throw new Error(`unexpected fetch ${String(url)}`);
-  }) as jest.Mock;
+  api = installMockApi();
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 it('renders the day entries with decoded titles, in order', async () => {
-  listedEntries = [
+  listedEntries = api.world.entries['2026-08-19'] = [
     { id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', subcategoryId: 'c-gym', authorId: 'u1', content: encodeContent({ title: '晨跑', note: '' }) },
     { id: 'e2', date: '2026-08-19', position: 2, categoryId: 'c-food', authorId: 'u1', content: encodeContent({ title: '午餐吃了拉麵', note: '' }) },
   ];
@@ -164,7 +124,7 @@ const dayEntriesFixture = () => [
 ];
 
 it('persists a drag reorder through the API', async () => {
-  listedEntries = dayEntriesFixture();
+  listedEntries = api.world.entries['2026-08-19'] = dayEntriesFixture();
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
   await screen.findByText('晨跑');
 
@@ -182,7 +142,7 @@ it('persists a drag reorder through the API', async () => {
 });
 
 it('opens an entry for editing, prefilled, and saves via PATCH', async () => {
-  listedEntries = dayEntriesFixture();
+  listedEntries = api.world.entries['2026-08-19'] = dayEntriesFixture();
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   const card = await screen.findByText('晨跑');
@@ -206,7 +166,7 @@ it('opens an entry for editing, prefilled, and saves via PATCH', async () => {
 });
 
 it('deletes an entry after confirmation', async () => {
-  listedEntries = dayEntriesFixture();
+  listedEntries = api.world.entries['2026-08-19'] = dayEntriesFixture();
   const alertSpy = jest.spyOn(Alert, 'alert');
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
@@ -309,7 +269,7 @@ it('creates a subcategory inline under the picked category', async () => {
 });
 
 it('rolls back and reports when persisting a reorder fails', async () => {
-  listedEntries = dayEntriesFixture();
+  listedEntries = api.world.entries['2026-08-19'] = dayEntriesFixture();
   const okFetch = globalThis.fetch as jest.Mock;
   globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
     if (init?.method === 'PUT') {
@@ -343,7 +303,7 @@ it('shows existing photos in edit mode and hides the add tile at the cap', async
     url: `https://signed/full${i}`,
     thumbUrl: `https://signed/thumb${i}`,
   }));
-  listedEntries = [
+  listedEntries = api.world.entries['2026-08-19'] = [
     {
       id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', authorId: 'u1',
       content: encodeContent({ title: '滿照片', note: '' }), photos: tenPhotos,

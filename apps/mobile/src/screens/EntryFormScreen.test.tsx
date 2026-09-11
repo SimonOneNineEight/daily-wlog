@@ -1,77 +1,33 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import { encodeContent } from '../entries/content';
+import { cat } from '../testing/fixtures';
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { EntryFormScreen } from './EntryFormScreen';
 
-const categories = [
-  { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 1 },
-];
+const categories = [{ ...cat.sport, position: 1 }];
 
-const realFetch = globalThis.fetch;
-let postedEntry: { date?: string; subcategoryId?: string } | null = null;
-let patchedEntry: { date?: string } | null = null;
-let categoryPosts: { name?: string; parentId?: string; color?: string }[] = [];
-let failCategoryPost = false;
+let api: MockApi;
 
 beforeEach(() => {
-  postedEntry = null;
-  patchedEntry = null;
-  categoryPosts = [];
-  failCategoryPost = false;
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
-    if (String(url).includes('/categories') && init?.method === 'POST') {
-      const body = JSON.parse(init.body ?? '{}');
-      if (failCategoryPost) {
-        return { ok: false, status: 500, json: async () => ({ message: 'nope' }) };
-      }
-      categoryPosts.push(body);
-      return {
-        ok: true,
-        json: async () => ({
-          id: `c-new-${categoryPosts.length}`,
-          name: body.name,
-          color: body.color,
-          icon: body.parentId ? 'tag' : (body.icon ?? 'tag'),
-          parentId: body.parentId,
-          position: 9,
-        }),
-      };
-    }
-    if (String(url).includes('/entries/') && init?.method === 'PATCH') {
-      patchedEntry = JSON.parse(init.body ?? '{}');
-      return {
-        ok: true,
-        json: async () => ({
-          id: 'e1',
-          date: patchedEntry?.date,
-          position: 1,
-          categoryId: 'c-sport',
-          authorId: 'u1',
-          content: encodeContent({ title: '晨跑', note: '' }),
-        }),
-      };
-    }
-    if (String(url).includes('/entries') && init?.method === 'POST') {
-      postedEntry = JSON.parse(init.body ?? '{}');
-      return {
-        ok: true,
-        json: async () => ({
-          id: 'e-new',
-          date: postedEntry?.date,
-          position: 1,
-          categoryId: 'c-sport',
-          authorId: 'u1',
-          content: encodeContent({ title: '晨跑', note: '' }),
-        }),
-      };
-    }
-    throw new Error(`unexpected fetch ${String(url)}`);
-  }) as jest.Mock;
+  api = installMockApi();
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
+
+// Assertion views over the recorded wire calls, replacing the old mock's
+// capture variables.
+const lastBody = (call?: [string, { body?: unknown } | undefined]) =>
+  call ? JSON.parse(typeof call[1]?.body === 'string' ? call[1].body : '{}') : null;
+const postedEntry = () => lastBody(api.entryPosts().at(-1));
+const patchedEntry = () => lastBody(api.find('PATCH', '/entries/'));
+const categoryPosts = () =>
+  api
+    .calls()
+    .filter(([u, init]) => String(u).includes('/categories') && init?.method === 'POST')
+    .map((call) => lastBody(call));
 
 function renderForm(overrides: Partial<React.ComponentProps<typeof EntryFormScreen>> = {}) {
   return render(
@@ -101,7 +57,7 @@ describe('date row (#24)', () => {
     expect(screen.getByText('日期')).toBeTruthy();
     expect(screen.getAllByText('8月17日 星期一').length).toBeGreaterThan(0);
     await fillAndSave();
-    expect(postedEntry?.date).toBe('2026-08-17');
+    expect(postedEntry()?.date).toBe('2026-08-17');
     expect(onDone).toHaveBeenCalledWith(true);
   });
 
@@ -117,7 +73,7 @@ describe('date row (#24)', () => {
     expect(screen.getAllByText('8月20日 星期四').length).toBeGreaterThan(0);
 
     await fillAndSave();
-    expect(postedEntry?.date).toBe('2026-08-20');
+    expect(postedEntry()?.date).toBe('2026-08-20');
   });
 
   it('steps the picker to a neighboring month before picking', async () => {
@@ -131,7 +87,7 @@ describe('date row (#24)', () => {
     });
 
     await fillAndSave();
-    expect(postedEntry?.date).toBe('2026-09-02');
+    expect(postedEntry()?.date).toBe('2026-09-02');
   });
 
   it("edit mode shows the entry's date and picking a new one drives the move (#25)", async () => {
@@ -156,7 +112,7 @@ describe('date row (#24)', () => {
     await act(async () => {
       fireEvent.press(screen.getByText('儲存'));
     });
-    expect(patchedEntry?.date).toBe('2026-08-12');
+    expect(patchedEntry()?.date).toBe('2026-08-12');
   });
 });
 
@@ -176,8 +132,8 @@ describe('category step (#28)', () => {
       fireEvent.press(screen.getByText('儲存'));
     });
 
-    expect(categoryPosts).toEqual([{ name: '夜跑', color: '#73B062', parentId: 'c-sport' }]);
-    expect(postedEntry?.subcategoryId).toBe('c-new-1');
+    expect(categoryPosts()).toEqual([{ name: '夜跑', color: '#73B062', parentId: 'c-sport' }]);
+    expect(postedEntry()?.subcategoryId).toBe('c-new-1');
   });
 
   it('creates nothing when the subcategory field is whitespace or cleared', async () => {
@@ -191,15 +147,15 @@ describe('category step (#28)', () => {
     await act(async () => {
       fireEvent.press(screen.getByText('儲存'));
     });
-    expect(categoryPosts).toEqual([]);
-    expect(postedEntry?.subcategoryId).toBeUndefined();
+    expect(categoryPosts()).toEqual([]);
+    expect(postedEntry()?.subcategoryId).toBeUndefined();
   });
 
   it('renders the save failure when the subcategory create fails', async () => {
     // The branching itself (no entry write, the Draft keeping the typed
     // name) is unit-tested at the pipeline's interface in entries/save.test;
     // the screen's job is mapping subcategoryFailed onto the error line.
-    failCategoryPost = true;
+    api.failures.categoryPost = true;
     const onDone = jest.fn();
     renderForm({ onDone });
     fireEvent.press(screen.getByText('運動'));
@@ -233,8 +189,8 @@ describe('category step (#28)', () => {
     await act(async () => {
       fireEvent.press(screen.getByText('儲存'));
     });
-    expect(categoryPosts).toEqual([{ name: '夜跑', color: '#73B062', parentId: 'c-sport' }]);
-    expect(postedEntry?.subcategoryId).toBe('c-new-1');
+    expect(categoryPosts()).toEqual([{ name: '夜跑', color: '#73B062', parentId: 'c-sport' }]);
+    expect(postedEntry()?.subcategoryId).toBe('c-new-1');
   });
 
   it('pins a 新增類別 row that opens the category editor sheet without typing', async () => {
@@ -247,7 +203,7 @@ describe('category step (#28)', () => {
       fireEvent.press(sheet.getByText('儲存'));
     });
 
-    expect(categoryPosts).toEqual([
+    expect(categoryPosts()).toEqual([
       { name: '閱讀', color: expect.any(String), icon: expect.any(String) },
     ]);
     // The sheet closes into the chosen-category state.
@@ -267,7 +223,7 @@ describe('category step (#28)', () => {
       fireEvent.press(sheet.getByText('儲存'));
     });
 
-    expect(categoryPosts).toEqual([
+    expect(categoryPosts()).toEqual([
       { name: '夜跑', color: '#73B062', parentId: 'c-sport' },
     ]);
     // The form lands on 運動 refined by the new 夜跑.

@@ -1,55 +1,26 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
+import { cat } from '../testing/fixtures';
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { CategorySheet } from './CategorySheet';
 import { nothingHidden } from './hidden';
 
 const categories = [
-  { id: 'c-work', name: '工作', color: '#4A93C4', icon: 'briefcase', position: 1, inUse: true, hasChildren: false },
-  { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 2, inUse: false, hasChildren: true },
-  { id: 'c-gym', name: '健身房', color: '#73B062', icon: 'tag', position: 1, parentId: 'c-sport', inUse: false, hasChildren: false },
-  { id: 'c-food', name: '美食', color: '#D3AE40', icon: 'utensils', position: 3, inUse: false, hasChildren: false },
+  { ...cat.work, inUse: true, hasChildren: false },
+  { ...cat.sport, inUse: false, hasChildren: true },
+  { ...cat.gym, inUse: false, hasChildren: false },
+  { ...cat.food, inUse: false, hasChildren: false },
 ];
 
-const realFetch = globalThis.fetch;
+let api: MockApi;
 
 beforeEach(() => {
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
-    const u = String(url);
-    if (u.includes('/categories') && init?.method === 'POST') {
-      const body = JSON.parse(init.body ?? '{}');
-      return {
-        ok: true,
-        json: async () => ({
-          id: 'c-new',
-          name: body.name,
-          color: body.color,
-          icon: body.icon ?? 'tag',
-          parentId: body.parentId,
-          position: 9,
-          inUse: false,
-          hasChildren: false,
-        }),
-      };
-    }
-    if (u.includes('/categories/') && init?.method === 'PATCH') {
-      return { ok: true, json: async () => ({ ...categories[1], ...JSON.parse(init.body ?? '{}') }) };
-    }
-    if (u.includes('/categories/') && init?.method === 'DELETE') {
-      return { ok: true, status: 204, json: async () => ({}) };
-    }
-    if (u.includes('/color-recents') && init?.method === 'PUT') {
-      return { ok: true, json: async () => ({ colors: [JSON.parse(init.body ?? '{}').color] }) };
-    }
-    if (u.includes('/color-recents')) {
-      return { ok: true, json: async () => ({ colors: ['#123456'] }) };
-    }
-    throw new Error(`unexpected fetch ${u}`);
-  }) as jest.Mock;
+  api = installMockApi({ colorRecents: ['#123456'] });
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 function renderSheet(overrides: Partial<React.ComponentProps<typeof CategorySheet>> = {}) {

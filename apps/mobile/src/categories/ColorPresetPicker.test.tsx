@@ -3,29 +3,20 @@ import { StyleSheet } from 'react-native';
 
 import { theme } from '../theme';
 
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { ColorPresetPicker } from './ColorPresetPicker';
 
 const clay = theme.categories.clay.base;
 const existingColors = ['#4A93C4', '#73B062', '#D3AE40'];
 
-const realFetch = globalThis.fetch;
+let api: MockApi;
 
 beforeEach(() => {
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
-    const u = String(url);
-    if (u.includes('/color-recents') && init?.method === 'PUT') {
-      const body = JSON.parse(init.body ?? '{}');
-      return { ok: true, json: async () => ({ colors: [body.color, '#123456', '#654321'] }) };
-    }
-    if (u.includes('/color-recents')) {
-      return { ok: true, json: async () => ({ colors: ['#123456', '#654321'] }) };
-    }
-    throw new Error(`unexpected fetch ${u}`);
-  }) as jest.Mock;
+  api = installMockApi({ colorRecents: ['#123456', '#654321'] });
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 function renderPicker(value: string = clay) {

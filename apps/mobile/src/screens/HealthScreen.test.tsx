@@ -1,18 +1,16 @@
 import { render, screen } from '@testing-library/react-native';
 
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { HealthScreen } from './HealthScreen';
 
 describe('HealthScreen', () => {
-  const realFetch = globalThis.fetch;
+  let api: MockApi;
   afterEach(() => {
-    globalThis.fetch = realFetch;
+    api.restore();
   });
 
   it('shows the API status and schema version from /health', async () => {
-    globalThis.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'ok', schemaVersion: 1 }),
-    }) as jest.Mock;
+    api = installMockApi();
 
     render(<HealthScreen />);
 
@@ -21,7 +19,7 @@ describe('HealthScreen', () => {
   });
 
   it('shows an unreachable message when the request fails', async () => {
-    globalThis.fetch = jest.fn().mockRejectedValue(new Error('network down')) as jest.Mock;
+    api = installMockApi({ failures: { health: 'reject' } });
 
     render(<HealthScreen />);
 
@@ -29,10 +27,7 @@ describe('HealthScreen', () => {
   });
 
   it('shows an unreachable message when the API reports unhealthy', async () => {
-    globalThis.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({ message: 'database unreachable' }),
-    }) as jest.Mock;
+    api = installMockApi({ failures: { health: 'unhealthy' } });
 
     render(<HealthScreen />);
 

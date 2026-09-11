@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { installMockApi, type MockApi } from './testing/mockApi';
 import { AppRoot } from './AppRoot';
 
 type MockSession = { access_token: string; user: { id: string } };
@@ -41,30 +42,16 @@ jest.mock('expo-apple-authentication', () => ({
   signInAsync: jest.fn(),
 }));
 
-const realFetch = globalThis.fetch;
+let api: MockApi;
 
 beforeEach(() => {
   mockAuthState.listeners.length = 0;
   mockAuthState.session = null;
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { headers?: Record<string, string>; body?: string }) => {
-    if (String(url).endsWith('/health')) {
-      return { ok: true, json: async () => ({ status: 'ok', schemaVersion: 1 }) };
-    }
-    if (String(url).endsWith('/me')) {
-      return { ok: true, json: async () => ({ userId: 'u1', journalId: 'j1', categories: [] }) };
-    }
-    if (String(url).includes('/months/')) {
-      return { ok: true, json: async () => ({ days: [] }) };
-    }
-    if (String(url).includes('/entries')) {
-      return { ok: true, json: async () => ({ entries: [] }) };
-    }
-    throw new Error(`unexpected fetch ${String(url)}`);
-  }) as jest.Mock;
+  api = installMockApi();
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
 it('shows the sign-in screen when no session exists', async () => {
@@ -102,23 +89,8 @@ it('returns to the sign-in screen on sign-out through settings', async () => {
 
 it('gates a deactivated account and restores only on the deliberate tap', async () => {
   mockAuthState.session = { access_token: 'token-1', user: { id: 'u1' } };
-  let deactivated = true;
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string }) => {
-    const u = String(url);
-    if (u.endsWith('/me/reactivate') && init?.method === 'POST') {
-      deactivated = false;
-      return { ok: true, json: async () => ({ userId: 'u1', journalId: 'j1', categories: [] }) };
-    }
-    if (u.endsWith('/me')) {
-      if (deactivated) {
-        return { ok: false, status: 403, json: async () => ({ message: 'account is deactivated' }) };
-      }
-      return { ok: true, json: async () => ({ userId: 'u1', journalId: 'j1', categories: [] }) };
-    }
-    if (u.includes('/months/')) return { ok: true, json: async () => ({ days: [] }) };
-    if (u.includes('/entries')) return { ok: true, json: async () => ({ entries: [] }) };
-    throw new Error(`unexpected fetch ${u}`);
-  }) as jest.Mock;
+  api.restore();
+  api = installMockApi({ deactivated: true });
 
   render(<AppRoot />);
   // A session restore lands on the gate, never silently back in the app.

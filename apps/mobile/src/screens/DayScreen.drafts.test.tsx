@@ -4,104 +4,29 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { encodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { saveDraft } from '../entries/drafts';
+import { cat } from '../testing/fixtures';
+import { installMockApi, type MockApi } from '../testing/mockApi';
 import { DayScreen } from './DayScreen';
 
 const categories = [
-  { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 1 },
-  { id: 'c-food', name: '美食', color: '#D3AE40', icon: 'utensils', position: 2 },
+  { ...cat.sport, position: 1 },
+  { ...cat.food, position: 2 },
 ];
 
-const realFetch = globalThis.fetch;
-let listedEntries: object[] = [];
-// Failure switches, flipped mid-test to play the airplane-mode story.
-let failEntryWrites = false;
-let failPresign = false;
-// The mock server's idempotency memory (#17): the first 201 for a key is
-// replayed verbatim on the same key, like the real InsertEntry.
-let entriesByKey: Record<string, object> = {};
+let api: MockApi;
 
 beforeEach(async () => {
   await AsyncStorage.clear();
-  listedEntries = [];
-  failEntryWrites = false;
-  failPresign = false;
-  entriesByKey = {};
-  globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
-    const u = String(url);
-    const method = init?.method ?? 'GET';
-    if (u.startsWith('file://')) {
-      // A draft photo's local copy; "gone" plays a cache file the OS purged.
-      if (u.includes('gone')) throw new TypeError('Network request failed');
-      return { ok: true, blob: async () => new Blob(['bytes']) };
-    }
-    if (u.startsWith('https://store/up/')) {
-      return { ok: true, json: async () => ({}) };
-    }
-    if (u.endsWith('/photos/presign') && method === 'POST') {
-      if (failPresign) throw new TypeError('Network request failed');
-      const count = JSON.parse(init?.body ?? '{}').count as number;
-      return {
-        ok: true,
-        json: async () => ({
-          uploads: Array.from({ length: count }, (_, i) => ({
-            objectPath: `u/e/${i}.jpg`,
-            thumbPath: `u/e/${i}_t.jpg`,
-            uploadUrl: `https://store/up/${i}`,
-            thumbUploadUrl: `https://store/up/${i}t`,
-          })),
-        }),
-      };
-    }
-    if (u.endsWith('/photos') && method === 'POST') {
-      return { ok: true, status: 201, json: async () => ({ photos: [] }) };
-    }
-    if (method === 'PATCH') {
-      if (failEntryWrites) throw new TypeError('Network request failed');
-      const body = JSON.parse(init?.body ?? '{}');
-      return {
-        ok: true,
-        json: async () => ({
-          id: u.split('/').pop(),
-          date: '2026-08-19',
-          position: 1,
-          categoryId: body.categoryId,
-          authorId: 'u1',
-          content: body.content,
-        }),
-      };
-    }
-    if (u.endsWith('/entries') && method === 'POST') {
-      if (failEntryWrites) throw new TypeError('Network request failed');
-      const body = JSON.parse(init?.body ?? '{}');
-      const replayed = body.idempotencyKey && entriesByKey[body.idempotencyKey];
-      if (replayed) {
-        return { ok: true, json: async () => replayed };
-      }
-      const created = {
-        id: 'e-new',
-        date: body.date,
-        position: 1,
-        categoryId: body.categoryId,
-        authorId: 'u1',
-        content: body.content,
-      };
-      if (body.idempotencyKey) entriesByKey[body.idempotencyKey] = created;
-      return { ok: true, json: async () => created };
-    }
-    if (u.includes('/entries')) {
-      return { ok: true, json: async () => ({ entries: listedEntries }) };
-    }
-    throw new Error(`unexpected fetch ${u}`);
-  }) as jest.Mock;
+  // "gone" plays a draft photo whose cache file the OS purged.
+  api = installMockApi({ purgedFileMarker: 'gone' });
 });
 
 afterEach(() => {
-  globalThis.fetch = realFetch;
+  api.restore();
 });
 
-const calls = () => (globalThis.fetch as jest.Mock).mock.calls;
-const entryPosts = () =>
-  calls().filter(([u, init]) => String(u).endsWith('/entries') && init?.method === 'POST');
+const calls = () => api.calls();
+const entryPosts = () => api.entryPosts();
 
 const storedDrafts = async (): Promise<EntryDraft[]> => {
   const raw = await AsyncStorage.getItem('entryDrafts.v1');
@@ -109,7 +34,7 @@ const storedDrafts = async (): Promise<EntryDraft[]> => {
 };
 
 it('keeps a failed save as a draft, resurfaces it after relaunch, and clears it on a successful retry', async () => {
-  failEntryWrites = true;
+  api.failures.entryWrites = true;
   const first = render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
   fireEvent.press(await screen.findByLabelText('新增紀錄'));
   fireEvent.press(screen.getByText('運動'));
@@ -130,7 +55,7 @@ it('keeps a failed save as a draft, resurfaces it after relaunch, and clears it 
 
   // Relaunch: a fresh mount, the network back.
   first.unmount();
-  failEntryWrites = false;
+  api.failures.entryWrites = false;
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   const row = await screen.findByText('晨跑');
@@ -166,7 +91,7 @@ it('keeps a failed save as a draft, resurfaces it after relaunch, and clears it 
 });
 
 it('pushes edits made to a kept draft onto the replayed Entry instead of losing them', async () => {
-  failEntryWrites = true;
+  api.failures.entryWrites = true;
   const first = render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
   fireEvent.press(await screen.findByLabelText('新增紀錄'));
   fireEvent.press(screen.getByText('運動'));
@@ -180,16 +105,16 @@ it('pushes edits made to a kept draft onto the replayed Entry instead of losing 
 
   // The lost-response world: the create actually landed server-side before
   // the failure, so the server already holds the original under this key.
-  entriesByKey[kept[0].id] = {
+  api.seedReplay(kept[0].id, {
     id: 'e-orig',
     date: '2026-08-19',
     position: 1,
     categoryId: 'c-sport',
     authorId: 'u1',
     content: kept[0].content,
-  };
+  });
   first.unmount();
-  failEntryWrites = false;
+  api.failures.entryWrites = false;
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   // The user edits the kept draft before retrying.
@@ -212,7 +137,7 @@ it('pushes edits made to a kept draft onto the replayed Entry instead of losing 
 });
 
 it('keeps a failed edit pinned to its Entry and retries as an update', async () => {
-  listedEntries = [
+  api.world.entries['2026-08-19'] = [
     { id: 'e1', date: '2026-08-19', position: 1, categoryId: 'c-sport', authorId: 'u1', content: encodeContent({ title: '晨跑', note: '河濱' }) },
   ];
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
@@ -222,7 +147,7 @@ it('keeps a failed edit pinned to its Entry and retries as an update', async () 
     fireEvent.press(card);
   });
   fireEvent.changeText(screen.getByPlaceholderText('標題'), '夜跑');
-  failEntryWrites = true;
+  api.failures.entryWrites = true;
   await act(async () => {
     fireEvent.press(screen.getByText('儲存'));
   });
@@ -239,7 +164,7 @@ it('keeps a failed edit pinned to its Entry and retries as an update', async () 
   const row = await screen.findByText('夜跑');
   expect(screen.getByText('尚未儲存')).toBeTruthy();
 
-  failEntryWrites = false;
+  api.failures.entryWrites = false;
   await act(async () => {
     fireEvent.press(row);
   });
@@ -263,7 +188,7 @@ it('keeps the photos when only the upload fails, then retries as an update with 
     photos: [{ fullUri: 'file:///a.jpg', thumbUri: 'file:///a_t.jpg' }],
     savedAt: '2026-08-19T12:00:00Z',
   });
-  failPresign = true;
+  api.failures.presign = true;
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
   const row = await screen.findByText('拍照');
@@ -282,7 +207,7 @@ it('keeps the photos when only the upload fails, then retries as an update with 
   expect(kept[0].entryId).toBe('e-new');
   expect(kept[0].photos).toEqual([{ fullUri: 'file:///a.jpg', thumbUri: 'file:///a_t.jpg' }]);
 
-  failPresign = false;
+  api.failures.presign = false;
   await act(async () => {
     fireEvent.press(screen.getByText('儲存'));
   });
