@@ -68,9 +68,9 @@ func (h handlers) ProvisionMe(ctx context.Context, req apigen.ProvisionMeRequest
 	// seed itself is guarded in SQL on "no categories yet", so the hint can
 	// never rewrite an existing world; anything but a valid en reads as
 	// zh-TW (existing clients send no body at all).
-	language := "zh-TW"
+	language := string(apigen.ZhTW)
 	if req.Body != nil && req.Body.Language != nil && *req.Body.Language == apigen.En {
-		language = "en"
+		language = string(apigen.En)
 	}
 	if err := h.queries.ProvisionUser(ctx, dbgen.ProvisionUserParams{UserID: userID, Language: language}); err != nil {
 		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
