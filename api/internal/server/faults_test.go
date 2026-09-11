@@ -92,15 +92,19 @@ func (f failingQuerier) ListPurgeDue(context.Context, pgtype.Timestamptz) ([]str
 func (f failingQuerier) ListUserPhotoPaths(context.Context, string) ([]dbgen.ListUserPhotoPathsRow, error) {
 	return nil, nil
 }
-func (f failingQuerier) PurgeUserEntries(context.Context, string) (int64, error)         { return 0, nil }
-func (f failingQuerier) PurgeUserChildCategories(context.Context, string) (int64, error) { return 0, nil }
+func (f failingQuerier) PurgeUserEntries(context.Context, string) (int64, error) { return 0, nil }
+func (f failingQuerier) PurgeUserChildCategories(context.Context, string) (int64, error) {
+	return 0, nil
+}
 func (f failingQuerier) PurgeUserParentCategories(context.Context, string) (int64, error) {
 	return 0, nil
 }
 func (f failingQuerier) PurgeUserColorRecents(context.Context, string) (int64, error) { return 0, nil }
 func (f failingQuerier) PurgeUserJournal(context.Context, string) (int64, error)      { return 0, nil }
 func (f failingQuerier) PurgeUserRow(context.Context, string) (int64, error)          { return 0, nil }
-func (f failingQuerier) ProvisionUser(context.Context, string) error     { return f.provisionErr }
+func (f failingQuerier) ProvisionUser(context.Context, dbgen.ProvisionUserParams) error {
+	return f.provisionErr
+}
 func (f failingQuerier) GetJournal(context.Context, string) (string, error) {
 	return "journal-id", f.journalErr
 }

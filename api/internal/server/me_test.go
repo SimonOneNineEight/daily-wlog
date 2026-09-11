@@ -122,6 +122,24 @@ func postMe(t *testing.T, ts *httptest.Server, token string) *http.Response {
 	return resp
 }
 
+// postMeLang provisions with a language field (#36): the one-time seeding
+// hint naming the Starter Categories.
+func postMeLang(t *testing.T, ts *httptest.Server, token, language string) *http.Response {
+	t.Helper()
+	body, _ := json.Marshal(map[string]string{"language": language})
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/me", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("build /me request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /me: %v", err)
+	}
+	return resp
+}
+
 type meBody struct {
 	UserID     string `json:"userId"`
 	JournalID  string `json:"journalId"`
@@ -224,6 +242,63 @@ func TestFirstSignInProvisionsWorld(t *testing.T) {
 		}
 		if got.ID == "" {
 			t.Errorf("category %q has no id", got.Name)
+		}
+	}
+}
+
+// The Starter Category sets (#36): en seeds English names with the same
+// icons and colors as the Chinese set; zh-TW or an absent field seeds the
+// current Chinese set exactly as today.
+func assertStarterCategories(t *testing.T, me meBody, names [5]string) {
+	t.Helper()
+	if len(me.Categories) != 5 {
+		t.Fatalf("got %d categories, want 5 seeds", len(me.Categories))
+	}
+	colors := [5]string{"#4A93C4", "#73B062", "#D3AE40", "#D56E5C", "#A26FBD"}
+	icons := [5]string{"briefcase", "dumbbell", "utensils", "plane", "book-open"}
+	for i := range names {
+		got := me.Categories[i]
+		if got.Name != names[i] || got.Color != colors[i] || got.Icon != icons[i] {
+			t.Errorf("category %d = %q/%q/%q, want %q/%q/%q",
+				i, got.Name, got.Color, got.Icon, names[i], colors[i], icons[i])
+		}
+	}
+}
+
+func TestProvisionSeedsEnglishStarterCategories(t *testing.T) {
+	ts := newTestServer(t)
+	resp := postMeLang(t, ts, signUpTestUser(t), "en")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	assertStarterCategories(t, decodeMe(t, resp),
+		[5]string{"Work", "Exercise", "Food", "Travel", "Personal"})
+}
+
+func TestProvisionSeedsChineseWhenExplicit(t *testing.T) {
+	ts := newTestServer(t)
+	resp := postMeLang(t, ts, signUpTestUser(t), "zh-TW")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	assertStarterCategories(t, decodeMe(t, resp),
+		[5]string{"工作", "運動", "美食", "旅遊", "個人"})
+}
+
+// The language field is a one-time seeding hint: a later provision call in
+// another App Language must leave the existing Categories untouched — no
+// renames, no second seed set (#36).
+func TestLaterLanguageNeverRewritesCategories(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+
+	first := decodeMe(t, postMe(t, ts, token))
+	second := decodeMe(t, postMeLang(t, ts, token, "en"))
+
+	assertStarterCategories(t, second, [5]string{"工作", "運動", "美食", "旅遊", "個人"})
+	for i := range first.Categories {
+		if second.Categories[i].ID != first.Categories[i].ID {
+			t.Errorf("category %d id changed after an en re-provision", i)
 		}
 	}
 }

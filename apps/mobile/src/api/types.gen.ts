@@ -313,6 +313,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ProvisionMe: {
+            /**
+             * @description The client's resolved App Language at signup.
+             * @enum {string}
+             */
+            language?: "zh-TW" | "en";
+        };
         Me: {
             userId: string;
             journalId: string;
@@ -501,7 +508,12 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        /** @description Optional one-time seeding hint (#36): the App Language in effect at signup names the five Starter Categories. Absent or zh-TW seeds the Traditional Chinese set; en seeds Work, Exercise, Food, Travel, Personal with the same icons and colors. Only the first provisioning seeds — an account that already has Categories is never reseeded or renamed, whatever language later calls carry. */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ProvisionMe"];
+            };
+        };
         responses: {
             /** @description The signed-in User's provisioned world. */
             200: {

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -24,6 +25,24 @@ const (
 func (e HealthStatus) Valid() bool {
 	switch e {
 	case Ok:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProvisionMeLanguage.
+const (
+	En   ProvisionMeLanguage = "en"
+	ZhTW ProvisionMeLanguage = "zh-TW"
+)
+
+// Valid indicates whether the value is a known member of the ProvisionMeLanguage enum.
+func (e ProvisionMeLanguage) Valid() bool {
+	switch e {
+	case En:
+		return true
+	case ZhTW:
 		return true
 	default:
 		return false
@@ -167,6 +186,15 @@ type PresignPhotos struct {
 	Count int `json:"count"`
 }
 
+// ProvisionMe defines model for ProvisionMe.
+type ProvisionMe struct {
+	// Language The client's resolved App Language at signup.
+	Language *ProvisionMeLanguage `json:"language,omitempty"`
+}
+
+// ProvisionMeLanguage The client's resolved App Language at signup.
+type ProvisionMeLanguage string
+
 // RegisterPhoto defines model for RegisterPhoto.
 type RegisterPhoto struct {
 	ObjectPath string `json:"objectPath"`
@@ -289,6 +317,9 @@ type ReorderPhotosJSONRequestBody = ReorderPhotos
 
 // PresignPhotosJSONRequestBody defines body for PresignPhotos for application/json ContentType.
 type PresignPhotosJSONRequestBody = PresignPhotos
+
+// ProvisionMeJSONRequestBody defines body for ProvisionMe for application/json ContentType.
+type ProvisionMeJSONRequestBody = ProvisionMe
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -2155,6 +2186,7 @@ func (response DeactivateMe500JSONResponse) VisitDeactivateMeResponse(w http.Res
 }
 
 type ProvisionMeRequestObject struct {
+	Body *ProvisionMeJSONRequestBody
 }
 
 type ProvisionMeResponseObject interface {
@@ -3001,6 +3033,16 @@ func (sh *strictHandler) DeactivateMe(w http.ResponseWriter, r *http.Request) {
 // ProvisionMe operation middleware
 func (sh *strictHandler) ProvisionMe(w http.ResponseWriter, r *http.Request) {
 	var request ProvisionMeRequestObject
+
+	var body ProvisionMeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ProvisionMe(ctx, request.(ProvisionMeRequestObject))

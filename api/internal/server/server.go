@@ -51,7 +51,7 @@ func (h handlers) GetHealth(ctx context.Context, _ apigen.GetHealthRequestObject
 	return apigen.GetHealth200JSONResponse{Status: "ok", SchemaVersion: int(version)}, nil
 }
 
-func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestObject) (apigen.ProvisionMeResponseObject, error) {
+func (h handlers) ProvisionMe(ctx context.Context, req apigen.ProvisionMeRequestObject) (apigen.ProvisionMeResponseObject, error) {
 	userID := auth.UserID(ctx)
 	// A deactivated account never auto-reactivates here: the app provisions
 	// on every launch, so an auto-restoring /me would let any still-signed-in
@@ -64,7 +64,15 @@ func (h handlers) ProvisionMe(ctx context.Context, _ apigen.ProvisionMeRequestOb
 	if err == nil && deletedAt.Valid {
 		return apigen.ProvisionMe403JSONResponse{Message: "account is deactivated"}, nil
 	}
-	if err := h.queries.ProvisionUser(ctx, userID); err != nil {
+	// The signup-time App Language names the Starter Categories (#36). The
+	// seed itself is guarded in SQL on "no categories yet", so the hint can
+	// never rewrite an existing world; anything but a valid en reads as
+	// zh-TW (existing clients send no body at all).
+	language := "zh-TW"
+	if req.Body != nil && req.Body.Language != nil && *req.Body.Language == apigen.En {
+		language = "en"
+	}
+	if err := h.queries.ProvisionUser(ctx, dbgen.ProvisionUserParams{UserID: userID, Language: language}); err != nil {
 		return apigen.ProvisionMe500JSONResponse(h.failure(ctx, "provisioning failed", err)), nil
 	}
 	world, err := h.world(ctx, userID)

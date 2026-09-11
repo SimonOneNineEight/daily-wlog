@@ -5,6 +5,7 @@ import type { Me } from './api/client';
 import { ApiError, provisionMe, reactivateMe } from './api/client';
 import { supabase } from './auth/supabase';
 import { useSession } from './auth/useSession';
+import { useAppLanguage } from './i18n/AppLanguageProvider';
 import { DeactivatedScreen } from './screens/DeactivatedScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { SignInScreen } from './screens/SignInScreen';
@@ -14,6 +15,9 @@ import { SignInScreen } from './screens/SignInScreen';
 // idempotent /me call, whose categories feed the entry form.
 export function AppRoot() {
   const session = useSession();
+  // The resolved App Language rides along as /me's one-time seeding hint
+  // (#36): a brand-new account gets Starter Categories in this language.
+  const { language } = useAppLanguage();
   const accessToken = session?.access_token;
   const userId = session?.user.id;
   const [world, setWorld] = useState<{ userId: string; me: Me } | null>(null);
@@ -26,7 +30,7 @@ export function AppRoot() {
   useEffect(() => {
     if (!accessToken || !userId) return;
     let active = true;
-    provisionMe(accessToken)
+    provisionMe(accessToken, language)
       .then((me) => {
         if (!active) return;
         setWorld({ userId, me });
@@ -42,7 +46,7 @@ export function AppRoot() {
     return () => {
       active = false;
     };
-  }, [accessToken, userId, worldVersion]);
+  }, [accessToken, userId, worldVersion, language]);
 
   // Staleness is keyed by user, not token: a routine token refresh keeps the
   // provisioned world, while signing in as a different user discards it.

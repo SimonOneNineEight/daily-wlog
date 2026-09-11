@@ -85,13 +85,13 @@ func (q *Queries) ListCategories(ctx context.Context, userID string) ([]ListCate
 const provisionUser = `-- name: ProvisionUser :exec
 with new_user as (
     insert into users (id)
-    values ($1::uuid)
+    values ($2::uuid)
     on conflict (id) do nothing
     returning id
 ), the_user as (
     select id from new_user
     union all
-    select id from users where id = $1::uuid
+    select id from users where id = $2::uuid
     limit 1
 ), new_journal as (
     insert into journals (owner_id)
@@ -102,21 +102,37 @@ insert into categories (user_id, name, color, icon, position)
 select u.id, seed.name, seed.color, seed.icon, seed.position
 from the_user u
 cross join (values
-    ('工作', '#4A93C4', 'briefcase', 1),
-    ('運動', '#73B062', 'dumbbell', 2),
-    ('美食', '#D3AE40', 'utensils', 3),
-    ('旅遊', '#D56E5C', 'plane', 4),
-    ('個人', '#A26FBD', 'book-open', 5)
-) as seed (name, color, icon, position)
+    ('zh-TW', '工作', '#4A93C4', 'briefcase', 1),
+    ('zh-TW', '運動', '#73B062', 'dumbbell', 2),
+    ('zh-TW', '美食', '#D3AE40', 'utensils', 3),
+    ('zh-TW', '旅遊', '#D56E5C', 'plane', 4),
+    ('zh-TW', '個人', '#A26FBD', 'book-open', 5),
+    ('en', 'Work', '#4A93C4', 'briefcase', 1),
+    ('en', 'Exercise', '#73B062', 'dumbbell', 2),
+    ('en', 'Food', '#D3AE40', 'utensils', 3),
+    ('en', 'Travel', '#D56E5C', 'plane', 4),
+    ('en', 'Personal', '#A26FBD', 'book-open', 5)
+) as seed (language, name, color, icon, position)
+where seed.language = $1::text
+  and not exists (select 1 from categories c where c.user_id = $2::uuid)
 on conflict do nothing
 `
 
+type ProvisionUserParams struct {
+	Language string
+	UserID   string
+}
+
 // First-sign-in provisioning in one atomic statement: User, Journal, and the
-// five seeded categories (colors/icons per the design canvas). Every level
-// conflict-skips, so re-sign-in and concurrent first sign-ins are no-ops.
-// CTE chaining (each part reads the_user) forces execution order; FK checks
-// fire at end of statement, when the user row exists.
-func (q *Queries) ProvisionUser(ctx context.Context, userID string) error {
-	_, err := q.db.Exec(ctx, provisionUser, userID)
+// five Starter Categories (colors/icons per the design canvas), named in the
+// signup-time App Language (#36: zh-TW or en; the handler normalizes).
+// Every level conflict-skips, so re-sign-in and concurrent first sign-ins
+// are no-ops. Seeding is guarded on "no categories yet": the language is a
+// one-time hint, so a later call in another App Language (or after renames)
+// never inserts a second set. CTE chaining (each part reads the_user)
+// forces execution order; FK checks fire at end of statement, when the user
+// row exists.
+func (q *Queries) ProvisionUser(ctx context.Context, arg ProvisionUserParams) error {
+	_, err := q.db.Exec(ctx, provisionUser, arg.Language, arg.UserID)
 	return err
 }
