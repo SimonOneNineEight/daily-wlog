@@ -12,21 +12,56 @@ select exists (
 -- name: InsertEntry :one
 -- Position is assigned at the end of the date's existing order in the same
 -- statement, so multiple Entries per day stack in creation order.
-insert into entries (journal_id, author_id, entry_date, position, category_id, subcategory_id, content)
-values (
-    @journal_id::uuid,
-    @author_id::uuid,
-    @entry_date::date,
-    (
-        select coalesce(max(position), 0) + 1
-        from entries
-        where journal_id = @journal_id::uuid and entry_date = @entry_date::date
-    ),
-    @category_id::uuid,
-    sqlc.narg(subcategory_id)::uuid,
-    @content
+-- Retry safety (#17): a keyed create that already landed arbiters on the
+-- partial unique index and inserts nothing; the union-all arm then returns
+-- the original row, so a lost-response retry gets the Entry the first
+-- attempt made — provision.sql's insert-or-fetch shape. Two truly
+-- concurrent same-key creates can still 500 (the loser's snapshot predates
+-- the winner's commit, so both arms come back empty); the sequential
+-- lost-response retry this guards is unaffected, and the kept draft
+-- self-heals on the next try.
+with new_entry as (
+    insert into entries (journal_id, author_id, entry_date, position, category_id, subcategory_id, content, idempotency_key)
+    values (
+        @journal_id::uuid,
+        @author_id::uuid,
+        @entry_date::date,
+        (
+            select coalesce(max(position), 0) + 1
+            from entries
+            where journal_id = @journal_id::uuid and entry_date = @entry_date::date
+        ),
+        @category_id::uuid,
+        sqlc.narg(subcategory_id)::uuid,
+        @content,
+        sqlc.narg(idempotency_key)::text
+    )
+    on conflict (journal_id, idempotency_key) where idempotency_key is not null
+    do nothing
+    returning id, entry_date, position, category_id, subcategory_id, author_id, content
 )
-returning id, position;
+select
+    id,
+    to_char(entry_date, 'YYYY-MM-DD') as entry_date,
+    position,
+    category_id,
+    subcategory_id,
+    author_id,
+    content
+from new_entry
+union all
+select
+    id,
+    to_char(entry_date, 'YYYY-MM-DD') as entry_date,
+    position,
+    category_id,
+    subcategory_id,
+    author_id,
+    content
+from entries
+where journal_id = @journal_id::uuid
+  and idempotency_key = sqlc.narg(idempotency_key)::text
+limit 1;
 
 -- name: UpdateEntry :one
 -- Full replacement of the editable fields; journal_id scoping means a User

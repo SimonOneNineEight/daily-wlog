@@ -966,6 +966,14 @@ components:
         subcategoryId:
           type: string
           description: Optional refinement; must be a child of categoryId.
+        idempotencyKey:
+          type: string
+          maxLength: 64
+          description: >
+            Client-generated retry key: replaying a create with the same key
+            returns the original Entry instead of creating another, closing
+            the lost-response window. The mobile client sends its draft id.
+            Scoped to the signed-in User's Journal.
     UpdateEntry:
       type: object
       required:

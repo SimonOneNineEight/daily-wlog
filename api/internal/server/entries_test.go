@@ -167,6 +167,10 @@ func TestCreateEntryValidation(t *testing.T) {
 		"malformed category":  {"date": "2026-08-19", "categoryId": "not-a-uuid", "content": "x"},
 		"unknown category":    {"date": "2026-08-19", "categoryId": "7f000000-0000-4000-8000-000000000000", "content": "x"},
 		"stranger's category": {"date": "2026-08-19", "categoryId": strangerCategory, "content": "x"},
+		"oversized idempotency key": {
+			"date": "2026-08-19", "categoryId": categoryID, "content": "x",
+			"idempotencyKey": strings.Repeat("k", 65),
+		},
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -223,5 +227,80 @@ func TestListEntriesValidation(t *testing.T) {
 	}
 	if len(list.Entries) != 0 {
 		t.Errorf("empty date listed %d entries, want 0", len(list.Entries))
+	}
+}
+
+func TestCreateEntryIdempotentReplay(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	categoryID := provisionedCategory(t, ts, token)
+
+	// The lost-response window (#17): the create landed but the client never
+	// saw the 201, so it retries the byte-identical body, same key.
+	body := map[string]string{
+		"date": "2026-08-19", "categoryId": categoryID, "content": "kept once",
+		"idempotencyKey": "d-mfz3-walk01",
+	}
+	firstResp := createEntry(t, ts, token, body)
+	if firstResp.StatusCode != http.StatusCreated {
+		t.Fatalf("first status = %d, want 201", firstResp.StatusCode)
+	}
+	first := decodeEntry(t, firstResp)
+
+	replayResp := createEntry(t, ts, token, body)
+	if replayResp.StatusCode != http.StatusCreated {
+		t.Fatalf("replay status = %d, want 201", replayResp.StatusCode)
+	}
+	replay := decodeEntry(t, replayResp)
+	if replay.ID != first.ID || replay.Position != first.Position {
+		t.Errorf("replay made a new Entry: first %+v, replay %+v", first, replay)
+	}
+	if replay.Content != "kept once" || replay.Date != "2026-08-19" || replay.CategoryID != categoryID {
+		t.Errorf("replay echo wrong: %+v", replay)
+	}
+
+	// A different key is an ordinary create.
+	other := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-08-19", "categoryId": categoryID, "content": "second",
+		"idempotencyKey": "d-mfz3-walk02",
+	}))
+	if other.ID == first.ID {
+		t.Error("a different key replayed the first Entry")
+	}
+	if other.Position != 2 {
+		t.Errorf("second entry position = %d, want 2", other.Position)
+	}
+
+	if entries := listDay(t, ts, token, "2026-08-19"); len(entries) != 2 {
+		t.Errorf("day holds %d entries, want 2 — the replay duplicated", len(entries))
+	}
+}
+
+func TestIdempotencyKeysArePerUser(t *testing.T) {
+	ts := newTestServer(t)
+	tokenA := signUpTestUser(t)
+	categoryA := provisionedCategory(t, ts, tokenA)
+	tokenB := signUpTestUser(t)
+	categoryB := provisionedCategory(t, ts, tokenB)
+
+	// Draft ids are generated per device; two Users can collide on the same
+	// key string without ever touching each other's Journals.
+	const sharedKey = "d-mfz3-shared"
+	entryA := decodeEntry(t, createEntry(t, ts, tokenA, map[string]string{
+		"date": "2026-08-19", "categoryId": categoryA, "content": "A 的紀錄",
+		"idempotencyKey": sharedKey,
+	}))
+	entryB := decodeEntry(t, createEntry(t, ts, tokenB, map[string]string{
+		"date": "2026-08-19", "categoryId": categoryB, "content": "B 的紀錄",
+		"idempotencyKey": sharedKey,
+	}))
+	if entryB.ID == entryA.ID {
+		t.Error("the same key crossed users and replayed another Journal's Entry")
+	}
+	if entriesA := listDay(t, ts, tokenA, "2026-08-19"); len(entriesA) != 1 {
+		t.Errorf("user A holds %d entries, want 1", len(entriesA))
+	}
+	if entriesB := listDay(t, ts, tokenB, "2026-08-19"); len(entriesB) != 1 {
+		t.Errorf("user B holds %d entries, want 1", len(entriesB))
 	}
 }

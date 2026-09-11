@@ -54,39 +54,80 @@ func (q *Queries) DeleteEntry(ctx context.Context, arg DeleteEntryParams) (int64
 }
 
 const insertEntry = `-- name: InsertEntry :one
-insert into entries (journal_id, author_id, entry_date, position, category_id, subcategory_id, content)
-values (
-    $1::uuid,
-    $2::uuid,
-    $3::date,
-    (
-        select coalesce(max(position), 0) + 1
-        from entries
-        where journal_id = $1::uuid and entry_date = $3::date
-    ),
-    $4::uuid,
-    $5::uuid,
-    $6
+with new_entry as (
+    insert into entries (journal_id, author_id, entry_date, position, category_id, subcategory_id, content, idempotency_key)
+    values (
+        $1::uuid,
+        $2::uuid,
+        $3::date,
+        (
+            select coalesce(max(position), 0) + 1
+            from entries
+            where journal_id = $1::uuid and entry_date = $3::date
+        ),
+        $4::uuid,
+        $5::uuid,
+        $6,
+        $7::text
+    )
+    on conflict (journal_id, idempotency_key) where idempotency_key is not null
+    do nothing
+    returning id, entry_date, position, category_id, subcategory_id, author_id, content
 )
-returning id, position
+select
+    id,
+    to_char(entry_date, 'YYYY-MM-DD') as entry_date,
+    position,
+    category_id,
+    subcategory_id,
+    author_id,
+    content
+from new_entry
+union all
+select
+    id,
+    to_char(entry_date, 'YYYY-MM-DD') as entry_date,
+    position,
+    category_id,
+    subcategory_id,
+    author_id,
+    content
+from entries
+where journal_id = $1::uuid
+  and idempotency_key = $7::text
+limit 1
 `
 
 type InsertEntryParams struct {
-	JournalID     string
-	AuthorID      string
-	EntryDate     pgtype.Date
-	CategoryID    string
-	SubcategoryID *string
-	Content       []byte
+	JournalID      string
+	AuthorID       string
+	EntryDate      pgtype.Date
+	CategoryID     string
+	SubcategoryID  *string
+	Content        []byte
+	IdempotencyKey pgtype.Text
 }
 
 type InsertEntryRow struct {
-	ID       string
-	Position int32
+	ID            string
+	EntryDate     string
+	Position      int32
+	CategoryID    string
+	SubcategoryID *string
+	AuthorID      string
+	Content       []byte
 }
 
 // Position is assigned at the end of the date's existing order in the same
 // statement, so multiple Entries per day stack in creation order.
+// Retry safety (#17): a keyed create that already landed arbiters on the
+// partial unique index and inserts nothing; the union-all arm then returns
+// the original row, so a lost-response retry gets the Entry the first
+// attempt made — provision.sql's insert-or-fetch shape. Two truly
+// concurrent same-key creates can still 500 (the loser's snapshot predates
+// the winner's commit, so both arms come back empty); the sequential
+// lost-response retry this guards is unaffected, and the kept draft
+// self-heals on the next try.
 func (q *Queries) InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error) {
 	row := q.db.QueryRow(ctx, insertEntry,
 		arg.JournalID,
@@ -95,9 +136,18 @@ func (q *Queries) InsertEntry(ctx context.Context, arg InsertEntryParams) (Inser
 		arg.CategoryID,
 		arg.SubcategoryID,
 		arg.Content,
+		arg.IdempotencyKey,
 	)
 	var i InsertEntryRow
-	err := row.Scan(&i.ID, &i.Position)
+	err := row.Scan(
+		&i.ID,
+		&i.EntryDate,
+		&i.Position,
+		&i.CategoryID,
+		&i.SubcategoryID,
+		&i.AuthorID,
+		&i.Content,
+	)
 	return i, err
 }
 

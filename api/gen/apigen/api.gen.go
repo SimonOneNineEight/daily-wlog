@@ -96,6 +96,9 @@ type CreateEntry struct {
 	// Date The Entry date, YYYY-MM-DD.
 	Date string `json:"date"`
 
+	// IdempotencyKey Client-generated retry key: replaying a create with the same key returns the original Entry instead of creating another, closing the lost-response window. The mobile client sends its draft id. Scoped to the signed-in User's Journal.
+	IdempotencyKey *string `json:"idempotencyKey,omitempty"`
+
 	// SubcategoryId Optional refinement; must be a child of categoryId.
 	SubcategoryId *string `json:"subcategoryId,omitempty"`
 }

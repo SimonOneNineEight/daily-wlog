@@ -42,6 +42,14 @@ type Querier interface {
 	InsertCategory(ctx context.Context, arg InsertCategoryParams) (InsertCategoryRow, error)
 	// Position is assigned at the end of the date's existing order in the same
 	// statement, so multiple Entries per day stack in creation order.
+	// Retry safety (#17): a keyed create that already landed arbiters on the
+	// partial unique index and inserts nothing; the union-all arm then returns
+	// the original row, so a lost-response retry gets the Entry the first
+	// attempt made — provision.sql's insert-or-fetch shape. Two truly
+	// concurrent same-key creates can still 500 (the loser's snapshot predates
+	// the winner's commit, so both arms come back empty); the sequential
+	// lost-response retry this guards is unaffected, and the kept draft
+	// self-heals on the next try.
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
 	// One statement so a batch registers all-or-nothing, with the 10-photo cap
 	// re-checked inside it: under a concurrent register the count subquery sees

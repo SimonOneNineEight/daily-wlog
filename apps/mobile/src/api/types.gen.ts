@@ -347,6 +347,8 @@ export interface components {
             content: string;
             /** @description Optional refinement; must be a child of categoryId. */
             subcategoryId?: string;
+            /** @description Client-generated retry key: replaying a create with the same key returns the original Entry instead of creating another, closing the lost-response window. The mobile client sends its draft id. Scoped to the signed-in User's Journal. */
+            idempotencyKey?: string;
         };
         UpdateEntry: {
             /** @description A top-level Category owned by the signed-in User. */

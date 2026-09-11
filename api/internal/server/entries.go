@@ -79,6 +79,11 @@ func (h handlers) CreateEntry(ctx context.Context, request apigen.CreateEntryReq
 	if msg := validateEntryInput(body.CategoryId, body.SubcategoryId, body.Content); msg != "" {
 		return apigen.CreateEntry400JSONResponse{Message: msg}, nil
 	}
+	// The contract's cap, enforced by hand like every other constraint (no
+	// validation middleware); an unchecked key would 500 in the index.
+	if body.IdempotencyKey != nil && len(*body.IdempotencyKey) > 64 {
+		return apigen.CreateEntry400JSONResponse{Message: "idempotencyKey is capped at 64 characters"}, nil
+	}
 
 	userID := auth.UserID(ctx)
 	journalID, err := h.queries.GetJournal(ctx, userID)
@@ -93,24 +98,27 @@ func (h handlers) CreateEntry(ctx context.Context, request apigen.CreateEntryReq
 		return apigen.CreateEntry400JSONResponse{Message: badCategory}, nil
 	}
 	row, err := h.queries.InsertEntry(ctx, dbgen.InsertEntryParams{
-		JournalID:     journalID,
-		AuthorID:      userID,
-		EntryDate:     pgtype.Date{Time: entryDate, Valid: true},
-		CategoryID:    body.CategoryId,
-		SubcategoryID: body.SubcategoryId,
-		Content:       []byte(body.Content),
+		JournalID:      journalID,
+		AuthorID:       userID,
+		EntryDate:      pgtype.Date{Time: entryDate, Valid: true},
+		CategoryID:     body.CategoryId,
+		SubcategoryID:  body.SubcategoryId,
+		Content:        []byte(body.Content),
+		IdempotencyKey: textOrNull(body.IdempotencyKey),
 	})
 	if err != nil {
 		return apigen.CreateEntry500JSONResponse(h.failure(ctx, "creating the entry failed", err)), nil
 	}
+	// Built from the returned row, not the request body: a keyed replay
+	// returns the original Entry (#17), whose values the retry must see.
 	return apigen.CreateEntry201JSONResponse{
 		Id:            row.ID,
-		Date:          body.Date,
+		Date:          row.EntryDate,
 		Position:      int(row.Position),
-		CategoryId:    body.CategoryId,
-		SubcategoryId: body.SubcategoryId,
-		AuthorId:      userID,
-		Content:       body.Content,
+		CategoryId:    row.CategoryID,
+		SubcategoryId: row.SubcategoryID,
+		AuthorId:      row.AuthorID,
+		Content:       string(row.Content),
 	}, nil
 }
 

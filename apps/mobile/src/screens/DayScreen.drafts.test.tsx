@@ -16,12 +16,16 @@ let listedEntries: object[] = [];
 // Failure switches, flipped mid-test to play the airplane-mode story.
 let failEntryWrites = false;
 let failPresign = false;
+// The mock server's idempotency memory (#17): the first 201 for a key is
+// replayed verbatim on the same key, like the real InsertEntry.
+let entriesByKey: Record<string, object> = {};
 
 beforeEach(async () => {
   await AsyncStorage.clear();
   listedEntries = [];
   failEntryWrites = false;
   failPresign = false;
+  entriesByKey = {};
   globalThis.fetch = jest.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
     const u = String(url);
     const method = init?.method ?? 'GET';
@@ -69,17 +73,20 @@ beforeEach(async () => {
     if (u.endsWith('/entries') && method === 'POST') {
       if (failEntryWrites) throw new TypeError('Network request failed');
       const body = JSON.parse(init?.body ?? '{}');
-      return {
-        ok: true,
-        json: async () => ({
-          id: 'e-new',
-          date: body.date,
-          position: 1,
-          categoryId: body.categoryId,
-          authorId: 'u1',
-          content: body.content,
-        }),
+      const replayed = body.idempotencyKey && entriesByKey[body.idempotencyKey];
+      if (replayed) {
+        return { ok: true, json: async () => replayed };
+      }
+      const created = {
+        id: 'e-new',
+        date: body.date,
+        position: 1,
+        categoryId: body.categoryId,
+        authorId: 'u1',
+        content: body.content,
       };
+      if (body.idempotencyKey) entriesByKey[body.idempotencyKey] = created;
+      return { ok: true, json: async () => created };
     }
     if (u.includes('/entries')) {
       return { ok: true, json: async () => ({ entries: listedEntries }) };
@@ -150,8 +157,58 @@ it('keeps a failed save as a draft, resurfaces it after relaunch, and clears it 
   expect(body.date).toBe('2026-08-19');
   expect(body.categoryId).toBe('c-sport');
   expect(JSON.parse(body.content)).toEqual({ v: 1, title: '晨跑', note: '河濱公園' });
+  // The retry-safe key (#17): both attempts carry the kept draft's id, so a
+  // create whose 201 was lost mid-flight replays onto the original Entry.
+  expect(body.idempotencyKey).toBe(kept[0].id);
+  expect(JSON.parse(posts[0][1]?.body ?? '{}').idempotencyKey).toBe(kept[0].id);
   expect(await storedDrafts()).toEqual([]);
   expect(screen.queryByText('尚未儲存')).toBeNull();
+});
+
+it('pushes edits made to a kept draft onto the replayed Entry instead of losing them', async () => {
+  failEntryWrites = true;
+  const first = render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+  fireEvent.press(await screen.findByLabelText('新增紀錄'));
+  fireEvent.press(screen.getByText('運動'));
+  fireEvent.changeText(screen.getByPlaceholderText('標題'), '晨跑');
+  fireEvent.changeText(screen.getByPlaceholderText('備註（選填）'), '河濱公園');
+  await act(async () => {
+    fireEvent.press(screen.getByText('儲存'));
+  });
+  const kept = await storedDrafts();
+  expect(kept).toHaveLength(1);
+
+  // The lost-response world: the create actually landed server-side before
+  // the failure, so the server already holds the original under this key.
+  entriesByKey[kept[0].id] = {
+    id: 'e-orig',
+    date: '2026-08-19',
+    position: 1,
+    categoryId: 'c-sport',
+    authorId: 'u1',
+    content: kept[0].content,
+  };
+  first.unmount();
+  failEntryWrites = false;
+  render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
+
+  // The user edits the kept draft before retrying.
+  const row = await screen.findByText('晨跑');
+  await act(async () => {
+    fireEvent.press(row);
+  });
+  fireEvent.changeText(screen.getByPlaceholderText('備註（選填）'), '河濱公園，夜騎');
+  await act(async () => {
+    fireEvent.press(screen.getByText('儲存'));
+  });
+
+  // The replay returned the original Entry; the edits ride an update onto
+  // it rather than vanishing with the cleared draft.
+  const patch = calls().find(([u, init]) => init?.method === 'PATCH' && String(u).endsWith('/entries/e-orig'));
+  expect(patch).toBeTruthy();
+  const patched = JSON.parse(patch?.[1]?.body ?? '{}');
+  expect(JSON.parse(patched.content)).toEqual({ v: 1, title: '晨跑', note: '河濱公園，夜騎' });
+  expect(await storedDrafts()).toEqual([]);
 });
 
 it('keeps a failed edit pinned to its Entry and retries as an update', async () => {

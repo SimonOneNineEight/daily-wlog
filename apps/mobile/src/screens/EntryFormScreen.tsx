@@ -223,9 +223,29 @@ export function EntryFormScreen({
           categoryId: category.id,
           ...refinement,
           content,
+          // The draft id doubles as the retry key (#17): it survives the
+          // relaunch with the kept draft, so a create whose response was
+          // lost replays onto the original Entry instead of duplicating.
+          idempotencyKey: draftId,
         });
         entryId = created.id;
         setSavedEntryId(created.id);
+        // A replay hands back the original Entry. If the kept draft was
+        // edited before this retry, the save carries newer values — push
+        // them onto the original rather than losing them with the draft.
+        if (
+          created.content !== content ||
+          created.date !== date ||
+          created.categoryId !== category.id ||
+          (created.subcategoryId ?? undefined) !== refinement.subcategoryId
+        ) {
+          await updateEntry(accessToken, created.id, {
+            categoryId: category.id,
+            ...refinement,
+            content,
+            date,
+          });
+        }
       }
     } catch {
       setFailed(true);

@@ -39,16 +39,17 @@ type ColorRecent struct {
 }
 
 type Entry struct {
-	ID            string
-	JournalID     string
-	AuthorID      string
-	EntryDate     pgtype.Date
-	Position      int32
-	CategoryID    string
-	SubcategoryID *string
-	Content       []byte
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID             string
+	JournalID      string
+	AuthorID       string
+	EntryDate      pgtype.Date
+	Position       int32
+	CategoryID     string
+	SubcategoryID  *string
+	Content        []byte
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	IdempotencyKey pgtype.Text
 }
 
 type Journal struct {
