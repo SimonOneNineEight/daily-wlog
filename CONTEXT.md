@@ -28,6 +28,10 @@ _Avoid_: filter, filtered out
 A record inside a Journal for a specific date: title, optional note, optional photos. Carries exactly one Category, optionally refined by a Subcategory. A date can hold several Entries. Written by one User, its author, which is not necessarily the Journal's owner.
 _Avoid_: journal (for a day's record), post, log
 
+**Photo**:
+An image attached to an Entry, at most three per Entry. Re-encoded on the device before it travels, so no location rides with it; its capture time does, as a recorded value rather than something read back out of the file.
+_Avoid_: attachment, image (for the stored thing), media
+
 **App Language**:
 The language the interface renders in: Traditional Chinese or English. Follows the phone's language (any Chinese → Traditional Chinese, anything else → English) unless the User overrides it with an explicit per-device choice. Changing it never changes data: Categories and Entries keep their names.
 _Avoid_: locale, system language (for the app's own setting)
@@ -39,3 +43,7 @@ _Avoid_: default category, seed category
 **Draft**:
 A failed save kept on the device: the full Entry — words, staged photos' local copies, a still-uncreated Subcategory name — resurfacing on its day until a retry succeeds. Its id doubles as the create's idempotency key, so a lost-response retry lands on the original Entry. Per-device, never on the server.
 _Avoid_: unsaved entry, pending entry
+
+**Saved Color**:
+A custom color a User has actually worn on a Category, remembered most-recent-first so it can be picked again. A memory of use, not a possession: forgetting one leaves every Category wearing that color untouched, and the ten presets are not Saved Colors.
+_Avoid_: recent color, palette, swatch
