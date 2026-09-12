@@ -70,6 +70,10 @@ exist.
 
 ## Per-release
 
+Walk `manual-tests.md` on a device first: the whole document before a build,
+the **[API]** cases after any `gcloud run deploy`. Post the run as a comment on
+the release issue, naming the build and the Cloud Run revision it tested.
+
 ```sh
 cd apps/mobile
 eas build --platform ios --profile production
