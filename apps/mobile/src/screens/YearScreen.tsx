@@ -19,6 +19,9 @@ type Props = {
   categories: Category[];
   /** Injectable for tests; defaults to the device's now. */
   today?: Date;
+  /** Land on this year instead of the current one — the month view's
+   * zoom-out hands over the year it was showing (#40). */
+  initialYear?: number;
   /** The persistent hidden-set (#30), owned by HomeScreen. */
   hidden?: HiddenSet;
   onChangeHidden?: (hidden: HiddenSet) => void;
@@ -43,13 +46,14 @@ export function YearScreen({
   accessToken,
   categories,
   today = new Date(),
+  initialYear,
   hidden = nothingHidden,
   onChangeHidden,
   onCategoriesChanged,
   onOpenMonth,
 }: Props) {
   const strings = useStrings();
-  const [year, setYear] = useState(today.getFullYear());
+  const [year, setYear] = useState(initialYear ?? today.getFullYear());
   const isCurrentYear = year === today.getFullYear();
   const [colorsByMonth, setColorsByMonth] = useState<Record<number, Record<number, string>>>({});
   const [totalEntries, setTotalEntries] = useState(0);
@@ -117,11 +121,13 @@ export function YearScreen({
               <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
+          {/* 今天 returns this surface to now (#40). It used to leave for
+              today's month view; navigation depth now never changes. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={strings.year.today}
             style={styles.navButton}
-            onPress={() => onOpenMonth(today.getFullYear(), today.getMonth() + 1)}
+            onPress={() => setYear(today.getFullYear())}
           >
             <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
           </Pressable>

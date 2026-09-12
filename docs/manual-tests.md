@@ -176,20 +176,21 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | MO.7 | A day with five or more Entries | Four dots and a **+** overflow glyph, sitting on the dots' line **[API]** |
 | MO.8 | Days outside the month | Greyed and not tappable |
 | MO.9 | Swipe left / right | One month per swipe, both directions, repeatedly **[API]** |
-| MO.10 | Swipe several months fast | Each settle loads that month's dots; none are stale **[API]** |
+| MO.10 | Swipe several months fast | Each settle loads that month's dots; the month you left never paints on the one you arrived at, even for an instant **[API]** |
 | MO.11 | Move to a month that is not this month | No day is selected until you tap one |
 | MO.12 | The day panel | The selected day's Entry titles with Category icons **[API]** |
 | MO.13 | A panel row for an Entry with Photos | Carries the photo glyph **[API]** |
 | MO.14 | Tap the panel header or any row | Opens the day view |
 | MO.15 | A day with no Entries | Panel reads 這天沒有紀錄 |
 | MO.16 | Tap + | Entry form opens for the **selected** day, not today |
-| MO.17 | Tap ‹年 | The year view opens |
+| MO.17 | Tap ‹年 | The year view opens on the year you were viewing, including after swiping across a year boundary |
 | MO.18 | Tap 設定 | Settings opens |
 | MO.19 | Tap 類別 | The visibility sheet opens |
 | MO.20 | Airplane mode, swipe months | Dots are absent, not wrong; no error wall, no crash |
 | MO.21 | A month holding no Entries at all | Grid renders with no dots anywhere; the panel reads 這天沒有紀錄 **[API]** |
-
-Round 2: #40 (dot ghosting, ‹年 landing year, a 今天 button).
+| MO.22 | Swipe months away, tap 今天 | This month, with today selected **[API]** |
+| MO.23 | Tap 今天 while already on this month | Selection returns to today; nothing else moves |
+| MO.24 | Hide a Category while its dots are on screen | The dots go; the month never briefly shows the old set **[API]** |
 
 ### DA — Day view
 
@@ -210,8 +211,9 @@ Round 2: #40 (dot ghosting, ‹年 landing year, a 今天 button).
 | DA.13 | Airplane mode, open a day | 無法載入紀錄, no crash |
 | DA.14 | An Entry whose content will not decode | The card renders （無法讀取的紀錄） rather than failing |
 | DA.15 | Airplane mode, long-press and drag a card | 排序失敗，請再試一次, and the order returns to what the server holds **[API]** |
+| DA.16 | Tap 今天 | The view moves to today's date **[API]** |
 
-Round 2: #41 (a 類別 button), #40 (a 今天 button).
+Round 2: #41 (a 類別 button).
 
 ### EF — Entry form
 
@@ -280,12 +282,10 @@ Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
 | YR.11 | Pick a future year | Allowed; backfilling is the product |
 | YR.12 | Tap the scrim | The wheel closes, the year unchanged |
 | YR.13 | Tap 類別 | The visibility sheet opens |
-| YR.14 | Tap the calendar-day button | Today's month view opens |
+| YR.14 | Tap 今天 | The year view moves to this year and stays on the year view |
 | YR.15 | There is no back button and no year chevrons | Correct; swipes and the title are the navigation |
 | YR.16 | Airplane mode | Mini months render empty, no crash |
-
-Round 2: #40 (YR.14's button becomes "return to this year", and entering a
-month then leaving returns to the year you were in).
+| YR.17 | From a past year, tap a month, then tap ‹年 | Back to that past year, not this one |
 
 ### CS — 類別 sheet
 

@@ -135,15 +135,6 @@ it('swipes to the neighboring years (#26)', async () => {
   expect(screen.getByText('2026年')).toBeTruthy();
 });
 
-it('jumps back to today through the trailing action', async () => {
-  const onOpenMonth = jest.fn();
-  renderScreen({ onOpenMonth });
-
-  await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
-  fireEvent.press(screen.getByLabelText('今天'));
-  expect(onOpenMonth).toHaveBeenCalledWith(2026, 8);
-});
-
 it('sends the hidden-set to the year endpoint (#30)', async () => {
   renderScreen({
     hidden: { categoryIds: ['c-work'], subcategoryIds: [] },
@@ -152,4 +143,21 @@ it('sends the hidden-set to the year endpoint (#30)', async () => {
     const calls = (globalThis.fetch as jest.Mock).mock.calls.map(([u]) => String(u));
     expect(calls.some((u) => u.includes('/years/2026?hiddenCategories=c-work'))).toBe(true);
   });
+});
+
+it('opens on the year it was handed, not the current one (#40 item 10)', async () => {
+  renderScreen({ initialYear: 2022 });
+  expect(await screen.findByText('2022年')).toBeTruthy();
+});
+
+it('returns the year view to this year without leaving it (#40 item 11)', async () => {
+  const onOpenMonth = jest.fn();
+  renderScreen({ initialYear: 2022, onOpenMonth });
+  expect(await screen.findByText('2022年')).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.press(screen.getByLabelText('今天'));
+  });
+  expect(await screen.findByText('2026年')).toBeTruthy();
+  expect(onOpenMonth).not.toHaveBeenCalled();
 });

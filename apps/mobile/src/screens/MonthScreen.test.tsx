@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
 
 import { encodeContent } from '../entries/content';
 import { theme } from '../theme';
+import { nothingHidden } from '../calendar/hidden';
 import { cat } from '../testing/fixtures';
 import { installMockApi, type MockApi } from '../testing/mockApi';
 import { MonthScreen } from './MonthScreen';
@@ -22,18 +23,36 @@ afterEach(() => {
   api.restore();
 });
 
+const monthElement = (overrides: Partial<React.ComponentProps<typeof MonthScreen>> = {}) => (
+  <MonthScreen
+    accessToken="tok"
+    categories={categories}
+    today={TODAY}
+    onOpenDay={jest.fn()}
+    onAddEntry={jest.fn()}
+    {...overrides}
+  />
+);
+
 function renderMonth(overrides: Partial<React.ComponentProps<typeof MonthScreen>> = {}) {
-  return render(
-    <MonthScreen
-      accessToken="tok"
-      categories={categories}
-      today={TODAY}
-      onOpenDay={jest.fn()}
-      onAddEntry={jest.fn()}
-      {...overrides}
-    />,
-  );
+  return render(monthElement(overrides));
 }
+
+/** Settle the pager one month forward. */
+const settleForward = async () => {
+  const { width } = Dimensions.get('window');
+  await act(async () => {
+    fireEvent(screen.getByTestId('month-pager'), 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { x: 2 * width } },
+    });
+  });
+};
+
+/** What the viewed month is painting on one day. */
+const dotsOn = (day: number) =>
+  within(
+    within(screen.getByTestId('month-page-current')).getByTestId(`day-dots-${day}`),
+  ).queryAllByTestId('day-dot');
 
 it('renders the month title and the weekday header', async () => {
   renderMonth();
@@ -46,12 +65,14 @@ it('renders the month title and the weekday header', async () => {
 });
 
 it('collapses a day with more than four entries into a plain +', async () => {
-  api.world.monthDays = [
-    {
-      date: '2026-08-12',
-      categoryIds: ['c-work', 'c-sport', 'c-work', 'c-sport', 'c-work', 'c-sport'],
-    },
-  ];
+  api.world.monthDays = {
+    '2026-08': [
+      {
+        date: '2026-08-12',
+        categoryIds: ['c-work', 'c-sport', 'c-work', 'c-sport', 'c-work', 'c-sport'],
+      },
+    ],
+  };
   renderMonth();
   expect(await screen.findByTestId('dot-overflow')).toBeTruthy();
 });
@@ -242,5 +263,88 @@ describe('visibility (#30)', () => {
         (u) => u.includes('hiddenCategories=c-work') && u.includes('hiddenSubcategories=c-gym'),
       ),
     ).toBe(true);
+  });
+});
+
+describe('calendar navigation (#40)', () => {
+  it('paints no dots on the month swiped to until that month answers (#40 item 8)', async () => {
+    api.world.monthDays = {
+      '2026-08': [{ date: '2026-08-12', categoryIds: ['c-work'] }],
+      '2026-09': [{ date: '2026-09-03', categoryIds: ['c-sport'] }],
+    };
+    renderMonth();
+    await screen.findByText('8月');
+    expect(dotsOn(12)).toHaveLength(1);
+
+    // September's answer is still in flight when the swipe settles: whatever
+    // the grid paints now can only have come from August.
+    const release = api.holdMonths();
+    await settleForward();
+    expect(await screen.findByText('9月')).toBeTruthy();
+    expect(dotsOn(12)).toHaveLength(0);
+
+    // And once September answers, it fills — blank is the wait, not the end.
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(dotsOn(3)).toHaveLength(1));
+    expect(dotsOn(12)).toHaveLength(0);
+  });
+
+  it('paints no dots while a hidden-set change is in flight (#40 item 8)', async () => {
+    api.world.monthDays = { '2026-08': [{ date: '2026-08-12', categoryIds: ['c-work'] }] };
+    const view = renderMonth({ hidden: nothingHidden, onChangeHidden: jest.fn() });
+    await screen.findByText('8月');
+    expect(dotsOn(12)).toHaveLength(1);
+
+    // Hiding refetches the same month, so the month key alone cannot tell the
+    // new answer from the old one: what is on screen still says 工作 is shown.
+    const release = api.holdMonths();
+    await act(async () => {
+      view.rerender(
+        monthElement({
+          hidden: { categoryIds: ['c-work'], subcategoryIds: [] },
+          onChangeHidden: jest.fn(),
+        }),
+      );
+    });
+    expect(dotsOn(12)).toHaveLength(0);
+
+    await act(async () => {
+      release();
+    });
+  });
+
+  it('hands the viewed year to the year view, not the current one (#40 item 10)', async () => {
+    const onOpenYear = jest.fn();
+    renderMonth({ onOpenYear });
+    await screen.findByText('8月');
+
+    fireEvent.press(screen.getByLabelText('年'));
+    expect(onOpenYear).toHaveBeenCalledWith(2026);
+
+    // Five months forward crosses into 2027; ‹年 follows the month you see.
+    for (let i = 0; i < 5; i += 1) await settleForward();
+    expect(await screen.findByText('1月')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('年'));
+    expect(onOpenYear).toHaveBeenLastCalledWith(2027);
+  });
+
+  it('returns the month view to now, wherever you have swiped to (#40 item 11)', async () => {
+    renderMonth();
+    await screen.findByText('8月');
+    for (let i = 0; i < 5; i += 1) await settleForward();
+    expect(await screen.findByText('1月')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('今天'));
+    });
+    expect(await screen.findByText('8月')).toBeTruthy();
+    expect(screen.getByText('2026年')).toBeTruthy();
+    // And today is the selection again, not the 1st of the month.
+    expect(
+      within(screen.getByTestId('month-page-current')).getByTestId('day-holder-17'),
+    ).toHaveStyle({ backgroundColor: theme.colors.surfaceToday });
   });
 });

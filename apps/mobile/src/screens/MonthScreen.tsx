@@ -1,4 +1,4 @@
-import { ChevronLeft, Plus, Settings, Tags } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, Plus, Settings, Tags } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -29,8 +29,9 @@ type Props = {
   onOpenSettings?: () => void;
   /** Fired after the 類別 sheet changes a category, so /me refetches. */
   onCategoriesChanged?: () => void;
-  /** Opens the year view (#12). */
-  onOpenYear?: () => void;
+  /** Opens the year view (#12) on the year being viewed — Apple's zoom-out
+   * rather than a back-stack (#40). */
+  onOpenYear?: (year: number) => void;
   /** Land on this month instead of today's (year view tap-through, #12). */
   initialMonth?: { year: number; month: number };
   /** The persistent hidden-set (#30), owned by HomeScreen. */
@@ -77,26 +78,38 @@ export function MonthScreen({
   });
   const visible = { year: view.year, month: view.month };
   const selectedDay = view.day;
-  const [dotColors, setDotColors] = useState<Record<number, string[]>>({});
+  // Dots carry the request they answer (#40 item 8), not just the month.
+  // Both the pager and the hidden-set move the grid out from under an
+  // in-flight fetch: the pager moves `visible` the instant a swipe settles,
+  // and hiding a Category refetches the same month. Untagged, the last
+  // answer keeps painting onto a grid it never described — the month you
+  // just left, or the Categories you just hid. null means nothing fetched.
+  const [dots, setDots] = useState<{ key: string | null; byDay: Record<number, string[]> }>({
+    key: null,
+    byDay: {},
+  });
   const [panelEntries, setPanelEntries] = useState<PanelEntry[]>([]);
 
+  const visibleKey = monthKey(visible.year, visible.month);
+  // What the dots on screen have to answer: this month, under this hidden-set.
+  const dotsKey = `${visibleKey}|${hidden.categoryIds.join(',')}|${hidden.subcategoryIds.join(',')}`;
   const selectedDate = dateString(visible.year, visible.month, selectedDay);
   const categoryOf = (categoryId: string) => categories.find((c) => c.id === categoryId);
   const colorOf = (categoryId: string) => categoryOf(categoryId)?.color ?? theme.colors.iconMuted;
 
   useEffect(() => {
     let active = true;
-    getMonth(accessToken, monthKey(visible.year, visible.month), hiddenParams(hidden))
+    getMonth(accessToken, visibleKey, hiddenParams(hidden))
       .then((month) => {
         if (!active) return;
         const byDay: Record<number, string[]> = {};
         for (const day of month.days) {
           byDay[Number(day.date.slice(-2))] = day.categoryIds.map(colorOf);
         }
-        setDotColors(byDay);
+        setDots({ key: dotsKey, byDay });
       })
       .catch(() => {
-        if (active) setDotColors({});
+        if (active) setDots({ key: dotsKey, byDay: {} });
       });
     return () => {
       active = false;
@@ -169,7 +182,7 @@ export function MonthScreen({
               accessibilityLabel={strings.year.open}
               style={styles.navYear}
               hitSlop={{ top: 8, bottom: 12, left: 8, right: 12 }}
-              onPress={onOpenYear}
+              onPress={() => onOpenYear(visible.year)}
             >
               <ChevronLeft size={13} color={theme.colors.textSecondary} strokeWidth={2} />
               <Text style={styles.navSubtitle}>{strings.month.yearLabel(visible.year)}</Text>
@@ -181,6 +194,18 @@ export function MonthScreen({
         {/* Full Apple (ratified 2026-08-20): months change by swipe alone,
             so the nav holds just the lens and the utility. */}
         <View style={styles.navActions}>
+          {/* 今天 returns this surface to now and never changes navigation
+              depth (#40): the month becomes today's, with today selected. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={strings.year.today}
+            style={styles.navButton}
+            onPress={() =>
+              setView({ year: todayParts.year, month: todayParts.month, day: todayParts.day })
+            }
+          >
+            <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+          </Pressable>
           {onChangeHidden ? (
             <Pressable
               accessibilityRole="button"
@@ -221,7 +246,7 @@ export function MonthScreen({
               <MonthGrid
                 year={page.year}
                 month={page.month}
-                days={delta === 0 ? dotColors : {}}
+                days={delta === 0 && dots.key === dotsKey ? dots.byDay : {}}
                 today={
                   page.year === todayParts.year && page.month === todayParts.month
                     ? todayParts.day

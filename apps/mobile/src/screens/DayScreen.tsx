@@ -1,4 +1,4 @@
-import { ChevronLeft, Plus } from 'lucide-react-native';
+import { CalendarDays, ChevronLeft, Plus } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -11,7 +11,7 @@ import { listEntries, reorderDay } from '../api/client';
 import type { HiddenSet } from '../calendar/hidden';
 import { entryIsVisible, nothingHidden } from '../calendar/hidden';
 import { dateHeading } from '../calendar/dateLabel';
-import { shiftDay } from '../calendar/monthMath';
+import { localDateString, shiftDay } from '../calendar/monthMath';
 import { decodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { listDrafts } from '../entries/drafts';
@@ -27,6 +27,8 @@ type Props = {
   categories: Category[];
   /** The date whose Entries this screen shows, YYYY-MM-DD. */
   date: string;
+  /** Injectable for tests; defaults to the device's now. */
+  today?: Date;
   onBack?: () => void;
   /** A horizontal swipe asks for the previous/next date (#26). */
   onChangeDate?: (date: string) => void;
@@ -48,6 +50,7 @@ export function DayScreen({
   accessToken,
   categories,
   date,
+  today = new Date(),
   onBack,
   onChangeDate,
   onEntrySaved,
@@ -195,6 +198,18 @@ export function DayScreen({
             </Pressable>
           ) : null}
           <Text style={styles.heading}>{heading}</Text>
+          {/* 今天 returns this surface to now (#40), like the month and year
+              views; the day view stays the day view. */}
+          {onChangeDate ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.year.today}
+              style={styles.todayButton}
+              onPress={() => onChangeDate(localDateString(today))}
+            >
+              <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            </Pressable>
+          ) : null}
         </View>
         {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
         {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
@@ -269,6 +284,13 @@ const styles = createStyles((t) => ({
   heading: {
     ...t.typography.navTitle,
     color: t.colors.textPrimary,
+    flex: 1,
+  },
+  todayButton: {
+    width: t.spacing.hitMin,
+    height: t.spacing.hitMin,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   muted: {
     ...t.typography.note,

@@ -7,6 +7,8 @@ import { dayDots } from './monthMath';
 
 type Props = {
   colors: string[];
+  /** Set by the month grid so a suite can ask what one day is painting. */
+  testID?: string;
 };
 
 /**
@@ -15,12 +17,12 @@ type Props = {
  * baseline and its optical center lands below the dots' centerline on iOS,
  * while an icon centers geometrically.
  */
-export function CategoryDots({ colors }: Props) {
+export function CategoryDots({ colors, testID }: Props) {
   const { shown, overflow } = dayDots(colors, theme.dot.maxPerDay);
   return (
-    <View style={styles.row}>
+    <View style={styles.row} testID={testID}>
       {shown.map((color, index) => (
-        <View key={index} style={[styles.dot, { backgroundColor: color }]} />
+        <View key={index} testID="day-dot" style={[styles.dot, { backgroundColor: color }]} />
       ))}
       {overflow > 0 ? (
         <View testID="dot-overflow" style={styles.overflow}>

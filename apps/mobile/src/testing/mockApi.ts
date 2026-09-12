@@ -28,8 +28,8 @@ export type MockEntry = {
 export type MockWorld = {
   /** The day lists GET /entries?date= serves; POST appends position = length + 1. */
   entries: Record<string, MockEntry[]>;
-  /** One days array served for every month (matches the suites' semantics). */
-  monthDays: object[];
+  /** Per-month day payloads keyed YYYY-MM; an unseeded month serves none. */
+  monthDays: Record<string, object[]>;
   /** Per-year payloads; unknown years serve { days: [], totalEntries: 0 }. */
   years: Record<string, { days: object[]; totalEntries: number }>;
   colorRecents: string[];
@@ -67,7 +67,7 @@ export function installMockApi(
   const realFetch = globalThis.fetch;
   const world: MockWorld = {
     entries: setup.entries ?? {},
-    monthDays: setup.monthDays ?? [],
+    monthDays: setup.monthDays ?? {},
     years: setup.years ?? {},
     colorRecents: setup.colorRecents ?? [],
     me: setup.me ?? { userId: 'u1', journalId: 'j1', categories: [] },
@@ -93,6 +93,10 @@ export function installMockApi(
   const network = () => {
     throw new TypeError('Network request failed');
   };
+
+  // Month responses can be held in flight, so a suite can assert what the
+  // grid paints while the month it is looking at has no answer yet.
+  let monthHold: { month?: string; promise: Promise<void>; release: () => void } | null = null;
 
   const handler = async (url: unknown, init?: FetchInit) => {
     const u = String(url);
@@ -163,7 +167,14 @@ export function installMockApi(
       return ok({ colors: [body().color, ...world.colorRecents] });
     }
     if (u.includes('/color-recents')) return ok({ colors: world.colorRecents });
-    if (u.includes('/months/')) return ok({ days: world.monthDays });
+    if (u.includes('/months/')) {
+      // The hidden-set rides as query params; the month key is the path.
+      const month = u.split('/months/')[1].split('?')[0];
+      if (monthHold && (monthHold.month === undefined || monthHold.month === month)) {
+        await monthHold.promise;
+      }
+      return ok({ days: world.monthDays[month] ?? [] });
+    }
     if (u.includes('/years/')) {
       const year = u.split('/years/')[1];
       return ok(world.years[year] ?? { days: [], totalEntries: 0 });
@@ -220,12 +231,29 @@ export function installMockApi(
     seedReplay(key: string, entry: MockEntry) {
       entriesByKey[key] = entry;
     },
+    /**
+     * Hold month responses in flight until the returned release() is called;
+     * one month when named, otherwise all of them. restore() releases too, so
+     * a suite that fails before releasing cannot leave the handler pending.
+     */
+    holdMonths(month?: string) {
+      let release = () => {};
+      const promise = new Promise<void>((resolve) => {
+        release = () => {
+          monthHold = null;
+          resolve();
+        };
+      });
+      monthHold = { ...(month !== undefined ? { month } : {}), promise, release };
+      return release;
+    },
     calls,
     entryPosts: () =>
       calls().filter(([u, init]) => String(u).endsWith('/entries') && init?.method === 'POST'),
     find: (method: string, urlPart: string) =>
       calls().find(([u, init]) => (init?.method ?? 'GET') === method && String(u).includes(urlPart)),
     restore() {
+      monthHold?.release();
       globalThis.fetch = realFetch;
     },
   };

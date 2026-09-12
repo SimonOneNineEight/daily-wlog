@@ -334,3 +334,20 @@ it('shows existing photos in edit mode and hides the add tile at the cap', async
   expect(screen.getByTestId('grid-item-__add__')).toBeTruthy();
   expect(screen.getByText('2/10')).toBeTruthy();
 });
+
+it('returns the day view to today (#40 item 11)', async () => {
+  const onChangeDate = jest.fn();
+  render(
+    <DayScreen
+      accessToken="tok"
+      categories={categories}
+      date="2026-08-19"
+      today={new Date(2026, 7, 17)}
+      onChangeDate={onChangeDate}
+    />,
+  );
+  await screen.findByText('今天還沒有紀錄');
+
+  fireEvent.press(screen.getByLabelText('今天'));
+  expect(onChangeDate).toHaveBeenCalledWith('2026-08-17');
+});

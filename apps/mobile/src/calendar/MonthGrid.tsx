@@ -60,7 +60,10 @@ export function MonthGrid({ year, month, days, today, selected, onSelectDay }: P
                     {cell.day}
                   </Text>
                 </View>
-                <CategoryDots colors={cell.outside ? [] : (days[cell.day] ?? [])} />
+                <CategoryDots
+                  testID={cell.outside ? undefined : `day-dots-${cell.day}`}
+                  colors={cell.outside ? [] : (days[cell.day] ?? [])}
+                />
               </Pressable>
             );
           })}
