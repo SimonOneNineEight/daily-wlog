@@ -1,3 +1,4 @@
+import type { HiddenParams } from '../api/client';
 import { versionedStore } from '../storage/versionedStore';
 
 // The per-User hidden-set (#30, DESIGN.md §9): Apple Calendar visibility,
@@ -84,9 +85,7 @@ export function allHidden(hidden: HiddenSet, categories: CategoryLike[]): boolea
 }
 
 /** The API's hidden-set query params; undefined when nothing is hidden. */
-export function hiddenParams(
-  hidden: HiddenSet,
-): { hiddenCategories: string[]; hiddenSubcategories: string[] } | undefined {
+export function hiddenParams(hidden: HiddenSet): HiddenParams | undefined {
   if (!hasHidden(hidden)) return undefined;
   return { hiddenCategories: hidden.categoryIds, hiddenSubcategories: hidden.subcategoryIds };
 }
