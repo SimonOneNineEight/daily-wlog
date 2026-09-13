@@ -353,3 +353,25 @@ it('returns the day view to today (#40 item 11)', async () => {
   fireEvent.press(screen.getByLabelText('今天'));
   expect(onChangeDate).toHaveBeenCalledWith('2026-08-17');
 });
+
+it('opens the full 類別 sheet from the day header (#41)', async () => {
+  render(
+    <DayScreen
+      accessToken="tok"
+      categories={categories}
+      date="2026-08-19"
+      onChangeHidden={jest.fn()}
+    />,
+  );
+  await screen.findByText('今天還沒有紀錄');
+
+  fireEvent.press(screen.getByLabelText('類別'));
+
+  // The same sheet the month and year views open, not a thinner read-only
+  // twin: the header toggle, the two-level tree and 新增類別 all come with it
+  // (DESIGN.md §9, ratified 2026-09-12).
+  expect(screen.getByText('全部隱藏')).toBeTruthy();
+  expect(screen.getByText('運動')).toBeTruthy();
+  expect(screen.getByText('健身房')).toBeTruthy();
+  expect(screen.getByText('新增類別')).toBeTruthy();
+});

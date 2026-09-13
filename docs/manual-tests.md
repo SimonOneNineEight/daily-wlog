@@ -226,8 +226,7 @@ Keyboard cases are in **KB**.
 | DA.19 | Long-press-drag a card near the bottom | The drag works; the faded controls do not intercept it |
 | DA.20 | On a device with a home indicator | Both controls sit above the indicator, never over it |
 | DA.21 | The gap below the controls | The same on the day, month and year views |
-
-Round 2: #41 (a 類別 button).
+| DA.22 | Tap the 類別 icon in the header | The same sheet the month and year views open: the two-level tree, ✎ per row, 全部隱藏 and 新增類別 |
 
 ### EF — Entry form
 
@@ -421,6 +420,8 @@ Round 2: #47 (CD.16–CD.20). Keyboard cases are in **KB**.
 | VI.10 | Force-quit with something hidden, relaunch | The hidden-set survived |
 | VI.11 | Create a Category while something is hidden | Born visible |
 | VI.12 | Delete a hidden Category | Nothing breaks; the stale id is harmless |
+| VI.13 | Hide a Category from the day view's 類別 sheet | Its cards leave the day at once, without closing the day |
+| VI.14 | Return to the month, then the year view | Both agree with the hide made on the day view, no relaunch **[API]** |
 
 **VI.1 and VI.4 are round-2 reports #6 and #9.** They pass only when the
 deployed revision carries the hidden-set.
