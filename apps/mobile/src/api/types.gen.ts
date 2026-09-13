@@ -179,7 +179,7 @@ export interface paths {
         put?: never;
         /**
          * Presign direct-to-storage uploads for an Entry's photos
-         * @description Returns storage upload URLs for count photos (full image + thumbnail each). Photo bytes never transit the API (ADR-0002); paths are namespaced per user and Entry, and the 10-photo cap counts existing photos.
+         * @description Returns storage upload URLs for count photos (full image + thumbnail each). Photo bytes never transit the API (ADR-0002); paths are namespaced per user and Entry, and the 3-photo cap counts existing photos.
          */
         post: operations["presignPhotos"];
         delete?: never;
@@ -199,7 +199,7 @@ export interface paths {
         put?: never;
         /**
          * Record uploaded photos on an Entry
-         * @description Called after the client has uploaded to the presigned URLs. Paths must belong to this Entry's namespace; positions append in the given order; the 10-photo cap is enforced.
+         * @description Called after the client has uploaded to the presigned URLs. Paths must belong to this Entry's namespace; positions append in the given order; the 3-photo cap is enforced.
          */
         post: operations["registerPhotos"];
         delete?: never;
@@ -1104,7 +1104,7 @@ export interface operations {
                     "application/json": components["schemas"]["PhotoUploads"];
                 };
             };
-            /** @description Invalid count or the 10-photo cap would be exceeded. */
+            /** @description Invalid count or the 3-photo cap would be exceeded. */
             400: {
                 headers: {
                     [name: string]: unknown;

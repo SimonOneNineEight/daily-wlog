@@ -179,6 +179,8 @@ export function EntryFormScreen({
       draftId,
       existingEntryId: entry?.id ?? draft?.entryId ?? savedEntryId,
     });
+    // No finally needed: saveEntry never throws, by the contract documented
+     // in entries/save.ts. If that totality ever goes, this needs one.
     inFlight.current = false;
     if ('createdSubcategory' in result && result.createdSubcategory !== undefined) {
       const made = result.createdSubcategory;

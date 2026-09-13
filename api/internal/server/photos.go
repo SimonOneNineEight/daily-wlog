@@ -30,9 +30,7 @@ const (
 
 // overCapMessage is the one wording for the cap, so the number can never
 // disagree with the constant it reports.
-func overCapMessage() string {
-	return fmt.Sprintf("an entry holds at most %d photos", maxPhotosPerEntry)
-}
+var overCapMessage = fmt.Sprintf("an entry holds at most %d photos", maxPhotosPerEntry)
 
 // photoPathPrefix namespaces object paths per user and Entry; presign only
 // mints inside it and register only accepts inside it.
@@ -71,7 +69,7 @@ func (h handlers) PresignPhotos(ctx context.Context, request apigen.PresignPhoto
 		return apigen.PresignPhotos500JSONResponse(h.failure(ctx, "presigning failed", err)), nil
 	}
 	if int(existing)+count > maxPhotosPerEntry {
-		return apigen.PresignPhotos400JSONResponse{Message: overCapMessage()}, nil
+		return apigen.PresignPhotos400JSONResponse{Message: overCapMessage}, nil
 	}
 
 	prefix := photoPathPrefix(userID, entryID)
@@ -116,7 +114,7 @@ func (h handlers) RegisterPhotos(ctx context.Context, request apigen.RegisterPho
 		return apigen.RegisterPhotos500JSONResponse(h.failure(ctx, "recording photos failed", err)), nil
 	}
 	if int(existing)+len(photos) > maxPhotosPerEntry {
-		return apigen.RegisterPhotos400JSONResponse{Message: overCapMessage()}, nil
+		return apigen.RegisterPhotos400JSONResponse{Message: overCapMessage}, nil
 	}
 	prefix := photoPathPrefix(userID, entryID)
 	newPaths := make([]string, 0, len(photos)*2)
@@ -160,7 +158,7 @@ func (h handlers) RegisterPhotos(ctx context.Context, request apigen.RegisterPho
 	}
 	if len(inserted) == 0 {
 		// The in-statement cap guard fired: another register won the race.
-		return apigen.RegisterPhotos400JSONResponse{Message: overCapMessage()}, nil
+		return apigen.RegisterPhotos400JSONResponse{Message: overCapMessage}, nil
 	}
 	byEntry, err := h.photosByEntry(ctx, []string{entryID})
 	if err != nil {
