@@ -256,13 +256,13 @@ Round 2: #41 (a 類別 button).
 | EF.21 | Empty title | 儲存 disabled |
 | EF.22 | Note field | Multiline, grows as you type |
 | EF.23 | Tap the photo tile | Camera / library / cancel offered |
-| EF.24 | Choose from the library | Multi-select allowed, capped at the remaining slots |
+| EF.24 | Choose from the library | Multi-select allowed, capped at the slots still free of the three |
 | EF.25 | Take a photo | Appears in the grid |
 | EF.26 | Deny the camera permission | Nothing happens; no crash, no empty tile |
-| EF.27 | Fill the grid to the cap | The add tile disappears |
+| EF.27 | Add Photos up to the cap | The tile counts n/3 and disappears at the third |
 | EF.28 | Tap a photo tile | Confirmation, then it goes **[API]** for a saved Entry |
 | EF.29 | Long-press and drag photos | Order changes and persists after save **[API]** |
-| EF.30 | Save an Entry carrying Photos | The saving state is visible throughout; the app never looks hung **[API]** **[#44]** |
+| EF.30 | Save an Entry carrying Photos | 儲存 spins for the whole save and the form beneath it is inert; the app never looks hung **[API]** |
 | EF.31 | Tap 儲存 twice quickly | One Entry, not two **[API]** |
 | EF.32 | Editing: change the Category | Saves; the dot color changes on the grid **[API]** |
 | EF.33 | **Editing: change the date, save** | The Entry leaves its day and appears on the target day, last in order **[API]** |
@@ -273,6 +273,7 @@ Round 2: #41 (a 類別 button).
 | EF.38 | A restored Draft whose photo files the OS purged | 部分照片已無法讀取, and a retry saves what survives |
 | EF.39 | Deny the photo-library permission | Nothing happens; no crash, no empty tile |
 | EF.40 | Open the form with every Category deleted | Only the pinned 新增類別 row; 儲存 stays disabled until one exists |
+| EF.41 | Open an Entry saved with more than three Photos | Every Photo is still there; no add tile, and nothing is deleted **[API]** |
 
 **EF.33 and EF.34 are round-2 report #1.** They pass only when the deployed
 revision carries the date-move.

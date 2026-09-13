@@ -297,6 +297,8 @@ it('rolls back and reports when persisting a reorder fails', async () => {
 });
 
 it('shows existing photos in edit mode and hides the add tile at the cap', async () => {
+  // Ten: an Entry saved under the old cap, which keeps every one of them
+  // and can only fail to gain more (#44).
   const tenPhotos = Array.from({ length: 10 }, (_, i) => ({
     id: `p${i}`,
     position: i + 1,
@@ -315,7 +317,7 @@ it('shows existing photos in edit mode and hides the add tile at the cap', async
   ];
   render(<DayScreen accessToken="tok" categories={categories} date="2026-08-19" />);
 
-  // Full entry: 10 tiles, no add tile.
+  // Past the cap: all ten tiles, no add tile.
   const fullCard = await screen.findByText('滿照片');
   await act(async () => {
     fireEvent.press(fullCard);
@@ -332,7 +334,7 @@ it('shows existing photos in edit mode and hides the add tile at the cap', async
     fireEvent.press(partialCard);
   });
   expect(screen.getByTestId('grid-item-__add__')).toBeTruthy();
-  expect(screen.getByText('2/10')).toBeTruthy();
+  expect(screen.getByText('2/3')).toBeTruthy();
 });
 
 it('returns the day view to today (#40 item 11)', async () => {

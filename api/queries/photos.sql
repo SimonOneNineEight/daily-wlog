@@ -9,9 +9,11 @@ where e.id = @entry_id::uuid and j.owner_id = @user_id::uuid;
 select count(*) from photos where entry_id = @entry_id::uuid;
 
 -- name: InsertPhotos :many
--- One statement so a batch registers all-or-nothing, with the 10-photo cap
+-- One statement so a batch registers all-or-nothing, with the per-Entry cap
 -- re-checked inside it: under a concurrent register the count subquery sees
--- the committed rows, the guard fails, and zero rows come back.
+-- the committed rows, the guard fails, and zero rows come back. The cap
+-- travels as a parameter rather than a literal so the number lives once, in
+-- server.maxPhotosPerEntry (#44).
 insert into photos (entry_id, position, object_path, thumb_path, taken_at)
 select
     @entry_id::uuid,
@@ -27,7 +29,7 @@ from (
         unnest(@taken_ats::timestamptz[]) as taken_at
 ) as u
 where (select count(*) from photos where entry_id = @entry_id::uuid)
-    + cardinality(@object_paths::text[]) <= 10
+    + cardinality(@object_paths::text[]) <= @max_photos::int
 returning id;
 
 -- name: ListPhotosForEntries :many

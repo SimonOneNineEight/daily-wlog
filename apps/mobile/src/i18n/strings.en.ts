@@ -124,6 +124,7 @@ export const en: StringCatalog = {
     confirmSubcategory: 'Create',
     titlePlaceholder: 'Title',
     notePlaceholder: 'Note (optional)',
+    saving: 'Saving',
     saveFailed: 'Save failed. Please try again',
     photoUploadFailed: 'Photo upload failed. Please try again',
     draftPhotosMissing: 'Some photos could no longer be read',

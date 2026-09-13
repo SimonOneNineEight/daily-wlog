@@ -27,12 +27,18 @@ type Props = {
 const COLUMNS = 4;
 const ADD_KEY = '__add__';
 
-/** Client-side mirror of the server's per-entry photo cap. */
-export const MAX_PHOTOS = 10;
+/**
+ * Client-side mirror of the server's per-entry photo cap, lowered from 10
+ * to 3 (#44, ratified 2026-09-12): a day's record is a glance, not an
+ * album. The server is what enforces it; this is what the User sees.
+ */
+export const MAX_PHOTOS = 3;
 
-// Photo grid per the canvas: up to 10 square tiles, 4 columns, never a
-// carousel. Editing: tap a tile to remove it (the ✕ chip is the visual),
-// long-press-drag to reorder, and the dashed tile adds (camera + n/10).
+// Photo grid per the canvas: square tiles, 4 columns, never a carousel.
+// Editing: tap a tile to remove it (the ✕ chip is the visual),
+// long-press-drag to reorder, and the dashed tile adds (camera + n/3).
+// Every photo handed in renders, cap or no cap: an Entry saved under the
+// old cap of 10 keeps all of them and simply cannot gain more (#44).
 export function PhotoGrid({ photos, max = MAX_PHOTOS, editable, width }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   const gridWidth = width ?? windowWidth - theme.spacing.screenGutter * 2;
@@ -41,7 +47,7 @@ export function PhotoGrid({ photos, max = MAX_PHOTOS, editable, width }: Props) 
   if (!editable) {
     return (
       <View style={styles.staticGrid}>
-        {photos.slice(0, max).map((photo) => (
+        {photos.map((photo) => (
           <Image
             key={photo.key}
             source={{ uri: photo.uri }}
@@ -52,7 +58,7 @@ export function PhotoGrid({ photos, max = MAX_PHOTOS, editable, width }: Props) 
     );
   }
 
-  const items = photos.slice(0, max).map((photo) => ({ ...photo, disabledDrag: false, disabledReSorted: false }));
+  const items = photos.map((photo) => ({ ...photo, disabledDrag: false, disabledReSorted: false }));
   const withAdd =
     items.length < max
       ? [...items, { key: ADD_KEY, uri: '', disabledDrag: true, disabledReSorted: true }]

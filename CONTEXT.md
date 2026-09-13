@@ -29,7 +29,7 @@ A record inside a Journal for a specific date: title, optional note, optional ph
 _Avoid_: journal (for a day's record), post, log
 
 **Photo**:
-An image attached to an Entry, capped at a small number per Entry. Re-encoded on the device before it travels, so no location rides with it; its capture time does, as a recorded value rather than something read back out of the file.
+An image attached to an Entry, at most three per Entry (2026-09-12), enforced by the server against what the Entry already holds — an Entry saved under the earlier cap of ten keeps every one of them and can only fail to gain more. Re-encoded on the device before it travels, so no location rides with it; its capture time does, as a recorded value rather than something read back out of the file.
 _Avoid_: attachment, image (for the stored thing), media
 
 **App Language**:

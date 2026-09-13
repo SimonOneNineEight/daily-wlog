@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -17,9 +18,21 @@ import (
 )
 
 const (
-	maxPhotosPerEntry = 10
+	// The per-Entry Photo cap: three, lowered from ten (#44, ratified
+	// 2026-09-12). This is the domain rule and the only place the server
+	// states it — the insert re-checks it inside its own statement, but
+	// takes the number from here. The check is existing + incoming, so an
+	// Entry saved under the old cap keeps every Photo it has and simply
+	// cannot gain more.
+	maxPhotosPerEntry = 3
 	downloadTTL       = time.Hour
 )
+
+// overCapMessage is the one wording for the cap, so the number can never
+// disagree with the constant it reports.
+func overCapMessage() string {
+	return fmt.Sprintf("an entry holds at most %d photos", maxPhotosPerEntry)
+}
 
 // photoPathPrefix namespaces object paths per user and Entry; presign only
 // mints inside it and register only accepts inside it.
@@ -58,7 +71,7 @@ func (h handlers) PresignPhotos(ctx context.Context, request apigen.PresignPhoto
 		return apigen.PresignPhotos500JSONResponse(h.failure(ctx, "presigning failed", err)), nil
 	}
 	if int(existing)+count > maxPhotosPerEntry {
-		return apigen.PresignPhotos400JSONResponse{Message: "an entry holds at most 10 photos"}, nil
+		return apigen.PresignPhotos400JSONResponse{Message: overCapMessage()}, nil
 	}
 
 	prefix := photoPathPrefix(userID, entryID)
@@ -103,7 +116,7 @@ func (h handlers) RegisterPhotos(ctx context.Context, request apigen.RegisterPho
 		return apigen.RegisterPhotos500JSONResponse(h.failure(ctx, "recording photos failed", err)), nil
 	}
 	if int(existing)+len(photos) > maxPhotosPerEntry {
-		return apigen.RegisterPhotos400JSONResponse{Message: "an entry holds at most 10 photos"}, nil
+		return apigen.RegisterPhotos400JSONResponse{Message: overCapMessage()}, nil
 	}
 	prefix := photoPathPrefix(userID, entryID)
 	newPaths := make([]string, 0, len(photos)*2)
@@ -136,6 +149,7 @@ func (h handlers) RegisterPhotos(ctx context.Context, request apigen.RegisterPho
 		ObjectPaths: objectPaths,
 		ThumbPaths:  thumbPaths,
 		TakenAts:    takenAts,
+		MaxPhotos:   maxPhotosPerEntry,
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -146,7 +160,7 @@ func (h handlers) RegisterPhotos(ctx context.Context, request apigen.RegisterPho
 	}
 	if len(inserted) == 0 {
 		// The in-statement cap guard fired: another register won the race.
-		return apigen.RegisterPhotos400JSONResponse{Message: "an entry holds at most 10 photos"}, nil
+		return apigen.RegisterPhotos400JSONResponse{Message: overCapMessage()}, nil
 	}
 	byEntry, err := h.photosByEntry(ctx, []string{entryID})
 	if err != nil {
