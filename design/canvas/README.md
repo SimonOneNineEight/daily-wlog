@@ -54,9 +54,11 @@ canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 >   Category colour, glyph in white, retiring the artboard's
 >   `inset 0 0 0 1.5px var(--text-primary)` ring. Among sixty identical 40pt
 >   cells a hairline says nothing, and the app was faithful to it — the drawn
->   design is what failed. The fill is how `CategoryIcon` draws that Category
->   everywhere else, so the picker previews the result rather than describing
->   it. A Subcategory's appearance block renders disabled at 0.4 opacity,
+>   design is what failed. The treatment is `CategoryIcon`'s — a fill in the
+>   colour, glyph in white — so the picker previews the result rather than
+>   describing it. The cell keeps the grid's own 40pt geometry rather than
+>   mounting that component, so tapping a glyph does not resize it.
+>   A Subcategory's appearance block renders disabled at 0.4 opacity,
 >   which a fill survives and a hairline does not; the fill there is the
 >   parent's colour, since a Subcategory inherits. The colour picker keeps
 >   its ring (CE.9) — selection there is a swatch among swatches, not a

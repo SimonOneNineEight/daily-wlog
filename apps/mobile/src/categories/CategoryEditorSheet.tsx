@@ -97,8 +97,8 @@ function CategoryEditor({
 
   const activeParent = target ? parent : chosenParent;
   const isSub = activeParent !== undefined;
-  // A Subcategory inherits, so what the sheet shows is the parent's appearance
-  // — the preview, the color picker and the icon grid all read it from here.
+  // A Subcategory inherits its parent's icon and color, so what the sheet
+  // shows is the parent's appearance, not the state the form is holding.
   const shownIcon = isSub ? (activeParent.icon ?? 'tag') : icon;
   const shownColor = isSub ? activeParent.color : color;
 

@@ -20,6 +20,12 @@ function renderEditor(parentChoices: (typeof sport)[] = []) {
   );
 }
 
+/** The color the cell's glyph renders in, as the swatch suite reads its dot. */
+function glyphColorOf(cell: { children: (string | { props?: { color?: string } })[] }) {
+  const glyph = cell.children[0];
+  return typeof glyph === 'string' ? undefined : glyph.props?.color;
+}
+
 describe('parent list accordion', () => {
   it('swaps the summary row for the option list while open', () => {
     renderEditor([sport]);
@@ -67,9 +73,13 @@ describe('the chosen icon (#46)', () => {
     fireEvent.press(screen.getByLabelText('bike'));
 
     expect(screen.getByLabelText('bike')).toHaveStyle({ backgroundColor: '#4A93C4' });
+    expect(glyphColorOf(screen.getByLabelText('bike'))).toBe('#FFFFFF');
+
+    // Every other cell keeps the plain treatment.
     expect(screen.getByLabelText('dumbbell')).toHaveStyle({
       backgroundColor: theme.colors.surfaceFill,
     });
+    expect(glyphColorOf(screen.getByLabelText('dumbbell'))).toBe(theme.colors.iconDefault);
   });
 
   it('restyles the selected cell when the color changes, with no re-selection', () => {
