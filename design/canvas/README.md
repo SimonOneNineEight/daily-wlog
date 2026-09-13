@@ -41,6 +41,12 @@ canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 >   heavy for a text pill to match. Both fade while you scroll and return when
 >   you stop.
 >
+> - **Photo cap** (#44): the 新增日記 artboard draws `{{ photoCount }}/10`.
+>   The cap is 3 — in the grid, the picker, the server and its SQL. Three is
+>   a day's record at a glance; ten was an album. An Entry saved under the
+>   old cap keeps every Photo it has and simply cannot gain more, so nothing
+>   was destroyed by lowering it.
+>
 > - **年視圖 header** (#50): the year title gained a sub-line carrying the entry
 >   count, mirroring the month view's month-over-year block. The count used to
 >   close the scroll, which made the one screen that fits a whole year scroll

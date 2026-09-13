@@ -87,7 +87,7 @@ from (
         unnest($4::timestamptz[]) as taken_at
 ) as u
 where (select count(*) from photos where entry_id = $1::uuid)
-    + cardinality($2::text[]) <= 10
+    + cardinality($2::text[]) <= $5::int
 returning id
 `
 
@@ -96,17 +96,21 @@ type InsertPhotosParams struct {
 	ObjectPaths []string
 	ThumbPaths  []string
 	TakenAts    []pgtype.Timestamptz
+	MaxPhotos   int32
 }
 
-// One statement so a batch registers all-or-nothing, with the 10-photo cap
+// One statement so a batch registers all-or-nothing, with the per-Entry cap
 // re-checked inside it: under a concurrent register the count subquery sees
-// the committed rows, the guard fails, and zero rows come back.
+// the committed rows, the guard fails, and zero rows come back. The cap
+// travels as a parameter rather than a literal so the number lives once, in
+// server.maxPhotosPerEntry (#44).
 func (q *Queries) InsertPhotos(ctx context.Context, arg InsertPhotosParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, insertPhotos,
 		arg.EntryID,
 		arg.ObjectPaths,
 		arg.ThumbPaths,
 		arg.TakenAts,
+		arg.MaxPhotos,
 	)
 	if err != nil {
 		return nil, err

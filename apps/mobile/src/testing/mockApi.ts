@@ -99,6 +99,10 @@ export function installMockApi(
   // Month responses can be held in flight, so a suite can assert what the
   // grid paints while the month it is looking at has no answer yet.
   let monthHold: { month?: string; promise: Promise<void>; release: () => void } | null = null;
+  // Storage uploads can be held the same way (#44), which is how a suite
+  // sees which transfers are already in the air while none has answered,
+  // and what the form shows while a save is still running.
+  let uploadHold: { promise: Promise<void>; release: () => void } | null = null;
 
   const handler = async (url: unknown, init?: FetchInit) => {
     const u = String(url);
@@ -109,7 +113,10 @@ export function installMockApi(
       if (world.purgedFileMarker && u.includes(world.purgedFileMarker)) network();
       return { ok: true, blob: async () => new Blob(['bytes']) };
     }
-    if (u.startsWith('https://store/up/')) return ok({});
+    if (u.startsWith('https://store/up/')) {
+      if (uploadHold) await uploadHold.promise;
+      return ok({});
+    }
     if (u.endsWith('/health')) {
       if (failures.health === 'reject') throw new Error('network down');
       if (failures.health === 'unhealthy') {
@@ -259,6 +266,22 @@ export function installMockApi(
       monthHold = { ...(month !== undefined ? { month } : {}), promise, release };
       return release;
     },
+    /**
+     * Hold every storage upload in flight until the returned release() is
+     * called. restore() releases too, so a suite that fails before
+     * releasing cannot leave the handler pending.
+     */
+    holdUploads() {
+      let release = () => {};
+      const promise = new Promise<void>((resolve) => {
+        release = () => {
+          uploadHold = null;
+          resolve();
+        };
+      });
+      uploadHold = { promise, release };
+      return release;
+    },
     calls,
     entryPosts: () =>
       calls().filter(([u, init]) => String(u).endsWith('/entries') && init?.method === 'POST'),
@@ -266,6 +289,7 @@ export function installMockApi(
       calls().find(([u, init]) => (init?.method ?? 'GET') === method && String(u).includes(urlPart)),
     restore() {
       monthHold?.release();
+      uploadHold?.release();
       globalThis.fetch = realFetch;
     },
   };

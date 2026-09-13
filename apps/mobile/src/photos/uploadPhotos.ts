@@ -29,10 +29,18 @@ export async function uploadPhotos(
 ): Promise<Photo[]> {
   if (staged.length === 0) return [];
   const { uploads } = await presignPhotos(accessToken, entryId, staged.length);
-  for (const [index, photo] of staged.entries()) {
-    await uploadFile(photo.fullUri, uploads[index].uploadUrl);
-    await uploadFile(photo.thumbUri, uploads[index].thumbUploadUrl);
-  }
+  // Every transfer is issued at once rather than one after another (#44,
+  // ratified 2026-09-12): serially the step cost the sum of the uploads,
+  // and on a slow uplink a three-photo save sat long enough to read as a
+  // crash. Promise.all still waits for the slowest and still rejects on the
+  // first failure, so the step stays all-or-nothing to the save pipeline
+  // and photosFailed keeps its meaning.
+  await Promise.all(
+    staged.flatMap((photo, index) => [
+      uploadFile(photo.fullUri, uploads[index].uploadUrl),
+      uploadFile(photo.thumbUri, uploads[index].thumbUploadUrl),
+    ]),
+  );
   const { photos } = await registerPhotos(
     accessToken,
     entryId,

@@ -94,6 +94,9 @@ const zhTW = {
     confirmSubcategory: '建立',
     titlePlaceholder: '標題',
     notePlaceholder: '備註（選填）',
+    // The whole save runs under a spinner on 儲存 (#44): a silent save with
+    // photos in flight read as a crash.
+    saving: '儲存中',
     saveFailed: '儲存失敗，請再試一次',
     // Draft retention (#14) — derived copy: the photo half of a save failed;
     // the draft keeps the photos and 儲存 retries.

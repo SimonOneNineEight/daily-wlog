@@ -62,6 +62,36 @@ it('presigns, uploads bytes to storage, then registers metadata in order', async
   expect(lastPut).toBeLessThan(registerIndex);
 });
 
+it('issues every transfer before any of them has answered (#44)', async () => {
+  api = installMockApi({ registeredPhotos: [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }] });
+  // Storage answers nothing until released, so what is in the air while the
+  // first upload is still open is the whole question: serially it is one
+  // transfer, concurrently it is all six.
+  const release = api.holdUploads();
+  const inFlight = uploadPhotos('tok', 'entry-1', [
+    { fullUri: 'file:///a.jpg', thumbUri: 'file:///a_t.jpg' },
+    { fullUri: 'file:///b.jpg', thumbUri: 'file:///b_t.jpg' },
+    { fullUri: 'file:///c.jpg', thumbUri: 'file:///c_t.jpg' },
+  ]);
+  const puts = () =>
+    api.calls().filter(([u, init]) => String(u).startsWith('https://store/up/') && init?.method === 'PUT');
+
+  let issuedWhileHeld: number;
+  try {
+    // Drain every microtask the presign and the file reads queue; nothing
+    // beyond that can run while storage is holding.
+    await new Promise<void>((resolve) => setImmediate(() => resolve()));
+    issuedWhileHeld = puts().length;
+  } finally {
+    // Released whatever the count is, so a serial implementation fails the
+    // assertion below rather than dangling an unsettled upload.
+    release();
+  }
+
+  expect(await inFlight).toHaveLength(3);
+  expect(issuedWhileHeld).toBe(6);
+});
+
 it('skips the network entirely with nothing staged', async () => {
   api = installMockApi();
   const photos = await uploadPhotos('tok', 'entry-1', []);

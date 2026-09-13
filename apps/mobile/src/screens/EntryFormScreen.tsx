@@ -1,7 +1,15 @@
 import { ChevronDown, Plus, Search } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -86,6 +94,10 @@ export function EntryFormScreen({
   const [title, setTitle] = useState(initialContent?.title ?? '');
   const [note, setNote] = useState(initialContent?.note ?? '');
   const [saving, setSaving] = useState(false);
+  // Two taps can land inside one render pass, where the disabled prop has
+  // not caught up yet, so the in-flight flag is also held where the handler
+  // can read it now (#44): 儲存 pressed twice is one Entry, not two.
+  const inFlight = useRef(false);
   const [failed, setFailed] = useState(false);
   const [photosFailed, setPhotosFailed] = useState(false);
   const [existingPhotos, setExistingPhotos] = useState<Photo[]>(entry?.photos ?? []);
@@ -138,13 +150,17 @@ export function EntryFormScreen({
   const pendingSubName = subcategory === null && !addingSub ? subName.trim() : '';
 
   const canSave = !saving && category !== null && title.trim() !== '';
+  // Saving wears the primary pill with a spinner in it; greying it out is
+  // what the round-2 tester read as a hang.
+  const saveLooksDisabled = !canSave && !saving;
 
   const dateLabel = dateHeading(strings, date);
 
   // The pipeline itself lives in entries/save.ts; the screen gathers the
   // intent from its fields and renders the result.
   const save = async () => {
-    if (!canSave || category === null) return;
+    if (!canSave || category === null || inFlight.current) return;
+    inFlight.current = true;
     setSaving(true);
     setFailed(false);
     setPhotosFailed(false);
@@ -163,6 +179,9 @@ export function EntryFormScreen({
       draftId,
       existingEntryId: entry?.id ?? draft?.entryId ?? savedEntryId,
     });
+    // No finally needed: saveEntry never throws, by the contract documented
+     // in entries/save.ts. If that totality ever goes, this needs one.
+    inFlight.current = false;
     if ('createdSubcategory' in result && result.createdSubcategory !== undefined) {
       const made = result.createdSubcategory;
       setCreated((prev) => [...prev, made]);
@@ -328,213 +347,228 @@ export function EntryFormScreen({
           <Pressable
             accessibilityRole="button"
             disabled={!canSave}
-            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+            style={[styles.saveButton, saveLooksDisabled && styles.saveButtonDisabled]}
             onPress={() => void save()}
           >
-            <Text style={[styles.saveLabel, !canSave && styles.saveLabelDisabled]}>
-              {strings.entryForm.save}
-            </Text>
+            {saving ? (
+              // The spinner stands in the label's place so the pill keeps
+              // its size and the header does not jump mid-save.
+              <ActivityIndicator
+                accessibilityLabel={strings.entryForm.saving}
+                color={theme.colors.controlPrimaryFg}
+                style={styles.savingSpinner}
+              />
+            ) : (
+              <Text style={[styles.saveLabel, saveLooksDisabled && styles.saveLabelDisabled]}>
+                {strings.entryForm.save}
+              </Text>
+            )}
           </Pressable>
         </View>
       </View>
 
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
         bottomOffset={theme.spacing.space6}
       >
-        <Pressable
-          accessibilityRole="button"
-          style={styles.dateRow}
-          onPress={() => setPickingDate(true)}
-        >
-          <Text style={styles.dateRowLabel}>{strings.entryForm.dateRow}</Text>
-          <Text style={styles.dateRowValue}>{dateLabel}</Text>
-          <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
-        </Pressable>
-        {category ? (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              style={styles.selectedRow}
-              onPress={() => {
-                setCategory(null);
-                setSubcategory(null);
-                setAddingSub(false);
-              }}
-            >
-              <CategoryIcon icon={category.icon} color={category.color} />
-              <Text style={styles.selectedName}>{category.name}</Text>
-              <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
-            </Pressable>
+        {/* The body is its own view rather than the scroll view's content
+            container so it can go inert under the spinner (#44): a save in
+            flight is not a moment to retype the title or reorder the
+            photos, and an untouchable, dimmed form says so. */}
+        <View style={[styles.body, saving && styles.bodySaving]}>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.dateRow}
+            onPress={() => setPickingDate(true)}
+          >
+            <Text style={styles.dateRowLabel}>{strings.entryForm.dateRow}</Text>
+            <Text style={styles.dateRowValue}>{dateLabel}</Text>
+            <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
+          </Pressable>
+          {category ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.selectedRow}
+                onPress={() => {
+                  setCategory(null);
+                  setSubcategory(null);
+                  setAddingSub(false);
+                }}
+              >
+                <CategoryIcon icon={category.icon} color={category.color} />
+                <Text style={styles.selectedName}>{category.name}</Text>
+                <ChevronDown size={17} color={theme.colors.textQuaternary} strokeWidth={2} />
+              </Pressable>
 
-            {/* Subcategory refinement. The brief mocks no subcategory UI, so
-                this derives the quietest pattern consistent with the canvas:
-                a wrap of pills under the collapsed category row, dots in the
-                parent's color (Subcategories inherit icon and color), never
-                demanded — tapping the selected pill deselects it. */}
-            <View style={styles.subRow}>
-              {children.map((sub) => {
-                const selected = subcategory?.id === sub.id;
-                return (
+              {/* Subcategory refinement. The brief mocks no subcategory UI, so
+                  this derives the quietest pattern consistent with the canvas:
+                  a wrap of pills under the collapsed category row, dots in the
+                  parent's color (Subcategories inherit icon and color), never
+                  demanded — tapping the selected pill deselects it. */}
+              <View style={styles.subRow}>
+                {children.map((sub) => {
+                  const selected = subcategory?.id === sub.id;
+                  return (
+                    <Pressable
+                      key={sub.id}
+                      accessibilityRole="button"
+                      style={[styles.subPill, selected && styles.subPillSelected]}
+                      onPress={() => {
+                        setSubcategory(selected ? null : sub);
+                        setSubName('');
+                      }}
+                    >
+                      <View style={[styles.subDot, { backgroundColor: category.color }]} />
+                      <Text style={styles.subLabel}>{sub.name}</Text>
+                    </Pressable>
+                  );
+                })}
+                {addingSub ? (
+                  <View style={styles.subCreate}>
+                    <TextInput
+                      style={styles.subInput}
+                      placeholder={strings.entryForm.subcategoryPlaceholder}
+                      placeholderTextColor={styles.placeholder.color}
+                      autoFocus
+                      value={subName}
+                      onChangeText={setSubName}
+                      // Leaving the field keeps the typed name as a pending
+                      // pick; blur and the return key never create (#28).
+                      onBlur={() => {
+                        setAddingSub(false);
+                        setSubName((name) => name.trim());
+                      }}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={subName.trim() === ''}
+                      onPress={() => void confirmCreateSubcategory()}
+                    >
+                      <Text style={subName.trim() === '' ? styles.subConfirmDisabled : styles.subConfirm}>
+                        {strings.entryForm.confirmSubcategory}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : pendingSubName !== '' ? (
+                  // The typed-but-unconfirmed subcategory, rendered exactly
+                  // like a confirmed pick and created with the entry at 儲存;
+                  // tapping deselects it like any selected pill.
                   <Pressable
-                    key={sub.id}
                     accessibilityRole="button"
-                    style={[styles.subPill, selected && styles.subPillSelected]}
-                    onPress={() => {
-                      setSubcategory(selected ? null : sub);
-                      setSubName('');
-                    }}
+                    style={[styles.subPill, styles.subPillSelected]}
+                    onPress={() => setSubName('')}
                   >
                     <View style={[styles.subDot, { backgroundColor: category.color }]} />
-                    <Text style={styles.subLabel}>{sub.name}</Text>
+                    <Text style={styles.subLabel}>{pendingSubName}</Text>
                   </Pressable>
-                );
-              })}
-              {addingSub ? (
-                <View style={styles.subCreate}>
-                  <TextInput
-                    style={styles.subInput}
-                    placeholder={strings.entryForm.subcategoryPlaceholder}
-                    placeholderTextColor={styles.placeholder.color}
-                    autoFocus
-                    value={subName}
-                    onChangeText={setSubName}
-                    // Leaving the field keeps the typed name as a pending
-                    // pick; blur and the return key never create (#28).
-                    onBlur={() => {
-                      setAddingSub(false);
-                      setSubName((name) => name.trim());
-                    }}
-                  />
+                ) : (
                   <Pressable
                     accessibilityRole="button"
-                    disabled={subName.trim() === ''}
-                    onPress={() => void confirmCreateSubcategory()}
+                    accessibilityLabel={strings.entryForm.addSubcategory}
+                    style={styles.subPill}
+                    onPress={() => setAddingSub(true)}
                   >
-                    <Text style={subName.trim() === '' ? styles.subConfirmDisabled : styles.subConfirm}>
-                      {strings.entryForm.confirmSubcategory}
-                    </Text>
+                    <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
                   </Pressable>
-                </View>
-              ) : pendingSubName !== '' ? (
-                // The typed-but-unconfirmed subcategory, rendered exactly
-                // like a confirmed pick and created with the entry at 儲存;
-                // tapping deselects it like any selected pill.
-                <Pressable
-                  accessibilityRole="button"
-                  style={[styles.subPill, styles.subPillSelected]}
-                  onPress={() => setSubName('')}
-                >
-                  <View style={[styles.subDot, { backgroundColor: category.color }]} />
-                  <Text style={styles.subLabel}>{pendingSubName}</Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={strings.entryForm.addSubcategory}
-                  style={styles.subPill}
-                  onPress={() => setAddingSub(true)}
-                >
-                  <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
-                </Pressable>
-              )}
-            </View>
+                )}
+              </View>
 
-            <TextInput
-              style={styles.titleInput}
-              placeholder={strings.entryForm.titlePlaceholder}
-              placeholderTextColor={styles.placeholder.color}
-              maxLength={40}
-              autoFocus
-              value={title}
-              onChangeText={setTitle}
-            />
-            <TextInput
-              style={styles.noteInput}
-              placeholder={strings.entryForm.notePlaceholder}
-              placeholderTextColor={styles.placeholder.color}
-              multiline
-              value={note}
-              onChangeText={setNote}
-            />
-            <PhotoGrid
-              photos={[
-                ...existingPhotos.map((p) => ({ key: `photo:${p.id}`, uri: p.thumbUrl })),
-                ...stagedPhotos.map((p, i) => ({ key: `staged:${i}`, uri: p.thumbUri })),
-              ]}
-              editable={{ onAdd: addPhotos, onRemove: removeGridPhoto, onReorder: reorderGridPhotos }}
-            />
-            {photosMissing ? (
-              <Text style={styles.notice}>{strings.entryForm.draftPhotosMissing}</Text>
-            ) : null}
-            {failed ? <Text style={styles.error}>{strings.entryForm.saveFailed}</Text> : null}
-            {photosFailed ? (
-              <Text style={styles.error}>{strings.entryForm.photoUploadFailed}</Text>
-            ) : null}
-            {entry ? (
-              <Pressable accessibilityRole="button" style={styles.deleteButton} onPress={confirmDelete}>
-                <Text style={styles.deleteLabel}>{strings.entryForm.delete}</Text>
-              </Pressable>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <View style={styles.searchField}>
-              <Search size={16} color={theme.colors.iconMuted} strokeWidth={2} />
               <TextInput
-                style={styles.searchInput}
-                placeholder={strings.entryForm.categoryPlaceholder}
+                style={styles.titleInput}
+                placeholder={strings.entryForm.titlePlaceholder}
                 placeholderTextColor={styles.placeholder.color}
-                value={query}
-                onChangeText={setQuery}
+                maxLength={40}
+                autoFocus
+                value={title}
+                onChangeText={setTitle}
               />
-            </View>
-            <View style={styles.pickerCard}>
-              {/* The pinned 新增類別 row is always last, so every row above
-                  it wears a divider. */}
-              {filtered.map((c) => (
-                <Pressable
-                  key={c.id}
-                  accessibilityRole="button"
-                  style={[styles.pickerRow, styles.pickerRowDivided]}
-                  onPress={() => {
-                    setCategory(c);
-                    setSubcategory(null);
-                    setFailed(false);
-                  }}
-                >
-                  <CategoryIcon icon={c.icon} color={c.color} />
-                  <Text style={styles.pickerName}>{c.name}</Text>
+              <TextInput
+                style={styles.noteInput}
+                placeholder={strings.entryForm.notePlaceholder}
+                placeholderTextColor={styles.placeholder.color}
+                multiline
+                value={note}
+                onChangeText={setNote}
+              />
+              <PhotoGrid
+                photos={[
+                  ...existingPhotos.map((p) => ({ key: `photo:${p.id}`, uri: p.thumbUrl })),
+                  ...stagedPhotos.map((p, i) => ({ key: `staged:${i}`, uri: p.thumbUri })),
+                ]}
+                editable={{ onAdd: addPhotos, onRemove: removeGridPhoto, onReorder: reorderGridPhotos }}
+              />
+              {photosMissing ? (
+                <Text style={styles.notice}>{strings.entryForm.draftPhotosMissing}</Text>
+              ) : null}
+              {failed ? <Text style={styles.error}>{strings.entryForm.saveFailed}</Text> : null}
+              {photosFailed ? (
+                <Text style={styles.error}>{strings.entryForm.photoUploadFailed}</Text>
+              ) : null}
+              {entry ? (
+                <Pressable accessibilityRole="button" style={styles.deleteButton} onPress={confirmDelete}>
+                  <Text style={styles.deleteLabel}>{strings.entryForm.delete}</Text>
                 </Pressable>
-              ))}
-              {trimmedQuery !== '' && !exactMatch ? (
+              ) : null}
+            </>
+          ) : (
+            <>
+              <View style={styles.searchField}>
+                <Search size={16} color={theme.colors.iconMuted} strokeWidth={2} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={strings.entryForm.categoryPlaceholder}
+                  placeholderTextColor={styles.placeholder.color}
+                  value={query}
+                  onChangeText={setQuery}
+                />
+              </View>
+              <View style={styles.pickerCard}>
+                {/* The pinned 新增類別 row is always last, so every row above
+                    it wears a divider. */}
+                {filtered.map((c) => (
+                  <Pressable
+                    key={c.id}
+                    accessibilityRole="button"
+                    style={[styles.pickerRow, styles.pickerRowDivided]}
+                    onPress={() => {
+                      setCategory(c);
+                      setSubcategory(null);
+                      setFailed(false);
+                    }}
+                  >
+                    <CategoryIcon icon={c.icon} color={c.color} />
+                    <Text style={styles.pickerName}>{c.name}</Text>
+                  </Pressable>
+                ))}
+                {trimmedQuery !== '' && !exactMatch ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    style={[styles.pickerRow, styles.pickerRowDivided]}
+                    onPress={() => setCreatingName(trimmedQuery)}
+                  >
+                    <View style={styles.createGlyph}>
+                      <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
+                    </View>
+                    <Text style={styles.pickerName}>{strings.entryForm.createRow(trimmedQuery)}</Text>
+                  </Pressable>
+                ) : null}
+                {/* Pinned 新增類別 (#28): creation is discoverable before
+                    typing; type-to-create above stays. */}
                 <Pressable
                   accessibilityRole="button"
-                  style={[styles.pickerRow, styles.pickerRowDivided]}
+                  style={styles.pickerRow}
                   onPress={() => setCreatingName(trimmedQuery)}
                 >
                   <View style={styles.createGlyph}>
                     <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
                   </View>
-                  <Text style={styles.pickerName}>{strings.entryForm.createRow(trimmedQuery)}</Text>
+                  <Text style={styles.pickerName}>{strings.categories.add}</Text>
                 </Pressable>
-              ) : null}
-              {/* Pinned 新增類別 (#28): creation is discoverable before
-                  typing; type-to-create above stays. */}
-              <Pressable
-                accessibilityRole="button"
-                style={styles.pickerRow}
-                onPress={() => setCreatingName(trimmedQuery)}
-              >
-                <View style={styles.createGlyph}>
-                  <Plus size={13} color={theme.colors.iconDefault} strokeWidth={2} />
-                </View>
-                <Text style={styles.pickerName}>{strings.categories.add}</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
+              </View>
+            </>
+          )}
+        </View>
       </KeyboardAwareScrollView>
 
       {pickingDate ? (
@@ -638,6 +672,14 @@ const styles = createStyles((t) => ({
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.space6,
     paddingBottom: t.spacing.space10,
+  },
+  bodySaving: {
+    opacity: 0.4,
+    pointerEvents: 'none',
+  },
+  savingSpinner: {
+    // Matched to the label it replaces, so the pill keeps its height.
+    height: t.typography.meta.lineHeight,
   },
   searchField: {
     flexDirection: 'row',

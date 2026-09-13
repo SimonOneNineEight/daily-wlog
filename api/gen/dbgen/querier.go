@@ -54,9 +54,11 @@ type Querier interface {
 	// lost-response retry this guards is unaffected, and the kept draft
 	// self-heals on the next try.
 	InsertEntry(ctx context.Context, arg InsertEntryParams) (InsertEntryRow, error)
-	// One statement so a batch registers all-or-nothing, with the 10-photo cap
+	// One statement so a batch registers all-or-nothing, with the per-Entry cap
 	// re-checked inside it: under a concurrent register the count subquery sees
-	// the committed rows, the guard fails, and zero rows come back.
+	// the committed rows, the guard fails, and zero rows come back. The cap
+	// travels as a parameter rather than a literal so the number lives once, in
+	// server.maxPhotosPerEntry (#44).
 	InsertPhotos(ctx context.Context, arg InsertPhotosParams) ([]string, error)
 	ListAccountAudit(ctx context.Context, userID string) ([]ListAccountAuditRow, error)
 	// Usage flags ride along so the management screen can offer delete only

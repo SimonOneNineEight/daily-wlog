@@ -253,3 +253,92 @@ describe('single-line fields (#42)', () => {
     expectSingleLineField('標題');
   });
 });
+
+// PM round 2, items 3 and 7. Three Photos per Entry, and a save that says
+// it is saving instead of sitting there (#44, ratified 2026-09-12).
+describe('photos (#44)', () => {
+  const draftWith = (count: number) => ({
+    id: 'd-photos',
+    date: '2026-08-17',
+    categoryId: 'c-sport',
+    content: encodeContent({ title: '拍照', note: '' }),
+    photos: Array.from({ length: count }, (_, i) => ({
+      fullUri: `file:///${i}.jpg`,
+      thumbUri: `file:///${i}_t.jpg`,
+    })),
+    savedAt: '2026-08-17T12:00:00Z',
+  });
+
+  const savedPhotos = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      id: `p${i}`,
+      position: i + 1,
+      url: `https://store/${i}.jpg`,
+      thumbUrl: `https://store/${i}_t.jpg`,
+    }));
+
+  it('counts towards three and stops offering the tile at three', () => {
+    const { unmount } = renderForm({ draft: draftWith(2) });
+    expect(screen.getByText('2/3')).toBeTruthy();
+    unmount();
+
+    renderForm({ draft: draftWith(3) });
+    expect(screen.queryByTestId('grid-item-__add__')).toBeNull();
+  });
+
+  it('keeps every Photo of an Entry saved under the old cap of ten', () => {
+    renderForm({
+      entry: {
+        id: 'e1',
+        date: '2026-08-17',
+        position: 1,
+        categoryId: 'c-sport',
+        authorId: 'u1',
+        content: encodeContent({ title: '舊紀錄', note: '' }),
+        photos: savedPhotos(5),
+      },
+    });
+
+    // All five are on screen, and the grid simply cannot gain a sixth.
+    for (let i = 0; i < 5; i += 1) {
+      expect(screen.getByTestId(`grid-item-photo:p${i}`)).toBeTruthy();
+    }
+    expect(screen.queryByTestId('grid-item-__add__')).toBeNull();
+  });
+
+  it('shows a spinner for the whole save and holds the form inert beneath it', async () => {
+    const onDone = jest.fn();
+    // Storage answers nothing until released: the save stays in flight and
+    // the form can be asked what it looks like mid-save.
+    const release = api.holdUploads();
+    renderForm({ draft: draftWith(1), onDone });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('儲存'));
+    });
+
+    expect(screen.getByLabelText('儲存中')).toBeTruthy();
+    expect(screen.queryByText('儲存')).toBeNull();
+    // Inert beneath it: tapping the chosen category, which normally
+    // reopens the picker, changes nothing.
+    fireEvent.press(screen.getByText('運動'));
+    expect(screen.getByPlaceholderText('標題')).toBeTruthy();
+    expect(onDone).not.toHaveBeenCalled();
+
+    await act(async () => {
+      release();
+    });
+    expect(onDone).toHaveBeenCalledWith(true);
+  });
+
+  it('saves once when 儲存 is pressed twice inside one render pass', async () => {
+    renderForm({ draft: draftWith(1) });
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('儲存'));
+      fireEvent.press(screen.getByText('儲存'));
+    });
+
+    expect(api.entryPosts()).toHaveLength(1);
+  });
+});

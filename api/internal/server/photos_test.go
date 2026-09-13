@@ -7,6 +7,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/SimonOneNineEight/daily-wlog/api/gen/dbgen"
 )
 
 type photoUpload struct {
@@ -276,7 +280,7 @@ func TestPhotoValidation(t *testing.T) {
 		}
 	})
 	t.Run("presign beyond cap", func(t *testing.T) {
-		resp := presignPhotos(t, ts, token, entry.ID, 11)
+		resp := presignPhotos(t, ts, token, entry.ID, 4)
 		resp.Body.Close()
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Fatalf("status = %d, want 400", resp.StatusCode)
@@ -331,7 +335,7 @@ func TestPhotoValidation(t *testing.T) {
 		}
 	})
 	t.Run("register beyond cap", func(t *testing.T) {
-		photos := make([]map[string]string, 11)
+		photos := make([]map[string]string, 4)
 		for i := range photos {
 			photos[i] = map[string]string{
 				"objectPath": prefix + strings.Repeat("a", i+1) + ".jpg",
@@ -426,5 +430,123 @@ func TestPhotosRequireAToken(t *testing.T) {
 		if resp.StatusCode != http.StatusUnauthorized {
 			t.Fatalf("%s status = %d, want 401", name, resp.StatusCode)
 		}
+	}
+}
+
+// uploadedPairs presigns count photo pairs at once and uploads bytes to all
+// of them, returning the register-ready paths. Nothing is registered, so a
+// caller may presign again for the same Entry: the cap counts registered
+// Photos, not minted URLs.
+func uploadedPairs(t *testing.T, ts *httptest.Server, token, entryID string, count int) []photoUpload {
+	t.Helper()
+	resp := presignPhotos(t, ts, token, entryID, count)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("presign status = %d, want 200", resp.StatusCode)
+	}
+	var presigned struct {
+		Uploads []photoUpload `json:"uploads"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&presigned); err != nil {
+		t.Fatalf("decode presign: %v", err)
+	}
+	resp.Body.Close()
+	for _, u := range presigned.Uploads {
+		uploadTo(t, u.UploadURL, []byte("bytes"))
+		uploadTo(t, u.ThumbUploadURL, []byte("thumb"))
+	}
+	return presigned.Uploads
+}
+
+// The cap of three is the server's to enforce (#44, ratified 2026-09-12),
+// and it is existing + incoming: an Entry saved under the old cap of ten
+// keeps every Photo it has and can only fail to gain more.
+func TestPhotoCapOfThree(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	category := provisionedCategory(t, ts, token)
+	entry := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-06-05", "categoryId": category, "content": "over the cap",
+	}))
+
+	// Two rounds of presigning, so there are more uploaded pairs than the
+	// cap allows to be registered through the API.
+	first := uploadedPairs(t, ts, token, entry.ID, 3)
+	second := uploadedPairs(t, ts, token, entry.ID, 3)
+
+	// Four Photos land as they did when the cap was ten: the same insert,
+	// handed the cap of the day. Nothing else can put an Entry over three.
+	objectPaths := []string{first[0].ObjectPath, first[1].ObjectPath, first[2].ObjectPath, second[0].ObjectPath}
+	thumbPaths := []string{first[0].ThumbPath, first[1].ThumbPath, first[2].ThumbPath, second[0].ThumbPath}
+	inserted, err := dbgen.New(testPool(t, testDatabaseURL())).InsertPhotos(t.Context(), dbgen.InsertPhotosParams{
+		EntryID:     entry.ID,
+		ObjectPaths: objectPaths,
+		ThumbPaths:  thumbPaths,
+		TakenAts:    make([]pgtype.Timestamptz, len(objectPaths)),
+		MaxPhotos:   10,
+	})
+	if err != nil || len(inserted) != 4 {
+		t.Fatalf("seeding four photos: inserted %d, err %v", len(inserted), err)
+	}
+
+	// Nothing is destroyed: the day list still carries all four.
+	listed := listDay(t, ts, token, "2026-06-05")
+	if len(listed) != 1 || listed[0].Photos == nil || len(*listed[0].Photos) != 4 {
+		t.Fatalf("day list should still carry 4 photos, got %+v", listed)
+	}
+
+	// And the Entry can only fail to gain a fifth, at either arm.
+	presign := presignPhotos(t, ts, token, entry.ID, 1)
+	presign.Body.Close()
+	if presign.StatusCode != http.StatusBadRequest {
+		t.Errorf("presign onto an over-cap entry = %d, want 400", presign.StatusCode)
+	}
+	register := registerPhotos(t, ts, token, entry.ID, []map[string]string{
+		{"objectPath": second[1].ObjectPath, "thumbPath": second[1].ThumbPath},
+	})
+	register.Body.Close()
+	if register.StatusCode != http.StatusBadRequest {
+		t.Errorf("register onto an over-cap entry = %d, want 400", register.StatusCode)
+	}
+
+	listed = listDay(t, ts, token, "2026-06-05")
+	if len(*listed[0].Photos) != 4 {
+		t.Errorf("after the refusals, %d photos remain, want 4", len(*listed[0].Photos))
+	}
+}
+
+// A fresh Entry fills to exactly three through the API and stops there.
+func TestPhotoCapFillsToThree(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	category := provisionedCategory(t, ts, token)
+	entry := decodeEntry(t, createEntry(t, ts, token, map[string]string{
+		"date": "2026-06-06", "categoryId": category, "content": "three photos",
+	}))
+
+	uploads := uploadedPairs(t, ts, token, entry.ID, 3)
+	photos := make([]map[string]string, len(uploads))
+	for i, u := range uploads {
+		photos[i] = map[string]string{"objectPath": u.ObjectPath, "thumbPath": u.ThumbPath}
+	}
+	resp := registerPhotos(t, ts, token, entry.ID, photos)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("registering three photos = %d, want 201", resp.StatusCode)
+	}
+
+	fourth := presignPhotos(t, ts, token, entry.ID, 1)
+	defer fourth.Body.Close()
+	if fourth.StatusCode != http.StatusBadRequest {
+		t.Fatalf("presigning a fourth = %d, want 400", fourth.StatusCode)
+	}
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(fourth.Body).Decode(&body); err != nil {
+		t.Fatalf("decode refusal: %v", err)
+	}
+	// The refusal names the cap it is enforcing, and names three.
+	if body.Message != "an entry holds at most 3 photos" {
+		t.Errorf("message = %q, want it to name the cap of three", body.Message)
 	}
 }
