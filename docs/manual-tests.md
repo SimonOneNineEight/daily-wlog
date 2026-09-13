@@ -323,8 +323,16 @@ Round 2: #44 (cap of 3, saving spinner). Keyboard cases are in **KB**.
 | CS.12 | 完成 or the scrim | Closes; changes already applied |
 | CS.13 | Reopen after closing | The same visibility state |
 | CS.14 | The sheet with every Category deleted | Only 新增類別; no empty tree, no error |
+| CS.15 | Type a Category's name in the search field | Only that Category's family remains |
+| CS.16 | Type a Subcategory's name | Its parent stays as context; the parent's other children drop |
+| CS.17 | Clear the field | The whole tree returns, visibility unchanged |
+| CS.18 | Type something nothing matches | Only the pinned 新增類別 row remains |
+| CS.19 | While filtered, tap a parent row | The whole family toggles, including members the search is hiding |
+| CS.20 | While filtered, 全部隱藏 | Acts on every Category, not just the matches |
+| CS.21 | Type a name, then 新增類別 | The editor opens with that name already in the field |
+| CS.22 | Tap a row while the keyboard is up | It toggles on the first tap, rather than only dropping the keyboard |
 
-Round 2: #48 (a search field).
+Keyboard cases are in **KB**.
 
 ### CE — Category editor
 
@@ -460,6 +468,7 @@ section is only ever verified here.
 | KB.10 | Type Chinese into every single-line field | No glyph clipped top or bottom, and the placeholder sits centered |
 | KB.11 | Dismiss by tapping empty ground, then refocus | Drops and rises again cleanly, no stuck padding |
 | KB.12 | The smallest device you have, color drawer, hex field | The drawer's 取消 and 完成 stay reachable |
+| KB.13 | 類別 sheet, tap the search field | The sheet makes room; the filtered tree stays readable beneath it |
 
 KB.12 is the one to watch. The drawer is the tallest sheet and its body does
 not scroll, so a short screen is where rising runs out of room.

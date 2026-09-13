@@ -112,6 +112,7 @@ const zhTW = {
     // The color drawer's confirm.
     done: '完成',
     namePlaceholder: '名稱',
+    searchPlaceholder: '搜尋類別',
     // Canvas parent section: the collapsible 上層分類 row and its hints.
     parentHeader: '上層分類（選填）',
     noParent: '無',

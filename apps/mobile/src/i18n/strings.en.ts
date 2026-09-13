@@ -136,6 +136,7 @@ export const en: StringCatalog = {
     save: 'Save',
     done: 'Done',
     namePlaceholder: 'Name',
+    searchPlaceholder: 'Search categories',
     parentHeader: 'Parent category (optional)',
     noParent: 'None',
     parentHintTop: 'Stand-alone category',

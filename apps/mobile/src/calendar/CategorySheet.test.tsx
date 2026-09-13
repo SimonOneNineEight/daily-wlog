@@ -224,3 +224,57 @@ it('forgetting a Saved Color leaves the Category wearing it alone (#47)', async 
   const patch = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PATCH');
   expect(patch).toBeUndefined();
 });
+
+// Search over both levels (#48). The sheet manages Subcategories, so a
+// search that only saw top-level names could not find one by name.
+describe('searching the sheet (#48)', () => {
+  const yoga = { id: 'c-yoga', name: '瑜伽', color: '#73B062', icon: 'tag', position: 2, parentId: 'c-sport' };
+  const withTwoChildren = [...categories, yoga];
+
+  it('filters to a matching Category and drops the rest', () => {
+    renderSheet();
+
+    fireEvent.changeText(screen.getByPlaceholderText('搜尋類別'), '美食');
+
+    expect(screen.getByText('美食')).toBeTruthy();
+    expect(screen.queryByText('工作')).toBeNull();
+    expect(screen.queryByText('運動')).toBeNull();
+    expect(screen.queryByText('健身房')).toBeNull();
+  });
+
+  it('keeps a matched Subcategory under its parent, and drops its siblings', () => {
+    renderSheet({ categories: withTwoChildren });
+
+    fireEvent.changeText(screen.getByPlaceholderText('搜尋類別'), '健身');
+
+    // 運動 stays as context even though its own name does not match.
+    expect(screen.getByText('運動')).toBeTruthy();
+    expect(screen.getByText('健身房')).toBeTruthy();
+    expect(screen.queryByText('瑜伽')).toBeNull();
+    expect(screen.queryByText('工作')).toBeNull();
+  });
+
+  it('still switches the whole family, including members the search hid', () => {
+    const { onChange } = renderSheet({ categories: withTwoChildren });
+
+    fireEvent.changeText(screen.getByPlaceholderText('搜尋類別'), '健身');
+    fireEvent.press(screen.getByText('運動'));
+
+    // 瑜伽 is off screen but still in the family: a master switch that only
+    // acted on what the filter shows would leave it visible.
+    expect(onChange).toHaveBeenCalledWith({
+      categoryIds: ['c-sport'],
+      subcategoryIds: ['c-gym', 'c-yoga'],
+    });
+  });
+
+  it('carries the typed name into 新增類別', () => {
+    renderSheet();
+
+    fireEvent.changeText(screen.getByPlaceholderText('搜尋類別'), '游泳');
+    fireEvent.press(screen.getByText('新增類別'));
+
+    // The editor's own name field, not the search field still holding it.
+    expect(screen.getByPlaceholderText('名稱').props.value).toBe('游泳');
+  });
+});

@@ -1,13 +1,14 @@
-import { Check, Pencil, Plus } from 'lucide-react-native';
+import { Check, Pencil, Plus, Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { Modal, ScrollView, Text, View } from 'react-native';
+import { Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import type { Category } from '../api/client';
 import type { Editing } from '../categories/CategoryEditorSheet';
 import { CategoryEditorSheet } from '../categories/CategoryEditorSheet';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
-import { createStyles, theme } from '../theme';
+import { createStyles, singleLineField, theme } from '../theme';
 
 import { CategoryIcon } from './CategoryIcon';
 import type { HiddenSet } from './hidden';
@@ -59,10 +60,30 @@ export function CategorySheet({
 }: Props) {
   const strings = useStrings();
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [query, setQuery] = useState('');
+  // Only the pinned row prefills. A create opened from inside the editor is
+  // a Subcategory of whatever is open there, not of what was searched for.
+  const [createName, setCreateName] = useState('');
 
   const topLevel = categories.filter((c) => !c.parentId);
   const childrenOf = (id: string) => categories.filter((c) => c.parentId === id);
   const everythingHidden = allHidden(hidden, categories);
+
+  // Matching spans both levels (#48): the sheet is where Subcategories are
+  // managed, so a search blind to them could not find one by name. A matched
+  // Subcategory keeps its parent row as context; a matched parent keeps its
+  // whole family, since the family is what its switch acts on.
+  const needle = query.trim().toLowerCase();
+  const matches = (c: Category) => c.name.toLowerCase().includes(needle);
+  const shownChildrenOf = (category: Category) => {
+    const children = childrenOf(category.id);
+    if (needle === '' || matches(category)) return children;
+    return children.filter(matches);
+  };
+  const shownTopLevel =
+    needle === ''
+      ? topLevel
+      : topLevel.filter((c) => matches(c) || childrenOf(c.id).some(matches));
 
   const target =
     editing?.mode === 'edit' ? categories.find((c) => c.id === editing.id) : undefined;
@@ -80,7 +101,9 @@ export function CategorySheet({
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      {/* The search field is the last thing above the list, so the sheet
+          rises with it rather than typing blind (#48, under #42's provider). */}
+      <KeyboardAvoidingView style={styles.overlay} behavior="padding">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.categories.done}
@@ -108,9 +131,23 @@ export function CategorySheet({
               <Text style={styles.headerDoneLabel}>{strings.categories.done}</Text>
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={styles.body}>
+          {/* keyboardShouldPersistTaps: every row sits under the field, so
+              without it the first tap would only dismiss the keyboard. */}
+          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+            <View style={styles.searchField}>
+              <Search size={16} color={theme.colors.iconMuted} strokeWidth={2} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={strings.categories.searchPlaceholder}
+                placeholderTextColor={styles.placeholder.color}
+                value={query}
+                onChangeText={setQuery}
+              />
+            </View>
             <View style={styles.card}>
-              {topLevel.map((category) => {
+              {shownTopLevel.map((category) => {
+                // The family switch takes every child, not the shown ones: a
+                // member the search hid is still part of the family.
                 const children = childrenOf(category.id);
                 const familyOn = familyIsVisible(hidden, category, children);
                 return (
@@ -128,7 +165,7 @@ export function CategorySheet({
                       <Text style={[styles.rowTitle, styles.rowText]}>{category.name}</Text>
                       {editButton(() => setEditing({ mode: 'edit', id: category.id }))}
                     </Pressable>
-                    {children.map((child) => (
+                    {shownChildrenOf(category).map((child) => (
                       <Pressable
                         key={child.id}
                         accessibilityRole="button"
@@ -151,7 +188,10 @@ export function CategorySheet({
               <Pressable
                 accessibilityRole="button"
                 style={styles.row}
-                onPress={() => setEditing({ mode: 'create' })}
+                onPress={() => {
+                  setCreateName(query.trim());
+                  setEditing({ mode: 'create' });
+                }}
               >
                 <Plus size={17} color={theme.colors.iconDefault} strokeWidth={2} />
                 <Text style={styles.rowTitle}>{strings.categories.add}</Text>
@@ -159,7 +199,7 @@ export function CategorySheet({
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
       {editing ? (
         <CategoryEditorSheet
           key={editing.mode === 'edit' ? editing.id : `create-${editing.parent?.id ?? 'top'}`}
@@ -174,8 +214,15 @@ export function CategorySheet({
           }
           parentChoices={topLevel}
           childrenOfTarget={target ? childrenOf(target.id) : []}
-          onOpen={(next) => setEditing(next)}
-          onClose={() => setEditing(null)}
+          {...(createName !== '' ? { initialName: createName } : {})}
+          onOpen={(next) => {
+            setCreateName('');
+            setEditing(next);
+          }}
+          onClose={() => {
+            setCreateName('');
+            setEditing(null);
+          }}
           onCategoriesChanged={onCategoriesChanged}
         />
       ) : null}
@@ -240,6 +287,24 @@ const styles = createStyles((t) => ({
   headerDoneLabel: {
     ...t.typography.entryTitle,
     color: t.colors.controlPrimaryFg,
+  },
+  searchField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.space3,
+    marginBottom: t.spacing.space5,
+    paddingHorizontal: t.spacing.space5,
+    backgroundColor: t.colors.surfaceFill,
+    borderRadius: t.radius.r4,
+  },
+  searchInput: {
+    ...singleLineField(t, t.typography.note),
+    color: t.colors.textPrimary,
+    flex: 1,
+    paddingVertical: 0,
+  },
+  placeholder: {
+    color: t.colors.textPlaceholder,
   },
   body: {
     paddingTop: t.spacing.space6,
