@@ -44,11 +44,7 @@ type Props = {
    * while other categories hide.
    */
   hidden?: HiddenSet;
-  /**
-   * Opens the 類別 sheet from this screen's header (#41). The day view reads
-   * Hidden already, so this adds a door, not a new consumer — ADR-0005's
-   * revisit trigger stays untripped. Absent, the button is not drawn.
-   */
+  /** Opens the 類別 sheet from this header (#41). Absent, no button is drawn. */
   onChangeHidden?: (hidden: HiddenSet) => void;
 };
 
@@ -300,11 +296,16 @@ const styles = createStyles((t) => ({
     flex: 1,
     paddingHorizontal: t.spacing.screenGutter,
   },
+  // The 類別 button is 44 (hitMin) and now the tallest thing in this row,
+  // where the 28pt heading used to be. Month and year pair their 44 with
+  // space6/space4, so matching that keeps all three headers ending level —
+  // the alignment #50 spent four commits on (#41).
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.space3,
-    paddingVertical: t.spacing.space6,
+    paddingTop: t.spacing.space6,
+    paddingBottom: t.spacing.space4,
   },
   backButton: {
     width: t.spacing.space9,

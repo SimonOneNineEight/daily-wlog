@@ -203,8 +203,7 @@ it('hides a Category from the day view, and the other surfaces agree (#41)', asy
   });
   expect(await screen.findByText('寫程式')).toBeTruthy();
   expect(screen.queryByText('晨跑')).toBeNull();
-  const monthCalls = () =>
-    (globalThis.fetch as jest.Mock).mock.calls.map(([u]) => String(u)).filter((u) => u.includes('/months/'));
+  const monthCalls = () => api.calls().map(([u]) => String(u)).filter((u) => u.includes('/months/'));
   await waitFor(() => {
     expect(monthCalls().at(-1)).toContain('hiddenCategories=c-sport&hiddenSubcategories=c-gym');
   });
@@ -214,9 +213,7 @@ it('hides a Category from the day view, and the other surfaces agree (#41)', asy
     fireEvent.press(screen.getByLabelText('年'));
   });
   await screen.findByLabelText('選擇年份');
-  const yearCalls = (globalThis.fetch as jest.Mock).mock.calls
-    .map(([u]) => String(u))
-    .filter((u) => u.includes('/years/'));
+  const yearCalls = api.calls().map(([u]) => String(u)).filter((u) => u.includes('/years/'));
   expect(yearCalls.at(-1)).toContain(
     `/years/${today.getFullYear()}?hiddenCategories=c-sport&hiddenSubcategories=c-gym`,
   );
