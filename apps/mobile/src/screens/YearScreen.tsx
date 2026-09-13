@@ -62,6 +62,9 @@ export function YearScreen({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
   const { visible: actionsVisible, scrollHandlers } = useHideOnScroll();
+  // The wheel drops in under the nav bar, which stopped being a fixed
+  // height when the count became a second line (#50).
+  const [navHeight, setNavHeight] = useState<number>(theme.spacing.navBarHeight);
 
   useEffect(() => {
     let active = true;
@@ -103,110 +106,117 @@ export function YearScreen({
   return (
     <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        <View style={styles.navBar}>
-          {/* No back and no chevrons (ratified 2026-09-10): swipes page the
-              years, tapping a month leaves, and the title opens the wheel.
-              The count rides under the year as a sub-line, the shape the
-              month view already uses (Simon, 2026-09-12): the whole year is
-              on one screen, so scrolling purely to read a total was a wasted
-              scroll. */}
-          <View testID="year-header" style={styles.navTitleBlock}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={strings.year.pickYear}
-              onPress={() => setWheelOpen(true)}
-            >
-              <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
-            </Pressable>
-            <Text style={styles.navSubtitle}>
-              {isCurrentYear
-                ? strings.year.countLabel(totalEntries)
-                : strings.year.totalLabel(totalEntries)}
-            </Text>
+        {/* The floats position against this View, not the SafeAreaView: an
+            absolute child ignores its parent's safe-area padding. */}
+        <View style={styles.fill}>
+          <View
+            style={styles.navBar}
+            onLayout={(event) => setNavHeight(event.nativeEvent.layout.height)}
+          >
+            {/* No back and no chevrons (ratified 2026-09-10): swipes page the
+                years, tapping a month leaves, and the title opens the wheel.
+                The count rides under the year as a sub-line, the shape the
+                month view already uses (Simon, 2026-09-12): the whole year is
+                on one screen, so scrolling purely to read a total was a wasted
+                scroll. */}
+            <View testID="year-header" style={styles.navTitleBlock}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={strings.year.pickYear}
+                onPress={() => setWheelOpen(true)}
+              >
+                <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
+              </Pressable>
+              <Text style={styles.navSubtitle}>
+                {isCurrentYear
+                  ? strings.year.countLabel(totalEntries)
+                  : strings.year.totalLabel(totalEntries)}
+              </Text>
+            </View>
+            {onChangeHidden ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={strings.categories.title}
+                style={styles.navButton}
+                onPress={() => setSheetOpen(true)}
+              >
+                <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+              </Pressable>
+            ) : null}
           </View>
-          {onChangeHidden ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={strings.categories.title}
-              style={styles.navButton}
-              onPress={() => setSheetOpen(true)}
-            >
-              <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
-            </Pressable>
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.body} {...scrollHandlers}>
+            <View style={styles.grid}>
+              {MONTHS.map((month) => (
+                <View key={month} style={styles.gridItem}>
+                  <MiniMonth
+                    year={year}
+                    month={month}
+                    colors={colorsByMonth[month] ?? {}}
+                    todayDay={
+                      isCurrentYear && month === today.getMonth() + 1 ? today.getDate() : undefined
+                    }
+                    onPress={() => onOpenMonth(year, month)}
+                  />
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+          <CalendarFloatingActions
+            visible={actionsVisible}
+            onToday={() => setYear(today.getFullYear())}
+          />
+          {sheetOpen && onChangeHidden ? (
+            <CategorySheet
+              accessToken={accessToken}
+              categories={categories}
+              hidden={hidden}
+              onChange={onChangeHidden}
+              onCategoriesChanged={() => onCategoriesChanged?.()}
+              onClose={() => setSheetOpen(false)}
+            />
           ) : null}
-        </View>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.body} {...scrollHandlers}>
-          <View style={styles.grid}>
-            {MONTHS.map((month) => (
-              <View key={month} style={styles.gridItem}>
-                <MiniMonth
-                  year={year}
-                  month={month}
-                  colors={colorsByMonth[month] ?? {}}
-                  todayDay={
-                    isCurrentYear && month === today.getMonth() + 1 ? today.getDate() : undefined
-                  }
-                  onPress={() => onOpenMonth(year, month)}
+          {wheelOpen ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={strings.entryForm.cancel}
+                feedback="none"
+                style={styles.wheelScrim}
+                onPress={() => setWheelOpen(false)}
+              />
+              <View style={[styles.wheelCard, { top: navHeight }]}>
+                <FlatList
+                  testID="year-wheel"
+                  data={Array.from({ length: WHEEL_SPAN * 2 + 1 }, (_, i) => year - WHEEL_SPAN + i)}
+                  keyExtractor={(item) => String(item)}
+                  getItemLayout={(_, index) => ({
+                    length: WHEEL_ROW_HEIGHT,
+                    offset: WHEEL_ROW_HEIGHT * index,
+                    index,
+                  })}
+                  // Two rows above the viewed year: it sits centered in the
+                  // five-row window.
+                  initialScrollIndex={WHEEL_SPAN - 2}
+                  showsVerticalScrollIndicator={false}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      style={styles.wheelRow}
+                      onPress={() => {
+                        setYear(item);
+                        setWheelOpen(false);
+                      }}
+                    >
+                      <Text style={item === year ? styles.wheelYearCurrent : styles.wheelYear}>
+                        {strings.year.title(item)}
+                      </Text>
+                    </Pressable>
+                  )}
                 />
               </View>
-            ))}
-          </View>
-        </ScrollView>
-        <CalendarFloatingActions
-          visible={actionsVisible}
-          onToday={() => setYear(today.getFullYear())}
-        />
-        {sheetOpen && onChangeHidden ? (
-          <CategorySheet
-            accessToken={accessToken}
-            categories={categories}
-            hidden={hidden}
-            onChange={onChangeHidden}
-            onCategoriesChanged={() => onCategoriesChanged?.()}
-            onClose={() => setSheetOpen(false)}
-          />
-        ) : null}
-        {wheelOpen ? (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={strings.entryForm.cancel}
-              feedback="none"
-              style={styles.wheelScrim}
-              onPress={() => setWheelOpen(false)}
-            />
-            <View style={styles.wheelCard}>
-              <FlatList
-                testID="year-wheel"
-                data={Array.from({ length: WHEEL_SPAN * 2 + 1 }, (_, i) => year - WHEEL_SPAN + i)}
-                keyExtractor={(item) => String(item)}
-                getItemLayout={(_, index) => ({
-                  length: WHEEL_ROW_HEIGHT,
-                  offset: WHEEL_ROW_HEIGHT * index,
-                  index,
-                })}
-                // Two rows above the viewed year: it sits centered in the
-                // five-row window.
-                initialScrollIndex={WHEEL_SPAN - 2}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    style={styles.wheelRow}
-                    onPress={() => {
-                      setYear(item);
-                      setWheelOpen(false);
-                    }}
-                  >
-                    <Text style={item === year ? styles.wheelYearCurrent : styles.wheelYear}>
-                      {strings.year.title(item)}
-                    </Text>
-                  </Pressable>
-                )}
-              />
-            </View>
-          </>
-        ) : null}
+            </>
+          ) : null}
+        </View>
       </SafeAreaView>
     </GestureDetector>
   );
@@ -216,6 +226,9 @@ const styles = createStyles((t) => ({
   screen: {
     flex: 1,
     backgroundColor: t.colors.surface,
+  },
+  fill: {
+    flex: 1,
   },
   navBar: {
     flexDirection: 'row',
@@ -263,7 +276,6 @@ const styles = createStyles((t) => ({
   // The wheel drops in behind the title: a floating card under the nav bar.
   wheelCard: {
     position: 'absolute',
-    top: t.spacing.navBarHeight,
     left: t.spacing.space4,
     // Wide enough for a four-digit 年 row plus card padding; not a token.
     width: 132,

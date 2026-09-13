@@ -197,6 +197,7 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | MO.27 | Scroll the day panel | Both controls fade out while scrolling and return when it stops |
 | MO.28 | Tap between the two controls while they are showing | The tap reaches the panel beneath, not the gap |
 | MO.29 | On a device with a home indicator | Both controls sit above the indicator, never over it |
+| MO.31 | The controls against the month title and the day card | Their left and right edges line up with both |
 
 ### DA — Day view
 
@@ -222,6 +223,7 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | DA.18 | Scroll the card list | Both controls fade while scrolling and return when it stops |
 | DA.19 | Long-press-drag a card near the bottom | The drag works; the faded controls do not intercept it |
 | DA.20 | On a device with a home indicator | Both controls sit above the indicator, never over it |
+| DA.21 | The gap below the controls | The same on the day, month and year views |
 
 Round 2: #41 (a 類別 button).
 
@@ -287,7 +289,7 @@ Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
 | YR.6 | Swipe left / right | One year per swipe, both directions **[API]** |
 | YR.7 | Scroll the mini months vertically | Scrolls without triggering a year swipe |
 | YR.8 | Tap a mini month | The month view opens on it |
-| YR.9 | Tap the year title | The wheel opens, the viewed year centred; the count beneath is not a tap target |
+| YR.9 | Tap the year title | The wheel opens directly under the header, the viewed year centred; the count beneath is not a tap target |
 | YR.10 | Scroll the wheel far and pick | That year loads, mini months redraw **[API]** |
 | YR.11 | Pick a future year | Allowed; backfilling is the product |
 | YR.12 | Tap the scrim | The wheel closes, the year unchanged |

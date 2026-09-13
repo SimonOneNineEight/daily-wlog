@@ -189,67 +189,69 @@ export function DayScreen({
   return (
     <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        {/* The gutter lives here, not on the screen, so the bar below runs
-            edge to edge like the nav bars do. */}
-        <View style={styles.content}>
-          <View style={styles.headerRow}>
-            {onBack ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={strings.day.back}
-                style={styles.backButton}
-                onPress={onBack}
-              >
-                <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
-              </Pressable>
+        {/* The floats position against this View, not the SafeAreaView: an
+            absolute child ignores its parent's safe-area padding. */}
+        <View style={styles.fill}>
+          <View style={styles.content}>
+            <View style={styles.headerRow}>
+              {onBack ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={strings.day.back}
+                  style={styles.backButton}
+                  onPress={onBack}
+                >
+                  <ChevronLeft size={22} color={theme.colors.iconDefault} strokeWidth={2} />
+                </Pressable>
+              ) : null}
+              <Text style={styles.heading}>{heading}</Text>
+            </View>
+            {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
+            {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
+            {entries !== null && visibleEntries.length === 0 && !failed ? (
+              <Text style={styles.muted}>{strings.day.empty}</Text>
             ) : null}
-            <Text style={styles.heading}>{heading}</Text>
+            {/* Kept drafts (#14). No canvas artboard exists for these, so the
+                quietest surface consistent with the day view: a plain card with
+                the title and a flat 尚未儲存 meta line. */}
+            {drafts.map((draft) => (
+              <Pressable
+                key={draft.id}
+                accessibilityRole="button"
+                style={styles.draftCard}
+                onPress={() => setOpenDraft(draft)}
+              >
+                <Text style={styles.draftTitle}>
+                  {decodeContent(draft.content)?.title ?? strings.day.unreadable}
+                </Text>
+                <Text style={styles.draftMeta}>{strings.day.draftUnsaved}</Text>
+              </Pressable>
+            ))}
+            <DraggableFlatList
+              data={visibleEntries}
+              keyExtractor={(entry) => entry.id}
+              // Without this the list's pan activates on first touch and starves
+              // the screen's horizontal flings (#26) everywhere the list sits —
+              // most of the screen. 20pt of vertical travel arms the drag pan;
+              // horizontal flings never cross it and pass through.
+              activationDistance={20}
+              renderItem={renderCard}
+              onDragEnd={({ data }) => {
+                if (partialDay) return; // a partial list can't define the order
+                setEntries(data);
+                void persistOrder(data);
+              }}
+              containerStyle={styles.listContainer}
+              contentContainerStyle={styles.list}
+              {...scrollHandlers}
+            />
           </View>
-          {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
-          {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
-          {entries !== null && visibleEntries.length === 0 && !failed ? (
-            <Text style={styles.muted}>{strings.day.empty}</Text>
-          ) : null}
-          {/* Kept drafts (#14). No canvas artboard exists for these, so the
-              quietest surface consistent with the day view: a plain card with
-              the title and a flat 尚未儲存 meta line. */}
-          {drafts.map((draft) => (
-            <Pressable
-              key={draft.id}
-              accessibilityRole="button"
-              style={styles.draftCard}
-              onPress={() => setOpenDraft(draft)}
-            >
-              <Text style={styles.draftTitle}>
-                {decodeContent(draft.content)?.title ?? strings.day.unreadable}
-              </Text>
-              <Text style={styles.draftMeta}>{strings.day.draftUnsaved}</Text>
-            </Pressable>
-          ))}
-          <DraggableFlatList
-            data={visibleEntries}
-            keyExtractor={(entry) => entry.id}
-            // Without this the list's pan activates on first touch and starves
-            // the screen's horizontal flings (#26) everywhere the list sits —
-            // most of the screen. 20pt of vertical travel arms the drag pan;
-            // horizontal flings never cross it and pass through.
-            activationDistance={20}
-            renderItem={renderCard}
-            onDragEnd={({ data }) => {
-              if (partialDay) return; // a partial list can't define the order
-              setEntries(data);
-              void persistOrder(data);
-            }}
-            containerStyle={styles.listContainer}
-            contentContainerStyle={styles.list}
-            {...scrollHandlers}
+          <CalendarFloatingActions
+            visible={actionsVisible}
+            {...(onChangeDate ? { onToday: () => onChangeDate(localDateString(today)) } : {})}
+            onAdd={() => setComposing(true)}
           />
         </View>
-        <CalendarFloatingActions
-          visible={actionsVisible}
-          {...(onChangeDate ? { onToday: () => onChangeDate(localDateString(today)) } : {})}
-          onAdd={() => setComposing(true)}
-        />
       </SafeAreaView>
     </GestureDetector>
   );
@@ -259,6 +261,9 @@ const styles = createStyles((t) => ({
   screen: {
     flex: 1,
     backgroundColor: t.colors.background,
+  },
+  fill: {
+    flex: 1,
   },
   content: {
     flex: 1,

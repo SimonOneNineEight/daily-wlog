@@ -11,7 +11,7 @@ import { createStyles, theme } from '../theme';
  * instead of sitting under them. The controls hover over content, so the
  * content has to make room rather than the chrome taking it permanently.
  */
-export const FLOAT_CLEARANCE = theme.spacing.hitMin + theme.spacing.fabInset * 2;
+export const FLOAT_CLEARANCE = theme.spacing.hitMin + theme.spacing.screenGutter * 2;
 
 // --duration-fast (design/tokens/motion.css); the generator does not emit
 // motion tokens, so the value is carried here.
@@ -106,11 +106,16 @@ const float = {
 } as const;
 
 const styles = createStyles((t) => ({
+  // One screen gutter in from every edge, so the controls line up with the
+  // titles and cards rather than sitting a step further in. The layer must
+  // never be a direct child of a SafeAreaView: an absolutely positioned child
+  // ignores that parent's padding, which put these at the physical screen
+  // edge on two surfaces and above the inset on the third.
   layer: {
     position: 'absolute',
-    left: t.spacing.fabInset,
-    right: t.spacing.fabInset,
-    bottom: t.spacing.fabInset,
+    left: t.spacing.screenGutter,
+    right: t.spacing.screenGutter,
+    bottom: t.spacing.screenGutter,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
