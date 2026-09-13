@@ -648,8 +648,7 @@ const styles = createStyles((t) => ({
     borderRadius: t.radius.r4,
   },
   searchInput: {
-    ...singleLineField(t),
-    fontSize: t.typography.note.fontSize,
+    ...singleLineField(t, t.typography.note),
     color: t.colors.textPrimary,
     flex: 1,
     paddingVertical: 0,
@@ -778,8 +777,7 @@ const styles = createStyles((t) => ({
     color: t.colors.controlDisabledFg,
   },
   titleInput: {
-    ...singleLineField(t),
-    fontSize: t.typography.entryTitle.fontSize,
+    ...singleLineField(t, t.typography.entryTitle),
     color: t.colors.textPrimary,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.r3,

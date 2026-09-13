@@ -146,8 +146,7 @@ const styles = createStyles((t) => ({
     paddingTop: t.spacing.space6,
   },
   field: {
-    ...singleLineField(t),
-    fontSize: t.typography.entryTitle.fontSize,
+    ...singleLineField(t, t.typography.entryTitle),
     color: t.colors.textPrimary,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.r4,

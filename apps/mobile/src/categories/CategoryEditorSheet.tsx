@@ -444,8 +444,7 @@ const styles = createStyles((t) => ({
     gap: t.spacing.space5,
   },
   nameInput: {
-    ...singleLineField(t),
-    fontSize: t.typography.entryTitle.fontSize,
+    ...singleLineField(t, t.typography.entryTitle),
     color: t.colors.textPrimary,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.r3,

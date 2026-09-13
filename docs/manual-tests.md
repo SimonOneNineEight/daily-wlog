@@ -163,6 +163,8 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | SI.12 | Airplane mode, submit | Plain error, no crash |
 | SI.13 | Password field | Masked, and offers the right autofill (current vs new) per mode |
 
+Keyboard cases are in **KB**.
+
 ### MO — Month view
 
 | # | Case | Expected |
@@ -349,7 +351,7 @@ Round 2: #48 (a search field).
 | CE.19 | Tap empty sheet ground while typing | The keyboard drops |
 | CE.20 | Airplane mode, save | 儲存失敗，請再試一次; nothing lost |
 
-Round 2: #46 (CE.12).
+Round 2: #46 (CE.12). Keyboard cases are in **KB**.
 
 ### CD — Color drawer
 
@@ -421,9 +423,10 @@ One library, one provider at the root (#42, ADR-0006), so these behave the same
 way everywhere rather than per screen.
 
 **This section needs a native rebuild.** `react-native-keyboard-controller` is
-a native dependency: Expo Go cannot run it, and a JS-only build will show every
-case failing for that reason alone. Confirm the build is a dev client or a
-TestFlight build before reading anything into a failure here.
+a native dependency, so a binary built before it landed will show every case
+failing for a reason that has nothing to do with the code. Confirm the build
+carries it before reading anything into a failure here. (Expo Go was never an
+option for this app; reanimated 4 ruled it out long before this.)
 
 No automated test can see any of this. The jest suite loads the library's mock,
 which renders the aware scroll view as a plain scroll view, so the whole

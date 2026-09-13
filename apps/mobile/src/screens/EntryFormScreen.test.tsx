@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 
 import { encodeContent } from '../entries/content';
 import { cat } from '../testing/fixtures';
+import { expectSingleLineField } from '../testing/expectSingleLineField';
 import { installMockApi, type MockApi } from '../testing/mockApi';
 import { EntryFormScreen } from './EntryFormScreen';
 
@@ -240,23 +240,16 @@ describe('category step (#28)', () => {
 // height top-anchors the placeholder inside it. Same rule as subInput
 // (2026-08-19) and now every single-line field (#42).
 describe('single-line fields (#42)', () => {
-  const expectSized = (placeholder: string) => {
-    const style = StyleSheet.flatten(screen.getByPlaceholderText(placeholder).props.style);
-    expect(style.lineHeight).toBeUndefined();
-    expect(style.height).toBeUndefined();
-    expect(style.minHeight).toBeGreaterThanOrEqual(44);
-  };
-
   it('sizes the category search field for CJK, at the hit target', () => {
     renderForm();
 
-    expectSized('類別');
+    expectSingleLineField('類別');
   });
 
   it('sizes the title field for CJK, at the hit target', () => {
     renderForm();
     fireEvent.press(screen.getByText('運動'));
 
-    expectSized('標題');
+    expectSingleLineField('標題');
   });
 });

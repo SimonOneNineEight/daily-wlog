@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 
+import { expectSingleLineField } from '../testing/expectSingleLineField';
 import { SignInScreen } from './SignInScreen';
 
 const mockSignInWithPassword = jest.fn(async (_args: unknown) => ({ error: null }));
@@ -83,9 +83,6 @@ describe('single-line fields (#42)', () => {
     render(<SignInScreen />);
     fireEvent.press(screen.getByText('使用電子郵件登入'));
 
-    const style = StyleSheet.flatten(screen.getByPlaceholderText(placeholder).props.style);
-    expect(style.lineHeight).toBeUndefined();
-    expect(style.height).toBeUndefined();
-    expect(style.minHeight).toBeGreaterThanOrEqual(44);
+    expectSingleLineField(placeholder);
   });
 });

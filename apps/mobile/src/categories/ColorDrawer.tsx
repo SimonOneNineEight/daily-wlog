@@ -121,8 +121,13 @@ export function ColorDrawer({
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onCancel}>
-      {/* The hex field is the last row of the sheet, so the whole drawer
-          rises and the picker above it stays in view (#42, story 22). */}
+      {/* The hex field is the last row of the sheet, so the whole drawer rises
+          and the picker above it stays in view (#42; #45 user story 22).
+          Unlike the category editor this sheet has no maxHeight and no
+          scrolling body, so on a short screen rising can run its header off
+          the top. Left alone deliberately: wrapping a PanResponder area in a
+          ScrollView risks the drag being stolen from the color field (CD.2),
+          and nothing here can test either. KB.12 decides it on a device. */}
       <KeyboardAvoidingView style={styles.overlay} behavior="padding">
         <Pressable
           accessibilityRole="button"
@@ -579,6 +584,8 @@ const styles = createStyles((t) => ({
     fontVariant: ['tabular-nums'],
   },
   // Padding-based sizing like subInput: no forced height, natural line box.
+  // Not singleLineField: this is a compact readout sitting in a row of dots,
+  // sized to them rather than to the 44pt hit target.
   hexInput: {
     fontSize: t.typography.meta.fontSize,
     color: t.colors.textPrimary,
