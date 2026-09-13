@@ -903,10 +903,14 @@ paths:
         - name: hex
           in: path
           required: true
-          description: The color's six hex digits, without the leading "#".
+          description: >
+            The color's six hex digits, without the leading "#". Deliberately
+            unconstrained: a delete of something that does not match is a
+            no-op, so the server answers 204 rather than validating. The save
+            arm rejects a malformed hex because it stores what it is given;
+            this one does not.
           schema:
             type: string
-            pattern: "^[0-9A-Fa-f]{6}$"
       responses:
         "204":
           description: The color is not saved any more.

@@ -167,6 +167,31 @@ describe('forgetting a Saved Color (#47)', () => {
     expect(screen.getByLabelText('色相')).toBeTruthy();
   });
 
+  // A confirmed destructive action that silently does nothing is worse than
+  // one that fails loudly: the color sits there still offered, and the tap
+  // looks ignored. Every sibling reports (deletePhoto alerts; deleteEntry and
+  // deactivateMe raise a failed flag), so this one does too.
+  it('says so when the forget fails, and keeps the color', async () => {
+    api.restore();
+    api = installMockApi({
+      colorRecents: ['#123456', '#654321'],
+      failures: { colorRecentDelete: true },
+    });
+    renderPicker();
+    fireEvent.press(screen.getByLabelText('自訂顏色'));
+    await act(async () => {});
+
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    fireEvent(screen.getByLabelText('#123456'), 'longPress');
+    await act(async () => {
+      (alertSpy.mock.calls[0][2] ?? []).find((b) => b.style === 'destructive')?.onPress?.();
+    });
+
+    expect(alertSpy.mock.calls.at(-1)?.[0]).toBe('移除失敗，請再試一次');
+    alertSpy.mockRestore();
+    expect(screen.getByLabelText('#123456')).toBeTruthy();
+  });
+
   it('keeps the color when the confirmation is canceled', async () => {
     renderPicker();
     fireEvent.press(screen.getByLabelText('自訂顏色'));

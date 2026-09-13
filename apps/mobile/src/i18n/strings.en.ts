@@ -182,6 +182,7 @@ export const en: StringCatalog = {
     forgetConfirmTitle: 'Stop keeping this color?',
     forgetConfirmBody: 'Categories using this color keep it.',
     forget: 'Remove',
+    forgetFailed: 'Could not remove it. Try again.',
   },
   health: {
     loading: 'Connecting…',

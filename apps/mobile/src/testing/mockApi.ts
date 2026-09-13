@@ -49,6 +49,7 @@ export type MockFailures = {
   entryWrites: boolean;
   presign: boolean;
   categoryPost: boolean;
+  colorRecentDelete: boolean;
   health?: 'reject' | 'unhealthy';
 };
 
@@ -81,6 +82,7 @@ export function installMockApi(
     entryWrites: false,
     presign: false,
     categoryPost: false,
+    colorRecentDelete: false,
     ...setup.failures,
   };
   // The server's idempotency memory (#17): the first 201 per key replays
@@ -167,6 +169,7 @@ export function installMockApi(
       return ok({ colors: [body().color, ...world.colorRecents] });
     }
     if (u.includes('/color-recents/') && method === 'DELETE') {
+      if (failures.colorRecentDelete) network();
       // The six digits ride bare in the path and the server uppercases
       // before matching (#47); forgetting one that was never saved is a 204
       // like any other. Categories are untouched: a Saved Color is a memory

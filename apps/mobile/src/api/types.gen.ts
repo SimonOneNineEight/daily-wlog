@@ -1537,7 +1537,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The color's six hex digits, without the leading "#". */
+                /** @description The color's six hex digits, without the leading "#". Deliberately unconstrained: a delete of something that does not match is a no-op, so the server answers 204 rather than validating. The save arm rejects a malformed hex because it stores what it is given; this one does not. */
                 hex: string;
             };
             cookie?: never;

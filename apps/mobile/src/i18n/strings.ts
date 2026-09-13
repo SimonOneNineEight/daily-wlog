@@ -167,6 +167,7 @@ const zhTW = {
     forgetConfirmTitle: '不再保留這個顏色？',
     forgetConfirmBody: '使用這個顏色的類別不會改變。',
     forget: '移除',
+    forgetFailed: '移除失敗，請再試一次',
   },
   health: {
     loading: '連線中…',

@@ -90,7 +90,7 @@ export function ColorDrawer({
         onPress: () => {
           forgetColorRecent(accessToken, saved)
             .then(() => setRecents((prev) => prev.filter((hex) => hex !== saved)))
-            .catch(() => undefined); // Nothing is lost; the color stays offered.
+            .catch(() => Alert.alert(strings.colorDrawer.forgetFailed));
         },
       },
     ]);
