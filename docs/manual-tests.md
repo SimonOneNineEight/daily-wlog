@@ -150,8 +150,8 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | # | Case | Expected |
 | --- | --- | --- |
 | SI.1 | The screen at rest | Wordmark, one line of promise, provider buttons. Nothing else |
-| SI.2 | Sign in with Apple | Completes and lands on the month view **[API]** |
-| SI.3 | Cancel the Apple sheet | Returns to sign-in with **no** error message — a cancelled sheet is a decision |
+| SI.2 | Sign in with Apple | Completes and lands on the month view **[API]** **[#52]** |
+| SI.3 | Cancel the Apple sheet | Returns to sign-in with **no** error message — a cancelled sheet is a decision **[#52]** |
 | SI.4 | Sign in with Google | Completes and lands on the month view **[API]** |
 | SI.5 | Cancel the Google sheet | Returns to sign-in; an error here is acceptable, a crash is not |
 | SI.6 | 使用電子郵件登入 | The email page opens on its own |
@@ -162,6 +162,12 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | SI.11 | Empty email or password, submit | Nothing happens; no request fired |
 | SI.12 | Airplane mode, submit | Plain error, no crash |
 | SI.13 | Password field | Masked, and offers the right autofill (current vs new) per mode |
+
+**SI.2 and SI.3 fail on every build today (#52).** Apple sign-in is offered
+but not set up: the App ID has no Sign In with Apple capability, so a dev
+build signs only with the entitlement emptied, which removes the feature. The
+button still renders, because it gates on `isAvailableAsync()` rather than on
+whether anything backs it.
 
 Keyboard cases are in **KB**.
 
