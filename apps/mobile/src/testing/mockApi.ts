@@ -166,6 +166,15 @@ export function installMockApi(
     if (u.includes('/color-recents') && method === 'PUT') {
       return ok({ colors: [body().color, ...world.colorRecents] });
     }
+    if (u.includes('/color-recents/') && method === 'DELETE') {
+      // The six digits ride bare in the path and the server uppercases
+      // before matching (#47); forgetting one that was never saved is a 204
+      // like any other. Categories are untouched: a Saved Color is a memory
+      // of use, not a possession.
+      const hex = `#${u.split('/color-recents/')[1].toUpperCase()}`;
+      world.colorRecents = world.colorRecents.filter((color) => color.toUpperCase() !== hex);
+      return ok({}, 204);
+    }
     if (u.includes('/color-recents')) return ok({ colors: world.colorRecents });
     if (u.includes('/months/')) {
       // The hidden-set rides as query params; the month key is the path.

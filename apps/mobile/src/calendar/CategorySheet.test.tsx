@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 import { cat } from '../testing/fixtures';
 import { installMockApi, type MockApi } from '../testing/mockApi';
@@ -190,4 +190,37 @@ it('creates a subcategory by picking a parent in the editor', async () => {
     color: '#73B062',
     parentId: 'c-sport',
   });
+});
+
+it('forgetting a Saved Color leaves the Category wearing it alone (#47)', async () => {
+  // 工作 wears a custom color that 已存的顏色 also remembers.
+  api.world.colorRecents = ['#AABB0C'];
+  renderSheet({ categories: [{ ...cat.work, color: '#AABB0C', inUse: true, hasChildren: false }] });
+
+  fireEvent.press(screen.getByLabelText('編輯類別'));
+  fireEvent.press(screen.getByLabelText('自訂顏色'));
+  await act(async () => {});
+  const alertSpy = jest.spyOn(Alert, 'alert');
+  fireEvent(screen.getByLabelText('#AABB0C'), 'longPress');
+  const buttons = alertSpy.mock.calls[0][2] ?? [];
+  await act(async () => {
+    buttons.find((b) => b.style === 'destructive')?.onPress?.();
+  });
+  alertSpy.mockRestore();
+  // The whole row leaves with the last color it held.
+  expect(screen.queryByText('已存的顏色')).toBeNull();
+
+  // Leaving the drawer with 完成 — the drawer's, not the sheet's — the
+  // Category is still the color it was. A Saved Color is a memory of use,
+  // not a possession (CONTEXT.md, 2026-09-12): tidying the picker never
+  // recolors the Journal.
+  const dones = screen.getAllByText('完成');
+  fireEvent.press(dones[dones.length - 1]);
+  // The custom swatch paints the color the editor holds for the Category.
+  const swatch = screen.getByLabelText('自訂顏色').children[0] as { props: { style?: unknown } };
+  expect((StyleSheet.flatten(swatch.props.style) as { backgroundColor?: string }).backgroundColor).toBe(
+    '#AABB0C',
+  );
+  const patch = (globalThis.fetch as jest.Mock).mock.calls.find(([, init]) => init?.method === 'PATCH');
+  expect(patch).toBeUndefined();
 });

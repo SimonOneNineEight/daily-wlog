@@ -372,8 +372,13 @@ Round 2: #46 (CE.12). Keyboard cases are in **KB**.
 | CD.13 | 完成, then **cancel** the editor | The color does **not** join 已存的顏色 **[API]** |
 | CD.14 | Save more than twelve custom colors over time | The oldest drop; the cap holds **[API]** |
 | CD.15 | Airplane mode, open the drawer | The saved row is simply empty; the picker still works |
+| CD.16 | Long-press a color in 已存的顏色 | A confirmation, saying the Categories using it keep it |
+| CD.17 | Cancel that confirmation | The color stays in the row |
+| CD.18 | Confirm it | The color leaves 已存的顏色 there and then, with the drawer still open **[API]** |
+| CD.19 | A Category wearing the forgotten color | Still wears it — on its editor, on the month view, in the day list **[API]** |
+| CD.20 | Reopen the drawer | The color is still gone; the rest of the row is in the same order **[API]** |
 
-Round 2: #47 (forgetting a Saved Color). Keyboard cases are in **KB**.
+Round 2: #47 (CD.16–CD.20). Keyboard cases are in **KB**.
 
 ### ST — Settings and account
 

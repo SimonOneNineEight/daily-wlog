@@ -190,3 +190,14 @@ export function listColorRecents(accessToken: string): Promise<ColorRecents> {
 export function saveColorRecent(accessToken: string, color: string): Promise<ColorRecents> {
   return request<ColorRecents>(accessToken, '/color-recents', { method: 'PUT', body: { color } });
 }
+
+/**
+ * Forgets a Saved Color (#47). The six digits travel bare — a "#" in a path
+ * would have to be percent-encoded — and the server matches case-insensitively,
+ * so the stored "#AB12CD" answers to whatever case the drawer holds.
+ */
+export function forgetColorRecent(accessToken: string, color: string): Promise<void> {
+  return request<void>(accessToken, `/color-recents/${color.replace('#', '')}`, {
+    method: 'DELETE',
+  });
+}

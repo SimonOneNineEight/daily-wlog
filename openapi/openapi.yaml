@@ -885,6 +885,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /color-recents/{hex}:
+    delete:
+      operationId: forgetColorRecent
+      summary: Forget a saved custom color
+      description: >
+        A Saved Color is a memory of use, not a possession (#47): forgetting
+        one frees a slot in the drawer's saved row and leaves every Category
+        wearing that color untouched. The path carries the six hex digits
+        without the leading "#", which would have to travel percent-encoded.
+        The server uppercases before matching, as the save arm does, so case
+        can never split one color into two rows. Idempotent: forgetting a
+        color that was never saved answers 204 like any other.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: hex
+          in: path
+          required: true
+          description: The color's six hex digits, without the leading "#".
+          schema:
+            type: string
+            pattern: "^[0-9A-Fa-f]{6}$"
+      responses:
+        "204":
+          description: The color is not saved any more.
+        "401":
+          description: Missing or invalid access token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Forgetting the color failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   securitySchemes:
     bearerAuth:

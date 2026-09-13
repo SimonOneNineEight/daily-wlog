@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Modal, PanResponder, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, PanResponder, Text, TextInput, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
-import { listColorRecents } from '../api/client';
+import { forgetColorRecent, listColorRecents } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
@@ -76,6 +76,25 @@ export function ColorDrawer({
       active = false;
     };
   }, [accessToken]);
+
+  // Forgetting a Saved Color (#47, ratified 2026-09-12): a long-press, then
+  // the same Alert that guards deleting a Photo, an Entry or a Category, so
+  // no color is lost by brushing the row. The row is state here, so it
+  // closes the gap without the drawer being reopened.
+  const confirmForget = (saved: string) => {
+    Alert.alert(strings.colorDrawer.forgetConfirmTitle, strings.colorDrawer.forgetConfirmBody, [
+      { text: strings.entryForm.cancel, style: 'cancel' },
+      {
+        text: strings.colorDrawer.forget,
+        style: 'destructive',
+        onPress: () => {
+          forgetColorRecent(accessToken, saved)
+            .then(() => setRecents((prev) => prev.filter((hex) => hex !== saved)))
+            .catch(() => undefined); // Nothing is lost; the color stays offered.
+        },
+      },
+    ]);
+  };
 
   const pickFromArea = (x: number, y: number) => {
     if (area.width <= 0 || area.height <= 0) return;
@@ -165,6 +184,7 @@ export function ColorDrawer({
                       accessibilityLabel={saved}
                       style={[styles.savedRing, saved === color && styles.savedRingSelected]}
                       onPress={() => setHsl(hexToHsl(saved))}
+                      onLongPress={() => confirmForget(saved)}
                     >
                       <View style={[styles.savedSwatch, { backgroundColor: saved }]} />
                     </Pressable>

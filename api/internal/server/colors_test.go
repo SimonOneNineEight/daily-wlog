@@ -43,6 +43,24 @@ func saveColorRecent(t *testing.T, ts *httptest.Server, token, color string) *ht
 	return resp
 }
 
+func forgetColorRecent(t *testing.T, ts *httptest.Server, token, hex string) *http.Response {
+	t.Helper()
+	// The six digits ride bare in the path: a "#" would have to travel
+	// percent-encoded (#47).
+	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/color-recents/"+hex, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE /color-recents/%s: %v", hex, err)
+	}
+	return resp
+}
+
 func decodeColors(t *testing.T, resp *http.Response) []string {
 	t.Helper()
 	defer resp.Body.Close()
@@ -59,6 +77,7 @@ func TestColorRecentsRequireAToken(t *testing.T) {
 	ts := newTestServer(t)
 	checkStatus(t, listColorRecents(t, ts, ""), http.StatusUnauthorized)
 	checkStatus(t, saveColorRecent(t, ts, "", "#123456"), http.StatusUnauthorized)
+	checkStatus(t, forgetColorRecent(t, ts, "", "123456"), http.StatusUnauthorized)
 }
 
 func TestColorRecentsStartEmpty(t *testing.T) {
@@ -160,4 +179,74 @@ func TestSavedColorsCapAtTwelveEvictingTheOldest(t *testing.T) {
 			t.Errorf("oldest color %q survived the cap: %v", saved[0], got)
 		}
 	}
+}
+
+func TestForgettingASavedColorDropsItFromTheList(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	postMe(t, ts, token).Body.Close()
+
+	for _, color := range []string{"#111111", "#222222", "#333333"} {
+		checkStatus(t, saveColorRecent(t, ts, token, color), http.StatusOK)
+	}
+	checkStatus(t, forgetColorRecent(t, ts, token, "222222"), http.StatusNoContent)
+
+	want := []string{"#333333", "#111111"}
+	if got := decodeColors(t, listColorRecents(t, ts, token)); fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("after forgetting = %v, want %v", got, want)
+	}
+}
+
+func TestForgettingMatchesRegardlessOfCase(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	postMe(t, ts, token).Body.Close()
+
+	checkStatus(t, saveColorRecent(t, ts, token, "#AABB0C"), http.StatusOK)
+	// Lowercase digits name the same color: uppercase is the stored form,
+	// so case can never split one color into a saved and a forgotten half.
+	checkStatus(t, forgetColorRecent(t, ts, token, "aabb0c"), http.StatusNoContent)
+
+	if got := decodeColors(t, listColorRecents(t, ts, token)); len(got) != 0 {
+		t.Errorf("lowercase forget left the color saved: %v", got)
+	}
+}
+
+func TestForgettingAColorThatWasNeverSavedIsNotAnError(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	postMe(t, ts, token).Body.Close()
+
+	checkStatus(t, saveColorRecent(t, ts, token, "#111111"), http.StatusOK)
+	// Never saved, and not even a color: already forgotten either way.
+	checkStatus(t, forgetColorRecent(t, ts, token, "999999"), http.StatusNoContent)
+	checkStatus(t, forgetColorRecent(t, ts, token, "nothex"), http.StatusNoContent)
+
+	want := []string{"#111111"}
+	if got := decodeColors(t, listColorRecents(t, ts, token)); fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("list = %v, want %v untouched", got, want)
+	}
+}
+
+func TestForgettingAColorLeavesCategoriesWearingItAlone(t *testing.T) {
+	ts := newTestServer(t)
+	token := signUpTestUser(t)
+	postMe(t, ts, token).Body.Close()
+
+	// A Saved Color is a memory of use, not a possession (CONTEXT.md,
+	// 2026-09-12): tidying the drawer must never recolor the Journal.
+	created := decodeCategory(t, createCategory(t, ts, token, map[string]string{"name": "園藝", "color": "#AABB0C"}))
+	checkStatus(t, saveColorRecent(t, ts, token, "#AABB0C"), http.StatusOK)
+	checkStatus(t, forgetColorRecent(t, ts, token, "AABB0C"), http.StatusNoContent)
+
+	me := decodeMe(t, postMe(t, ts, token))
+	for _, category := range me.Categories {
+		if category.ID == created.ID {
+			if category.Color != "#AABB0C" {
+				t.Errorf("category color = %q, want #AABB0C kept", category.Color)
+			}
+			return
+		}
+	}
+	t.Fatalf("the category vanished with its color: %+v", me.Categories)
 }

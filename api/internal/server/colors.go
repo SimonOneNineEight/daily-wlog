@@ -48,3 +48,19 @@ func (h handlers) SaveColorRecent(ctx context.Context, request apigen.SaveColorR
 	}
 	return apigen.SaveColorRecent200JSONResponse{Colors: colors}, nil
 }
+
+// ForgetColorRecent drops one Saved Color. A Saved Color is a memory of use,
+// not a possession (CONTEXT.md, 2026-09-12), so this touches color_recents
+// and nothing else: every category wearing the color keeps it.
+func (h handlers) ForgetColorRecent(ctx context.Context, request apigen.ForgetColorRecentRequestObject) (apigen.ForgetColorRecentResponseObject, error) {
+	// The path carries the six digits bare; a "#" would have to travel
+	// percent-encoded. Uppercase is the stored canonical form, so matching
+	// on it is what makes #ab12cd and #AB12CD the same memory.
+	color := "#" + strings.ToUpper(request.Hex)
+	// Deliberately no shape check: a color that is not saved — malformed or
+	// merely never used — is already forgotten, and saying so is a 204.
+	if err := h.queries.ForgetColorRecent(ctx, dbgen.ForgetColorRecentParams{UserID: auth.UserID(ctx), Color: color}); err != nil {
+		return apigen.ForgetColorRecent500JSONResponse(h.failure(ctx, "forgetting the color failed", err)), nil
+	}
+	return apigen.ForgetColorRecent204Response{}, nil
+}

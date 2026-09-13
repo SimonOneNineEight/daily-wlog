@@ -341,6 +341,9 @@ type ServerInterface interface {
 	// SaveColorRecent Save a custom color as most recently used
 	// (PUT /color-recents)
 	SaveColorRecent(w http.ResponseWriter, r *http.Request)
+	// ForgetColorRecent Forget a saved custom color
+	// (DELETE /color-recents/{hex})
+	ForgetColorRecent(w http.ResponseWriter, r *http.Request, hex string)
 	// ReorderDay Reorder a date's Entries
 	// (PUT /days/{date}/order)
 	ReorderDay(w http.ResponseWriter, r *http.Request, date string)
@@ -419,6 +422,12 @@ func (_ Unimplemented) ListColorRecents(w http.ResponseWriter, r *http.Request) 
 // SaveColorRecent Save a custom color as most recently used
 // (PUT /color-recents)
 func (_ Unimplemented) SaveColorRecent(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ForgetColorRecent Forget a saved custom color
+// (DELETE /color-recents/{hex})
+func (_ Unimplemented) ForgetColorRecent(w http.ResponseWriter, r *http.Request, hex string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -606,6 +615,32 @@ func (siw *ServerInterfaceWrapper) SaveColorRecent(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SaveColorRecent(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ForgetColorRecent operation middleware
+func (siw *ServerInterfaceWrapper) ForgetColorRecent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "hex" -------------
+	var hex string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "hex", chi.URLParam(r, "hex"), &hex, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hex", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ForgetColorRecent(w, r, hex)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1183,6 +1218,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/color-recents", wrapper.SaveColorRecent)
 	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/color-recents/{hex}", wrapper.ForgetColorRecent)
+	})
 
 	return r
 }
@@ -1532,6 +1570,50 @@ func (response SaveColorRecent401JSONResponse) VisitSaveColorRecentResponse(w ht
 type SaveColorRecent500JSONResponse Error
 
 func (response SaveColorRecent500JSONResponse) VisitSaveColorRecentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ForgetColorRecentRequestObject struct {
+	Hex string `json:"hex"`
+}
+
+type ForgetColorRecentResponseObject interface {
+	VisitForgetColorRecentResponse(w http.ResponseWriter) error
+}
+
+type ForgetColorRecent204Response struct {
+}
+
+func (response ForgetColorRecent204Response) VisitForgetColorRecentResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ForgetColorRecent401JSONResponse Error
+
+func (response ForgetColorRecent401JSONResponse) VisitForgetColorRecentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ForgetColorRecent500JSONResponse Error
+
+func (response ForgetColorRecent500JSONResponse) VisitForgetColorRecentResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2506,6 +2588,9 @@ type StrictServerInterface interface {
 	// SaveColorRecent Save a custom color as most recently used
 	// (PUT /color-recents)
 	SaveColorRecent(ctx context.Context, request SaveColorRecentRequestObject) (SaveColorRecentResponseObject, error)
+	// ForgetColorRecent Forget a saved custom color
+	// (DELETE /color-recents/{hex})
+	ForgetColorRecent(ctx context.Context, request ForgetColorRecentRequestObject) (ForgetColorRecentResponseObject, error)
 	// ReorderDay Reorder a date's Entries
 	// (PUT /days/{date}/order)
 	ReorderDay(ctx context.Context, request ReorderDayRequestObject) (ReorderDayResponseObject, error)
@@ -2730,6 +2815,32 @@ func (sh *strictHandler) SaveColorRecent(w http.ResponseWriter, r *http.Request)
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SaveColorRecentResponseObject); ok {
 		if err := validResponse.VisitSaveColorRecentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ForgetColorRecent operation middleware
+func (sh *strictHandler) ForgetColorRecent(w http.ResponseWriter, r *http.Request, hex string) {
+	var request ForgetColorRecentRequestObject
+
+	request.Hex = hex
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ForgetColorRecent(ctx, request.(ForgetColorRecentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ForgetColorRecent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ForgetColorRecentResponseObject); ok {
+		if err := validResponse.VisitForgetColorRecentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

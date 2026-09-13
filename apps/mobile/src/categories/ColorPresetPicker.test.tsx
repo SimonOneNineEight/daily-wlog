@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 import { theme } from '../theme';
 
@@ -133,4 +133,51 @@ it('shows the current custom color on the custom swatch', () => {
   // A non-preset value marks the custom swatch as the selection.
   const custom = screen.getByLabelText('自訂顏色');
   expect(backgroundOf(custom.children[0] as never)).toBe('#123456');
+});
+
+describe('forgetting a Saved Color (#47)', () => {
+  // The gesture is deliberate on purpose: a long-press, then the Alert that
+  // already guards deleting a Photo, an Entry or a Category.
+  function longPressSaved(color: string) {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    fireEvent(screen.getByLabelText(color), 'longPress');
+    const buttons = alertSpy.mock.calls[0][2] ?? [];
+    const title = alertSpy.mock.calls[0][0];
+    alertSpy.mockRestore();
+    return { title, buttons };
+  }
+
+  it('drops the color from 已存的顏色 without the drawer being reopened', async () => {
+    renderPicker();
+    fireEvent.press(screen.getByLabelText('自訂顏色'));
+    await act(async () => {});
+
+    const { title, buttons } = longPressSaved('#123456');
+    expect(title).toBe('不再保留這個顏色？');
+    await act(async () => {
+      buttons.find((b) => b.style === 'destructive')?.onPress?.();
+    });
+
+    // The six digits travel bare; a "#" in a path would be percent-encoded.
+    const forget = api.find('DELETE', '/color-recents/');
+    expect(String(forget?.[0])).toContain('/color-recents/123456');
+    // The row closed the gap where it stands — the drawer is still open.
+    expect(screen.queryByLabelText('#123456')).toBeNull();
+    expect(screen.getByLabelText('#654321')).toBeTruthy();
+    expect(screen.getByLabelText('色相')).toBeTruthy();
+  });
+
+  it('keeps the color when the confirmation is canceled', async () => {
+    renderPicker();
+    fireEvent.press(screen.getByLabelText('自訂顏色'));
+    await act(async () => {});
+
+    const { buttons } = longPressSaved('#123456');
+    await act(async () => {
+      buttons.find((b) => b.style === 'cancel')?.onPress?.();
+    });
+
+    expect(api.find('DELETE', '/color-recents/')).toBeUndefined();
+    expect(screen.getByLabelText('#123456')).toBeTruthy();
+  });
 });

@@ -28,6 +28,9 @@ type Querier interface {
 	// Ownership travels through the Entry's Journal; returns the storage paths
 	// for best-effort object cleanup.
 	DeletePhoto(ctx context.Context, arg DeletePhotoParams) (DeletePhotoRow, error)
+	// Forgetting a color is a delete of the memory alone: categories wearing it
+	// keep their color, since nothing here reaches into them (#47).
+	ForgetColorRecent(ctx context.Context, arg ForgetColorRecentParams) error
 	GetAccountStatus(ctx context.Context, userID string) (pgtype.Timestamptz, error)
 	// Ownership gate for edits: no rows means not yours or not there (404).
 	GetCategoryParent(ctx context.Context, arg GetCategoryParentParams) (*string, error)

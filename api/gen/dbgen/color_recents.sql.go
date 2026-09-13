@@ -9,6 +9,24 @@ import (
 	"context"
 )
 
+const forgetColorRecent = `-- name: ForgetColorRecent :exec
+delete from color_recents
+where user_id = $1::uuid
+  and color = $2
+`
+
+type ForgetColorRecentParams struct {
+	UserID string
+	Color  string
+}
+
+// Forgetting a color is a delete of the memory alone: categories wearing it
+// keep their color, since nothing here reaches into them (#47).
+func (q *Queries) ForgetColorRecent(ctx context.Context, arg ForgetColorRecentParams) error {
+	_, err := q.db.Exec(ctx, forgetColorRecent, arg.UserID, arg.Color)
+	return err
+}
+
 const listColorRecents = `-- name: ListColorRecents :many
 select color
 from color_recents

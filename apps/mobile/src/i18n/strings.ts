@@ -161,6 +161,12 @@ const zhTW = {
     areaLabel: '飽和度與亮度',
     lighter: '增加亮度',
     darker: '減少亮度',
+    // Forgetting a Saved Color (#47): the body says the part a User worries
+    // about — a Saved Color is a memory of use, not a possession, so the
+    // Categories wearing it are untouched.
+    forgetConfirmTitle: '不再保留這個顏色？',
+    forgetConfirmBody: '使用這個顏色的類別不會改變。',
+    forget: '移除',
   },
   health: {
     loading: '連線中…',

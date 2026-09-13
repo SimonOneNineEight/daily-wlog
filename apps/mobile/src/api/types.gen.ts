@@ -309,6 +309,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/color-recents/{hex}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Forget a saved custom color
+         * @description A Saved Color is a memory of use, not a possession (#47): forgetting one frees a slot in the drawer's saved row and leaves every Category wearing that color untouched. The path carries the six hex digits without the leading "#", which would have to travel percent-encoded. The server uppercases before matching, as the save arm does, so case can never split one color into two rows. Idempotent: forgetting a color that was never saved answers 204 like any other.
+         */
+        delete: operations["forgetColorRecent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1502,6 +1522,45 @@ export interface operations {
                 };
             };
             /** @description Saving the color failed. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    forgetColorRecent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The color's six hex digits, without the leading "#". */
+                hex: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The color is not saved any more. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid access token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forgetting the color failed. */
             500: {
                 headers: {
                     [name: string]: unknown;

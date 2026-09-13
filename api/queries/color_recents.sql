@@ -24,3 +24,10 @@ select color
 from color_recents
 where user_id = @user_id::uuid
 order by used_seq desc;
+
+-- name: ForgetColorRecent :exec
+-- Forgetting a color is a delete of the memory alone: categories wearing it
+-- keep their color, since nothing here reaches into them (#47).
+delete from color_recents
+where user_id = @user_id::uuid
+  and color = @color;

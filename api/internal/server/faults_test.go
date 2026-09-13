@@ -56,6 +56,7 @@ type failingQuerier struct {
 	saveColorErr      error
 	trimColorErr      error
 	listColorsErr     error
+	forgetColorErr    error
 	statusErr         error
 	statusDeleted     bool
 	deactivateErr     error
@@ -236,6 +237,9 @@ func (f failingQuerier) TrimColorRecents(context.Context, dbgen.TrimColorRecents
 func (f failingQuerier) ListColorRecents(context.Context, string) ([]string, error) {
 	return []string{"#123456"}, f.listColorsErr
 }
+func (f failingQuerier) ForgetColorRecent(context.Context, dbgen.ForgetColorRecentParams) error {
+	return f.forgetColorErr
+}
 
 func TestColorRecentsFailClosedOnDatabaseErrors(t *testing.T) {
 	token := signUpTestUser(t)
@@ -254,6 +258,9 @@ func TestColorRecentsFailClosedOnDatabaseErrors(t *testing.T) {
 		}},
 		"relist fails": {failingQuerier{listColorsErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
 			checkStatus(t, saveColorRecent(t, ts, token, "#123456"), 500)
+		}},
+		"forget fails": {failingQuerier{forgetColorErr: errors.New("boom")}, func(t *testing.T, ts *httptest.Server) {
+			checkStatus(t, forgetColorRecent(t, ts, token, "123456"), 500)
 		}},
 	}
 	for name, c := range cases {

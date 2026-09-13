@@ -179,6 +179,9 @@ export const en: StringCatalog = {
     areaLabel: 'Saturation and brightness',
     lighter: 'Increase brightness',
     darker: 'Decrease brightness',
+    forgetConfirmTitle: 'Stop keeping this color?',
+    forgetConfirmBody: 'Categories using this color keep it.',
+    forget: 'Remove',
   },
   health: {
     loading: 'Connecting…',
