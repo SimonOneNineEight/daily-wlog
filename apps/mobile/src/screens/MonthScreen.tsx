@@ -9,11 +9,10 @@ import type { PanelEntry } from '../calendar/DayPanel';
 import { DayPanel } from '../calendar/DayPanel';
 import type { HiddenSet } from '../calendar/hidden';
 import { entryIsVisible, hiddenParams, nothingHidden } from '../calendar/hidden';
-import { CalendarFloatingActions, FLOAT_CLEARANCE } from '../calendar/CalendarFloatingActions';
+import { CalendarFloatingActions, useFloatingActions } from '../calendar/CalendarFloatingActions';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MonthGrid } from '../calendar/MonthGrid';
 import { monthKey, shiftMonth } from '../calendar/monthMath';
-import { useHideOnScroll } from '../calendar/useHideOnScroll';
 import { decodeContent } from '../entries/content';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
@@ -65,7 +64,7 @@ export function MonthScreen({
 }: Props) {
   const strings = useStrings();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const { visible: actionsVisible, scrollHandlers } = useHideOnScroll();
+  const { visible: actionsVisible, scrollHandlers, clearance } = useFloatingActions();
   const todayParts = {
     year: today.getFullYear(),
     month: today.getMonth() + 1,
@@ -261,7 +260,7 @@ export function MonthScreen({
           rather than sitting under them (#50). */}
       <ScrollView
         style={styles.panelHolder}
-        contentContainerStyle={styles.panelContent}
+        contentContainerStyle={[styles.panelContent, clearance]}
         {...scrollHandlers}
       >
         <DayPanel
@@ -333,7 +332,6 @@ const styles = createStyles((t) => ({
   panelContent: {
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.panelGap,
-    paddingBottom: FLOAT_CLEARANCE,
   },
   navYear: {
     flexDirection: 'row',

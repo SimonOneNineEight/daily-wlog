@@ -45,9 +45,10 @@ canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 >   count, mirroring the month view's month-over-year block. The count used to
 >   close the scroll, which made the one screen that fits a whole year scroll
 >   for nothing.
->   (Built first as a solid bottom bar and reverted the same day: ban 7 says
->   depth is shadow and layering, and the bar had displaced the 2026-08-19
->   floating circle.)
+>
+>   (The floating actions were built first as a solid bottom bar and reverted
+>   the same day: ban 7 says depth is shadow and layering, and the bar had
+>   displaced the 2026-08-19 floating circle.)
 >
 > The prototype project still shows the pre-round designs; redrawing those
 > artboards there (then re-pulling) is open design debt.

@@ -9,11 +9,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Category, Entry } from '../api/client';
 import { listEntries, reorderDay } from '../api/client';
 import type { HiddenSet } from '../calendar/hidden';
-import { CalendarFloatingActions, FLOAT_CLEARANCE } from '../calendar/CalendarFloatingActions';
+import { CalendarFloatingActions, useFloatingActions } from '../calendar/CalendarFloatingActions';
 import { entryIsVisible, nothingHidden } from '../calendar/hidden';
 import { dateHeading } from '../calendar/dateLabel';
 import { localDateString, shiftDay } from '../calendar/monthMath';
-import { useHideOnScroll } from '../calendar/useHideOnScroll';
 import { decodeContent } from '../entries/content';
 import type { EntryDraft } from '../entries/drafts';
 import { listDrafts } from '../entries/drafts';
@@ -69,7 +68,7 @@ export function DayScreen({
   // list; tapping one reopens the form prefilled, where 儲存 retries.
   const [drafts, setDrafts] = useState<EntryDraft[]>([]);
   const [openDraft, setOpenDraft] = useState<EntryDraft | null>(null);
-  const { visible: actionsVisible, scrollHandlers } = useHideOnScroll();
+  const { visible: actionsVisible, scrollHandlers, clearance } = useFloatingActions();
 
   // Bumping refresh reloads the list (after a save/edit/delete).
   const [refresh, setRefresh] = useState(0);
@@ -242,7 +241,7 @@ export function DayScreen({
                 void persistOrder(data);
               }}
               containerStyle={styles.listContainer}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={[styles.list, clearance]}
               {...scrollHandlers}
             />
           </View>
@@ -286,15 +285,6 @@ const styles = createStyles((t) => ({
     color: t.colors.textPrimary,
     flex: 1,
   },
-  todayButton: {
-    height: t.spacing.hitMin,
-    justifyContent: 'center',
-    paddingHorizontal: t.spacing.space2,
-  },
-  todayLabel: {
-    ...t.typography.note,
-    color: t.colors.controlGhostFg,
-  },
   muted: {
     ...t.typography.note,
     color: t.colors.textTertiary,
@@ -320,7 +310,6 @@ const styles = createStyles((t) => ({
   },
   list: {
     gap: t.spacing.space5,
-    paddingBottom: FLOAT_CLEARANCE,
   },
   cardHolder: {
     marginBottom: 0,

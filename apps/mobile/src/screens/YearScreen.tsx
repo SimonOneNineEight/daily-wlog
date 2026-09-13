@@ -8,10 +8,9 @@ import type { Category } from '../api/client';
 import { getYear } from '../api/client';
 import type { HiddenSet } from '../calendar/hidden';
 import { hiddenParams, nothingHidden } from '../calendar/hidden';
-import { CalendarFloatingActions, FLOAT_CLEARANCE } from '../calendar/CalendarFloatingActions';
+import { CalendarFloatingActions, useFloatingActions } from '../calendar/CalendarFloatingActions';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MiniMonth } from '../calendar/MiniMonth';
-import { useHideOnScroll } from '../calendar/useHideOnScroll';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
@@ -61,10 +60,17 @@ export function YearScreen({
   const [totalEntries, setTotalEntries] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
-  const { visible: actionsVisible, scrollHandlers } = useHideOnScroll();
-  // The wheel drops in under the nav bar, which stopped being a fixed
-  // height when the count became a second line (#50).
-  const [navHeight, setNavHeight] = useState<number>(theme.spacing.navBarHeight);
+  const { visible: actionsVisible, scrollHandlers, clearance } = useFloatingActions();
+  // The wheel drops in under the nav bar, which stopped being a fixed height
+  // when the count became a second line (#50). The initial value is that
+  // layout derived from its own tokens rather than the stale navBarHeight,
+  // and onLayout corrects it if anything wraps.
+  const [navHeight, setNavHeight] = useState(
+    theme.spacing.space6 +
+      theme.typography.navTitle.lineHeight +
+      theme.typography.meta.lineHeight +
+      theme.spacing.space4,
+  );
 
   useEffect(() => {
     let active = true;
@@ -144,7 +150,7 @@ export function YearScreen({
               </Pressable>
             ) : null}
           </View>
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.body} {...scrollHandlers}>
+          <ScrollView style={styles.scroll} contentContainerStyle={[styles.body, clearance]} {...scrollHandlers}>
             <View style={styles.grid}>
               {MONTHS.map((month) => (
                 <View key={month} style={styles.gridItem}>
@@ -242,15 +248,6 @@ const styles = createStyles((t) => ({
   navTitleBlock: {
     flex: 1,
   },
-  todayButton: {
-    height: t.spacing.hitMin,
-    justifyContent: 'center',
-    paddingHorizontal: t.spacing.space2,
-  },
-  todayLabel: {
-    ...t.typography.note,
-    color: t.colors.controlGhostFg,
-  },
   navButton: {
     width: t.spacing.hitMin,
     height: t.spacing.hitMin,
@@ -276,7 +273,7 @@ const styles = createStyles((t) => ({
   // The wheel drops in behind the title: a floating card under the nav bar.
   wheelCard: {
     position: 'absolute',
-    left: t.spacing.space4,
+    left: t.spacing.screenGutter,
     // Wide enough for a four-digit 年 row plus card padding; not a token.
     width: 132,
     height: WHEEL_ROW_HEIGHT * 5,
@@ -308,7 +305,6 @@ const styles = createStyles((t) => ({
   body: {
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.space6,
-    paddingBottom: FLOAT_CLEARANCE,
   },
   grid: {
     flexDirection: 'row',

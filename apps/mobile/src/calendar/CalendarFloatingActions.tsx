@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Animated, Text, View } from 'react-native';
 
 import { useStrings } from '../i18n/AppLanguageProvider';
+import { useHideOnScroll } from './useHideOnScroll';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
 
@@ -11,7 +12,21 @@ import { createStyles, theme } from '../theme';
  * instead of sitting under them. The controls hover over content, so the
  * content has to make room rather than the chrome taking it permanently.
  */
-export const FLOAT_CLEARANCE = theme.spacing.hitMin + theme.spacing.screenGutter * 2;
+const FLOAT_CLEARANCE = theme.spacing.hitMin + theme.spacing.screenGutter * 2;
+
+/**
+ * Everything a surface needs to carry the floating controls: the visibility to
+ * pass them, the handlers to spread onto its scroller, and the padding to add
+ * to that scroller's content. Three pieces, one call — apart, omitting any one
+ * of them failed silently on that surface alone.
+ *
+ * The handlers include onMomentumScrollEnd, so never spread them onto a
+ * scroller that already uses it for something else.
+ */
+export function useFloatingActions() {
+  const { visible, scrollHandlers } = useHideOnScroll();
+  return { visible, scrollHandlers, clearance: clearanceStyles.content };
+}
 
 // --duration-fast (design/tokens/motion.css); the generator does not emit
 // motion tokens, so the value is carried here.
@@ -30,7 +45,7 @@ type Props = {
    */
   onAdd?: () => void;
   /** False while the surface is scrolling; the controls fade out (#50). */
-  visible?: boolean;
+  visible: boolean;
 };
 
 // The calendar's floating actions (#50): 今天 bottom-left, + bottom-right,
@@ -45,7 +60,7 @@ type Props = {
 //
 // Floating means content can pass underneath, so every scrolling surface pads
 // its content by FLOAT_CLEARANCE, and the controls fade while you scroll.
-export function CalendarFloatingActions({ onToday, onAdd, visible = true }: Props) {
+export function CalendarFloatingActions({ onToday, onAdd, visible }: Props) {
   const strings = useStrings();
   // useState's initialiser, not a ref: the value is read during render for
   // the style, and reading a ref there is what the compiler rule forbids.
@@ -63,6 +78,7 @@ export function CalendarFloatingActions({ onToday, onAdd, visible = true }: Prop
     // box-none so taps in the gap between the two controls reach the content
     // beneath; none while hidden, so a faded control is not a tap target.
     <Animated.View
+      testID="calendar-floating-actions"
       style={[styles.layer, { opacity }]}
       pointerEvents={visible ? 'box-none' : 'none'}
     >
@@ -76,6 +92,8 @@ export function CalendarFloatingActions({ onToday, onAdd, visible = true }: Prop
           <Text style={styles.todayLabel}>{strings.year.today}</Text>
         </Pressable>
       ) : (
+        // An empty first child, so space-between still pushes the + right on
+        // the year view, which carries no 今天 of its own.
         <View />
       )}
       {onAdd ? (
@@ -104,6 +122,12 @@ const float = {
   shadowRadius: 12,
   elevation: 6,
 } as const;
+
+const clearanceStyles = createStyles(() => ({
+  content: {
+    paddingBottom: FLOAT_CLEARANCE,
+  },
+}));
 
 const styles = createStyles((t) => ({
   // One screen gutter in from every edge, so the controls line up with the

@@ -11,6 +11,8 @@ export type ScrollHidingHandlers = Pick<
 // releasing alone has to bring the controls back — but momentum usually
 // starts a frame later, and showing then hiding again reads as a flicker.
 // The delay lets a momentum start cancel the show before it happens.
+// Off-token: no --duration-* value names a settle, and the motion tokens are
+// about animation length, not about waiting to see what the finger did.
 const SETTLE_MS = 120;
 
 /**

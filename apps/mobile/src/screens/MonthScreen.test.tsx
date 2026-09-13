@@ -348,7 +348,7 @@ describe('calendar navigation (#40)', () => {
     ).toHaveStyle({ backgroundColor: theme.colors.surfaceToday });
   });
 
-  it('keeps only tools in the nav bar; 今天 lives in the bottom bar (#50)', async () => {
+  it('keeps only tools in the nav bar; 今天 floats at the bottom (#50)', async () => {
     renderMonth({ onOpenSettings: jest.fn(), onChangeHidden: jest.fn() });
     await screen.findByText('8月');
 
