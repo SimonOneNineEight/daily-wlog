@@ -332,7 +332,7 @@ Round 2: #44 (cap of 3, saving spinner). Keyboard cases are in **KB**.
 | CS.21 | Type a name, then 新增類別 | The editor opens with that name already in the field |
 | CS.22 | Tap a row while the keyboard is up | It toggles on the first tap, rather than only dropping the keyboard |
 
-Keyboard cases are in **KB**.
+Round 2: #48 (CS.15–CS.22). Keyboard cases are in **KB**.
 
 ### CE — Category editor
 

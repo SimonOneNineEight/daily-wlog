@@ -61,9 +61,6 @@ export function CategorySheet({
   const strings = useStrings();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [query, setQuery] = useState('');
-  // Only the pinned row prefills. A create opened from inside the editor is
-  // a Subcategory of whatever is open there, not of what was searched for.
-  const [createName, setCreateName] = useState('');
 
   const topLevel = categories.filter((c) => !c.parentId);
   const childrenOf = (id: string) => categories.filter((c) => c.parentId === id);
@@ -73,15 +70,15 @@ export function CategorySheet({
   // managed, so a search blind to them could not find one by name. A matched
   // Subcategory keeps its parent row as context; a matched parent keeps its
   // whole family, since the family is what its switch acts on.
-  const needle = query.trim().toLowerCase();
-  const matches = (c: Category) => c.name.toLowerCase().includes(needle);
+  const trimmedQuery = query.trim().toLowerCase();
+  const matches = (c: Category) => c.name.toLowerCase().includes(trimmedQuery);
   const shownChildrenOf = (category: Category) => {
     const children = childrenOf(category.id);
-    if (needle === '' || matches(category)) return children;
+    if (trimmedQuery === '' || matches(category)) return children;
     return children.filter(matches);
   };
   const shownTopLevel =
-    needle === ''
+    trimmedQuery === ''
       ? topLevel
       : topLevel.filter((c) => matches(c) || childrenOf(c.id).some(matches));
 
@@ -188,10 +185,14 @@ export function CategorySheet({
               <Pressable
                 accessibilityRole="button"
                 style={styles.row}
-                onPress={() => {
-                  setCreateName(query.trim());
-                  setEditing({ mode: 'create' });
-                }}
+                onPress={() =>
+                  setEditing({
+                    mode: 'create',
+                    // Only this row prefills: a create raised from inside the
+                    // editor is a Subcategory of what is open there.
+                    ...(query.trim() !== '' ? { initialName: query.trim() } : {}),
+                  })
+                }
               >
                 <Plus size={17} color={theme.colors.iconDefault} strokeWidth={2} />
                 <Text style={styles.rowTitle}>{strings.categories.add}</Text>
@@ -214,15 +215,11 @@ export function CategorySheet({
           }
           parentChoices={topLevel}
           childrenOfTarget={target ? childrenOf(target.id) : []}
-          {...(createName !== '' ? { initialName: createName } : {})}
-          onOpen={(next) => {
-            setCreateName('');
-            setEditing(next);
-          }}
-          onClose={() => {
-            setCreateName('');
-            setEditing(null);
-          }}
+          {...(editing.mode === 'create' && editing.initialName !== undefined
+            ? { initialName: editing.initialName }
+            : {})}
+          onOpen={(next) => setEditing(next)}
+          onClose={() => setEditing(null)}
           onCategoriesChanged={onCategoriesChanged}
         />
       ) : null}

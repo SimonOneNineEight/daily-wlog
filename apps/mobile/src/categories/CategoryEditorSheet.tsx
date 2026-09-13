@@ -31,7 +31,9 @@ const ICON_CHOICES = [
 
 const firstPreset = Object.values(theme.categories)[0].base;
 
-export type Editing = { mode: 'create'; parent?: Category } | { mode: 'edit'; id: string };
+export type Editing =
+  | { mode: 'create'; parent?: Category; initialName?: string }
+  | { mode: 'edit'; id: string };
 
 type Props = {
   accessToken: string;

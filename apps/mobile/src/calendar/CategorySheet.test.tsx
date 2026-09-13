@@ -268,6 +268,18 @@ describe('searching the sheet (#48)', () => {
     });
   });
 
+  it('does not carry the search text into a Subcategory raised from the editor', () => {
+    renderSheet();
+
+    fireEvent.changeText(screen.getByPlaceholderText('搜尋類別'), '運動');
+    fireEvent.press(screen.getAllByLabelText('編輯類別')[0]);
+    fireEvent.press(screen.getByText('新增子類別'));
+
+    // A create raised inside the editor belongs to 運動, not to what was
+    // typed into the sheet's search field.
+    expect(screen.getByPlaceholderText('名稱').props.value).toBe('');
+  });
+
   it('carries the typed name into 新增類別', () => {
     renderSheet();
 
