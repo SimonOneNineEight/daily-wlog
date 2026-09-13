@@ -1,13 +1,14 @@
 import { Check, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
 import { createElement, useState } from 'react';
 import { Alert, Keyboard, Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import type { Category } from '../api/client';
 import { createCategory, deleteCategory, saveColorRecent, updateCategory } from '../api/client';
 import { CategoryIcon, glyphFor } from '../calendar/CategoryIcon';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
-import { createStyles, theme } from '../theme';
+import { createStyles, singleLineField, theme } from '../theme';
 
 import { ColorPresetPicker, isPresetColor } from './ColorPresetPicker';
 
@@ -59,7 +60,10 @@ export function CategoryEditorSheet(props: Props) {
   const strings = useStrings();
   return (
     <Modal transparent animationType="slide" onRequestClose={props.onClose}>
-      <View style={styles.overlay}>
+      {/* Padding, not translation (#42): the sheet's maxHeight is a share of
+          this box, so the keyboard shrinks the sheet rather than pushing its
+          header off the top — the body scrolls instead. */}
+      <KeyboardAvoidingView style={styles.overlay} behavior="padding">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.entryForm.cancel}
@@ -68,7 +72,7 @@ export function CategoryEditorSheet(props: Props) {
           onPress={props.onClose}
         />
         <CategoryEditor {...props} />
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -440,12 +444,12 @@ const styles = createStyles((t) => ({
     gap: t.spacing.space5,
   },
   nameInput: {
-    ...t.typography.entryTitle,
+    ...singleLineField(t),
+    fontSize: t.typography.entryTitle.fontSize,
     color: t.colors.textPrimary,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.r3,
     paddingHorizontal: t.spacing.cardPadding,
-    height: t.spacing.rowHeight,
     flex: 1,
   },
   sectionHeader: {

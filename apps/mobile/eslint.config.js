@@ -54,6 +54,11 @@ module.exports = defineConfig([
     },
   },
   {
+    // The jest setup file runs inside the test framework, not the app.
+    files: ['jest.setup.js'],
+    languageOptions: { globals: { jest: 'readonly', require: 'readonly' } },
+  },
+  {
     ignores: ['src/api/types.gen.ts', 'src/theme/theme.gen.ts', '.expo/**'],
   },
 ]);

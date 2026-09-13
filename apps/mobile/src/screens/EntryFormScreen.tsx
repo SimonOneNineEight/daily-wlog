@@ -1,15 +1,8 @@
 import { ChevronDown, Plus, Search } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import {
-  ActionSheetIOS,
-  Alert,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Category, Entry, Photo } from '../api/client';
@@ -27,7 +20,7 @@ import { newDraftId } from '../entries/drafts';
 import { saveEntry } from '../entries/save';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
-import { createStyles, theme } from '../theme';
+import { createStyles, singleLineField, theme } from '../theme';
 
 type Props = {
   accessToken: string;
@@ -345,7 +338,11 @@ export function EntryFormScreen({
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={theme.spacing.space6}
+      >
         <Pressable
           accessibilityRole="button"
           style={styles.dateRow}
@@ -538,7 +535,7 @@ export function EntryFormScreen({
             </View>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {pickingDate ? (
         <DatePickerSheet
@@ -646,13 +643,13 @@ const styles = createStyles((t) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.space3,
-    height: 38,
     paddingHorizontal: t.spacing.space5,
     backgroundColor: t.colors.surfaceFill,
     borderRadius: t.radius.r4,
   },
   searchInput: {
-    ...t.typography.note,
+    ...singleLineField(t),
+    fontSize: t.typography.note.fontSize,
     color: t.colors.textPrimary,
     flex: 1,
     paddingVertical: 0,
@@ -759,7 +756,8 @@ const styles = createStyles((t) => ({
   // Padding-based sizing, no forced height and no inherited lineHeight:
   // iOS TextInput clips CJK glyphs inside a forced line box and top-anchors
   // the placeholder inside a fixed height; letting it wrap its natural line
-  // centers both (Simon, 2026-08-19, two rounds).
+  // centers both (Simon, 2026-08-19, two rounds). Sized to its sibling pills
+  // rather than to singleLineField's hit target.
   subInput: {
     fontSize: t.typography.meta.fontSize,
     color: t.colors.textPrimary,
@@ -780,12 +778,12 @@ const styles = createStyles((t) => ({
     color: t.colors.controlDisabledFg,
   },
   titleInput: {
-    ...t.typography.entryTitle,
+    ...singleLineField(t),
+    fontSize: t.typography.entryTitle.fontSize,
     color: t.colors.textPrimary,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.r3,
     paddingHorizontal: t.spacing.cardPadding,
-    height: t.spacing.rowHeight,
   },
   noteInput: {
     ...t.typography.note,

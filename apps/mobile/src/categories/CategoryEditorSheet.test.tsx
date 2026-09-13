@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Keyboard } from 'react-native';
+import { Keyboard, StyleSheet } from 'react-native';
 
 import { CategoryEditorSheet } from './CategoryEditorSheet';
 
@@ -54,5 +54,16 @@ describe('keyboard dismissal (#31)', () => {
     fireEvent.press(screen.getByTestId('editor-body'));
     expect(dismiss).toHaveBeenCalled();
     dismiss.mockRestore();
+  });
+});
+
+describe('single-line fields (#42)', () => {
+  it('sizes the name field for CJK, at the hit target', () => {
+    renderEditor();
+
+    const style = StyleSheet.flatten(screen.getByPlaceholderText('名稱').props.style);
+    expect(style.lineHeight).toBeUndefined();
+    expect(style.height).toBeUndefined();
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
   });
 });

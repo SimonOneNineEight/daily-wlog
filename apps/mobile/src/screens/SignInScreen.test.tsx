@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { SignInScreen } from './SignInScreen';
 
@@ -75,4 +76,16 @@ it('shows the flat error line when sign-in fails', async () => {
   });
 
   expect(screen.getByText('登入失敗，請再試一次')).toBeTruthy();
+});
+
+describe('single-line fields (#42)', () => {
+  it.each(['電子郵件', '密碼'])('sizes the %s field for CJK, at the hit target', (placeholder) => {
+    render(<SignInScreen />);
+    fireEvent.press(screen.getByText('使用電子郵件登入'));
+
+    const style = StyleSheet.flatten(screen.getByPlaceholderText(placeholder).props.style);
+    expect(style.lineHeight).toBeUndefined();
+    expect(style.height).toBeUndefined();
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
+  });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, PanResponder, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import { listColorRecents } from '../api/client';
 import { CategoryIcon } from '../calendar/CategoryIcon';
@@ -120,7 +121,9 @@ export function ColorDrawer({
 
   return (
     <Modal transparent animationType="slide" onRequestClose={onCancel}>
-      <View style={styles.overlay}>
+      {/* The hex field is the last row of the sheet, so the whole drawer
+          rises and the picker above it stays in view (#42, story 22). */}
+      <KeyboardAvoidingView style={styles.overlay} behavior="padding">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={strings.entryForm.cancel}
@@ -257,7 +260,7 @@ export function ColorDrawer({
             />
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

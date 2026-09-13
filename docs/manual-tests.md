@@ -237,7 +237,7 @@ Round 2: #41 (a 類別 button).
 | EF.4 | Pick a day | Sheet closes, the date row updates |
 | EF.5 | Tap the scrim | Closes without changing the date |
 | EF.6 | Before choosing a Category | Only the search field and Category list show; no title or note |
-| EF.7 | Type in the search field | The list filters live; every typed character is legible **[#42]** |
+| EF.7 | Type in the search field | The list filters live; every typed character is legible |
 | EF.8 | Type a name nothing matches | A 建立「…」 row appears above the pinned 新增類別 row |
 | EF.9 | Tap either creation row | The full Category editor opens, prefilled with what you typed |
 | EF.10 | Save from that editor | The editor closes and the new Category is selected into the form **[API]** |
@@ -275,7 +275,7 @@ Round 2: #41 (a 類別 button).
 **EF.33 and EF.34 are round-2 report #1.** They pass only when the deployed
 revision carries the date-move.
 
-Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
+Round 2: #44 (cap of 3, saving spinner). Keyboard cases are in **KB**.
 
 ### YR — Year view
 
@@ -371,7 +371,7 @@ Round 2: #46 (CE.12).
 | CD.14 | Save more than twelve custom colors over time | The oldest drop; the cap holds **[API]** |
 | CD.15 | Airplane mode, open the drawer | The saved row is simply empty; the picker still works |
 
-Round 2: #47 (forgetting a Saved Color), #42 (CD.8 under the keyboard).
+Round 2: #47 (forgetting a Saved Color). Keyboard cases are in **KB**.
 
 ### ST — Settings and account
 
@@ -414,6 +414,38 @@ Round 2: #47 (forgetting a Saved Color), #42 (CD.8 under the keyboard).
 
 **VI.1 and VI.4 are round-2 reports #6 and #9.** They pass only when the
 deployed revision carries the hidden-set.
+
+### KB — Keyboard, across surfaces
+
+One library, one provider at the root (#42, ADR-0006), so these behave the same
+way everywhere rather than per screen.
+
+**This section needs a native rebuild.** `react-native-keyboard-controller` is
+a native dependency: Expo Go cannot run it, and a JS-only build will show every
+case failing for that reason alone. Confirm the build is a dev client or a
+TestFlight build before reading anything into a failure here.
+
+No automated test can see any of this. The jest suite loads the library's mock,
+which renders the aware scroll view as a plain scroll view, so the whole
+section is only ever verified here.
+
+| # | Case | Expected |
+| --- | --- | --- |
+| KB.1 | Entry form, tap the Category search | The field rises clear of the keyboard, with the list still readable beneath it |
+| KB.2 | Entry form on a chosen Category, tap 子類別 | The pill's field rises clear |
+| KB.3 | Entry form, tap 標題 | Rises clear |
+| KB.4 | Entry form, tap the note and type past one line | Stays clear as it grows, rather than sliding back under |
+| KB.5 | Category editor, tap 名稱 | The sheet makes room; the field and its preview icon stay visible |
+| KB.6 | Color drawer, tap the hex readout | The drawer rises, and the saturation area stays visible while you type |
+| KB.7 | Email sign-in, tap 電子郵件 | Rises clear |
+| KB.8 | Email sign-in, tap 密碼 | Rises clear |
+| KB.9 | With the keyboard up, tap a button below the field | Acts on the first tap; it does not spend the tap dismissing the keyboard |
+| KB.10 | Type Chinese into every single-line field | No glyph clipped top or bottom, and the placeholder sits centered |
+| KB.11 | Dismiss by tapping empty ground, then refocus | Drops and rises again cleanly, no stuck padding |
+| KB.12 | The smallest device you have, color drawer, hex field | The drawer's 取消 and 完成 stay reachable |
+
+KB.12 is the one to watch. The drawer is the tallest sheet and its body does
+not scroll, so a short screen is where rising runs out of room.
 
 ### DR — Drafts
 

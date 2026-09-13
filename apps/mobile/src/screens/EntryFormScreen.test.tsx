@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { encodeContent } from '../entries/content';
 import { cat } from '../testing/fixtures';
@@ -230,5 +231,32 @@ describe('category step (#28)', () => {
     expect(screen.getByText('運動')).toBeTruthy();
     expect(screen.getByText('夜跑')).toBeTruthy();
     expect(screen.getByPlaceholderText('標題')).toBeTruthy();
+  });
+});
+
+// PM round 2, item 14: the category search clipped what you typed. A
+// typography token spread into a TextInput carries its lineHeight, which
+// shifts an iOS input off its baseline and cuts the CJK glyph; a forced
+// height top-anchors the placeholder inside it. Same rule as subInput
+// (2026-08-19) and now every single-line field (#42).
+describe('single-line fields (#42)', () => {
+  const expectSized = (placeholder: string) => {
+    const style = StyleSheet.flatten(screen.getByPlaceholderText(placeholder).props.style);
+    expect(style.lineHeight).toBeUndefined();
+    expect(style.height).toBeUndefined();
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
+  };
+
+  it('sizes the category search field for CJK, at the hit target', () => {
+    renderForm();
+
+    expectSized('類別');
+  });
+
+  it('sizes the title field for CJK, at the hit target', () => {
+    renderForm();
+    fireEvent.press(screen.getByText('運動'));
+
+    expectSized('標題');
   });
 });

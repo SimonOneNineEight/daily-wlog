@@ -1,12 +1,13 @@
 import { ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '../auth/supabase';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
-import { createStyles, theme } from '../theme';
+import { createStyles, singleLineField, theme } from '../theme';
 
 type Props = {
   onBack: () => void;
@@ -66,7 +67,13 @@ export function EmailSignInScreen({ onBack }: Props) {
         </Pressable>
         <Text style={styles.navTitle}>{strings.signIn.emailTitle}</Text>
       </View>
-      <View style={styles.body}>
+      {/* keyboardShouldPersistTaps: 登入 sits below the fields, so without
+          it the first tap would only dismiss the keyboard. */}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={theme.spacing.space6}
+      >
         <TextInput
           style={styles.field}
           placeholder={strings.signIn.emailPlaceholder}
@@ -105,7 +112,7 @@ export function EmailSignInScreen({ onBack }: Props) {
           <Text style={styles.notice}>{strings.signIn.confirmEmail}</Text>
         ) : null}
         {failed ? <Text style={styles.error}>{strings.signIn.error}</Text> : null}
-      </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -139,14 +146,14 @@ const styles = createStyles((t) => ({
     paddingTop: t.spacing.space6,
   },
   field: {
-    ...t.typography.entryTitle,
+    ...singleLineField(t),
+    fontSize: t.typography.entryTitle.fontSize,
     color: t.colors.textPrimary,
     backgroundColor: t.colors.surface,
     borderRadius: t.radius.r4,
     borderWidth: t.border.hairline,
     borderColor: t.colors.lineSeparatorStrong,
     paddingHorizontal: t.spacing.cardPadding,
-    height: t.spacing.rowHeight,
   },
   placeholder: {
     color: t.colors.textPlaceholder,
