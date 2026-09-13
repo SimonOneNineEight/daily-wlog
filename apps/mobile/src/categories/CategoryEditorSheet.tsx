@@ -97,6 +97,10 @@ function CategoryEditor({
 
   const activeParent = target ? parent : chosenParent;
   const isSub = activeParent !== undefined;
+  // A Subcategory inherits, so what the sheet shows is the parent's appearance
+  // — the preview, the color picker and the icon grid all read it from here.
+  const shownIcon = isSub ? (activeParent.icon ?? 'tag') : icon;
+  const shownColor = isSub ? activeParent.color : color;
 
   const canSave = !saving && name.trim() !== '';
   const deletable = target !== undefined && target.inUse !== true && target.hasChildren !== true;
@@ -196,11 +200,7 @@ function CategoryEditor({
           onPress={() => Keyboard.dismiss()}
         />
         <View style={styles.identityRow}>
-          <CategoryIcon
-            icon={isSub ? (activeParent.icon ?? 'tag') : icon}
-            color={isSub ? activeParent.color : color}
-            size={36}
-          />
+          <CategoryIcon icon={shownIcon} color={shownColor} size={36} />
           <TextInput
             style={styles.nameInput}
             placeholder={strings.categories.namePlaceholder}
@@ -270,7 +270,7 @@ function CategoryEditor({
           <View>
             <Text style={styles.sectionHeader}>{strings.categories.colorHeader}</Text>
             <ColorPresetPicker
-              value={isSub ? activeParent.color : color}
+              value={shownColor}
               onChange={setColor}
               accessToken={accessToken}
               icon={icon}
@@ -283,21 +283,23 @@ function CategoryEditor({
             <Text style={styles.sectionHeader}>{strings.categories.iconHeader}</Text>
             <ScrollView style={styles.iconCard} nestedScrollEnabled>
               <View style={styles.iconGrid}>
+                {/* The chosen cell fills in the category color with a white
+                    glyph, as CategoryIcon draws it everywhere else (ratified
+                    2026-09-12, overriding the canvas's 1.5px inset ring — a
+                    hairline is invisible among sixty identical cells). */}
                 {ICON_CHOICES.map((choice) => {
-                  const selected = isSub
-                    ? (activeParent.icon ?? 'tag') === choice
-                    : icon === choice;
+                  const selected = shownIcon === choice;
                   return (
                     <View key={choice} style={styles.iconCellWrap}>
                       <Pressable
                         accessibilityRole="button"
                         accessibilityLabel={choice}
-                        style={[styles.iconCell, selected && styles.iconCellSelected]}
+                        style={[styles.iconCell, selected && { backgroundColor: shownColor }]}
                         onPress={() => setIcon(choice)}
                       >
                         {createElement(glyphFor(choice), {
                           size: 20,
-                          color: theme.colors.iconDefault,
+                          color: selected ? theme.colors.textOnDark : theme.colors.iconDefault,
                           strokeWidth: 1.75,
                         })}
                       </Pressable>
@@ -512,10 +514,6 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: t.colors.surfaceFill,
-  },
-  iconCellSelected: {
-    borderWidth: 1.5,
-    borderColor: t.colors.textPrimary,
   },
   placeholder: {
     color: t.colors.textPlaceholder,

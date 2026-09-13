@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Keyboard } from 'react-native';
 
+import { theme } from '../theme';
+
 import { CategoryEditorSheet } from './CategoryEditorSheet';
 
 const sport = { id: 'c-sport', name: '運動', color: '#73B062', icon: 'dumbbell', position: 1 };
@@ -54,5 +56,40 @@ describe('keyboard dismissal (#31)', () => {
     fireEvent.press(screen.getByTestId('editor-body'));
     expect(dismiss).toHaveBeenCalled();
     dismiss.mockRestore();
+  });
+});
+
+describe('the chosen icon (#46)', () => {
+  it('fills the selected cell with the chosen Category color', () => {
+    renderEditor();
+
+    fireEvent.press(screen.getByLabelText('blue'));
+    fireEvent.press(screen.getByLabelText('bike'));
+
+    expect(screen.getByLabelText('bike')).toHaveStyle({ backgroundColor: '#4A93C4' });
+    expect(screen.getByLabelText('dumbbell')).toHaveStyle({
+      backgroundColor: theme.colors.surfaceFill,
+    });
+  });
+
+  it('restyles the selected cell when the color changes, with no re-selection', () => {
+    renderEditor();
+
+    fireEvent.press(screen.getByLabelText('bike'));
+    fireEvent.press(screen.getByLabelText('violet'));
+
+    expect(screen.getByLabelText('bike')).toHaveStyle({ backgroundColor: '#A26FBD' });
+  });
+
+  it("fills the inherited icon in the parent's color while the block is disabled", () => {
+    renderEditor([sport]);
+
+    fireEvent.press(screen.getByText('無'));
+    fireEvent.press(screen.getByText('運動'));
+
+    // A Subcategory inherits 運動's dumbbell and its green, and the dimmed
+    // appearance block still has to say which glyph that is.
+    expect(screen.getByText('子類別沿用上層分類的圖示與顏色。')).toBeTruthy();
+    expect(screen.getByLabelText('dumbbell')).toHaveStyle({ backgroundColor: '#73B062' });
   });
 });

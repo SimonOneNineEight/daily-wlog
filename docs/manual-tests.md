@@ -339,7 +339,7 @@ Round 2: #48 (a search field).
 | CE.9 | Tap a preset color | Selected with a ring; the preview follows |
 | CE.10 | Scroll the icon grid | Scrolls inside its card, not the sheet |
 | CE.11 | Tap an icon | It becomes the selection |
-| CE.12 | Which icon is selected | **Identifiable at a glance** **[#46]** |
+| CE.12 | Which icon is selected | Its cell fills with the Category color, glyph in white — identifiable at a glance |
 | CE.13 | Save | The sheet closes and the change shows everywhere **[API]** |
 | CE.14 | Editing a parent: the 子類別 list | Every child listed, each opening its own editor |
 | CE.15 | 新增子類別 from there | Create mode with the parent preselected |
@@ -348,8 +348,8 @@ Round 2: #48 (a search field).
 | CE.18 | A Category with children | No delete; the children explanation instead **[API]** |
 | CE.19 | Tap empty sheet ground while typing | The keyboard drops |
 | CE.20 | Airplane mode, save | 儲存失敗，請再試一次; nothing lost |
-
-Round 2: #46 (CE.12).
+| CE.21 | Change the color after choosing an icon | The chosen cell takes the new color; the icon stays chosen |
+| CE.22 | With a parent chosen, the dimmed icon grid | The inherited glyph is still identifiable, filled in the parent's color |
 
 ### CD — Color drawer
 
