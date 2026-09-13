@@ -1,4 +1,4 @@
-import { ChevronLeft, Plus, Settings, Tags } from 'lucide-react-native';
+import { ChevronLeft, Settings, Tags } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -9,6 +9,7 @@ import type { PanelEntry } from '../calendar/DayPanel';
 import { DayPanel } from '../calendar/DayPanel';
 import type { HiddenSet } from '../calendar/hidden';
 import { entryIsVisible, hiddenParams, nothingHidden } from '../calendar/hidden';
+import { CalendarBottomBar } from '../calendar/CalendarBottomBar';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MonthGrid } from '../calendar/MonthGrid';
 import { monthKey, shiftMonth } from '../calendar/monthMath';
@@ -193,22 +194,7 @@ export function MonthScreen({
         </View>
         {/* Full Apple (ratified 2026-08-20): months change by swipe alone,
             so the nav holds just the lens and the utility. */}
-        <View style={styles.navActions}>
-          {/* 今天 returns this surface to now and never changes navigation
-              depth (#40). The word, not a calendar glyph (ratified
-              2026-09-12, overriding the canvas's iconBtn('calendar')): in an
-              app made of calendars a calendar icon says "calendar", not
-              "today". */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.year.today}
-            style={styles.todayButton}
-            onPress={() =>
-              setView({ year: todayParts.year, month: todayParts.month, day: todayParts.day })
-            }
-          >
-            <Text style={styles.todayLabel}>{strings.year.today}</Text>
-          </Pressable>
+        <View testID="month-nav-actions" style={styles.navActions}>
           {onChangeHidden ? (
             <Pressable
               accessibilityRole="button"
@@ -269,23 +255,22 @@ export function MonthScreen({
         })}
       </ScrollView>
 
-      <View style={styles.panelHolder}>
+      {/* Scrolls, so a day with many Entries ends above the bar instead of
+          running under it (#50). */}
+      <ScrollView style={styles.panelHolder} contentContainerStyle={styles.panelContent}>
         <DayPanel
           dateLabel={strings.month.dateLabel(visible.month, selectedDay, weekdayOfSelected)}
           entries={panelEntries}
           onOpen={() => onOpenDay(selectedDate)}
         />
-      </View>
+      </ScrollView>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={strings.day.addEntry}
-        feedback="scale"
-        style={styles.fab}
-        onPress={() => onAddEntry(selectedDate)}
-      >
-        <Plus size={24} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
-      </Pressable>
+      <CalendarBottomBar
+        onToday={() =>
+          setView({ year: todayParts.year, month: todayParts.month, day: todayParts.day })
+        }
+        onAdd={() => onAddEntry(selectedDate)}
+      />
 
       {sheetOpen && onChangeHidden ? (
         <CategorySheet
@@ -329,15 +314,6 @@ const styles = createStyles((t) => ({
   pager: {
     flexGrow: 0,
   },
-  todayButton: {
-    height: t.spacing.hitMin,
-    justifyContent: 'center',
-    paddingHorizontal: t.spacing.space2,
-  },
-  todayLabel: {
-    ...t.typography.note,
-    color: t.colors.controlGhostFg,
-  },
   navButton: {
     width: t.spacing.hitMin,
     height: t.spacing.hitMin,
@@ -345,20 +321,11 @@ const styles = createStyles((t) => ({
     justifyContent: 'center',
   },
   panelHolder: {
-    paddingHorizontal: t.spacing.screenGutter,
-    paddingTop: t.spacing.panelGap,
     flex: 1,
   },
-  fab: {
-    position: 'absolute',
-    right: t.spacing.fabInset,
-    bottom: t.spacing.fabInset,
-    width: t.spacing.fabSize,
-    height: t.spacing.fabSize,
-    borderRadius: t.radius.pill,
-    backgroundColor: t.colors.controlPrimaryBg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  panelContent: {
+    paddingHorizontal: t.spacing.screenGutter,
+    paddingTop: t.spacing.panelGap,
   },
   navYear: {
     flexDirection: 'row',

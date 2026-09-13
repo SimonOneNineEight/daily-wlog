@@ -347,4 +347,16 @@ describe('calendar navigation (#40)', () => {
       within(screen.getByTestId('month-page-current')).getByTestId('day-holder-17'),
     ).toHaveStyle({ backgroundColor: theme.colors.surfaceToday });
   });
+
+  it('keeps only tools in the nav bar; 今天 lives in the bottom bar (#50)', async () => {
+    renderMonth({ onOpenSettings: jest.fn(), onChangeHidden: jest.fn() });
+    await screen.findByText('8月');
+
+    const nav = within(screen.getByTestId('month-nav-actions'));
+    expect(nav.getByLabelText('類別')).toBeTruthy();
+    expect(nav.getByLabelText('設定')).toBeTruthy();
+    expect(nav.queryByLabelText('今天')).toBeNull();
+    // Still reachable, just not from the tool group.
+    expect(screen.getByLabelText('今天')).toBeTruthy();
+  });
 });

@@ -161,3 +161,14 @@ it('returns the year view to this year without leaving it (#40 item 11)', async 
   expect(await screen.findByText('2026年')).toBeTruthy();
   expect(onOpenMonth).not.toHaveBeenCalled();
 });
+
+it('offers no + , having no day to create into (#50)', async () => {
+  renderScreen();
+  await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());
+
+  // The month and day views know what a + would create into; the year view
+  // only knows a year, so it carries 今天 and its count and nothing else.
+  expect(screen.queryByLabelText('新增紀錄')).toBeNull();
+  expect(screen.getByLabelText('今天')).toBeTruthy();
+  expect(screen.getByText('今年到目前為止 3 則紀錄')).toBeTruthy();
+});

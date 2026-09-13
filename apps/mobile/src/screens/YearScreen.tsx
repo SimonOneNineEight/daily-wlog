@@ -8,6 +8,7 @@ import type { Category } from '../api/client';
 import { getYear } from '../api/client';
 import type { HiddenSet } from '../calendar/hidden';
 import { hiddenParams, nothingHidden } from '../calendar/hidden';
+import { CalendarBottomBar } from '../calendar/CalendarBottomBar';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MiniMonth } from '../calendar/MiniMonth';
 import { useStrings } from '../i18n/AppLanguageProvider';
@@ -99,7 +100,7 @@ export function YearScreen({
 
   return (
     <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
-      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.screen} edges={['top']}>
         <View style={styles.navBar}>
           {/* No back and no chevrons (ratified 2026-09-10): swipes page the
               years, tapping a month leaves, and the title opens the wheel. */}
@@ -121,20 +122,8 @@ export function YearScreen({
               <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
             </Pressable>
           ) : null}
-          {/* 今天 returns this surface to now (#40). It used to leave for
-              today's month view; navigation depth now never changes. The
-              word replaces the canvas's calendar glyph (ratified
-              2026-09-12). */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.year.today}
-            style={styles.todayButton}
-            onPress={() => setYear(today.getFullYear())}
-          >
-            <Text style={styles.todayLabel}>{strings.year.today}</Text>
-          </Pressable>
         </View>
-        <ScrollView contentContainerStyle={styles.body}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
           <View style={styles.grid}>
             {MONTHS.map((month) => (
               <View key={month} style={styles.gridItem}>
@@ -150,12 +139,15 @@ export function YearScreen({
               </View>
             ))}
           </View>
-          <Text style={styles.countLabel}>
-            {isCurrentYear
-              ? strings.year.countLabel(totalEntries)
-              : strings.year.totalLabel(totalEntries)}
-          </Text>
         </ScrollView>
+        <CalendarBottomBar
+          onToday={() => setYear(today.getFullYear())}
+          status={
+            isCurrentYear
+              ? strings.year.countLabel(totalEntries)
+              : strings.year.totalLabel(totalEntries)
+          }
+        />
         {sheetOpen && onChangeHidden ? (
           <CategorySheet
             accessToken={accessToken}
@@ -284,6 +276,11 @@ const styles = createStyles((t) => ({
     fontWeight: '600',
     color: t.colors.textPrimary,
   },
+  // The bar is a sibling below, so the scroller has to claim its space
+  // rather than size to its content and push the bar off the screen.
+  scroll: {
+    flex: 1,
+  },
   body: {
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.space6,
@@ -297,11 +294,5 @@ const styles = createStyles((t) => ({
   },
   gridItem: {
     width: '48%',
-  },
-  countLabel: {
-    ...t.typography.meta,
-    color: t.colors.textTertiary,
-    marginTop: t.spacing.space7,
-    marginHorizontal: t.spacing.space1,
   },
 }));

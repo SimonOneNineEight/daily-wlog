@@ -182,15 +182,18 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | MO.13 | A panel row for an Entry with Photos | Carries the photo glyph **[API]** |
 | MO.14 | Tap the panel header or any row | Opens the day view |
 | MO.15 | A day with no Entries | Panel reads 這天沒有紀錄 |
-| MO.16 | Tap + | Entry form opens for the **selected** day, not today |
+| MO.16 | Tap + in the bottom bar | Entry form opens for the **selected** day, not today |
 | MO.17 | Tap ‹年 | The year view opens on the year you were viewing, including after swiping across a year boundary |
 | MO.18 | Tap 設定 | Settings opens |
 | MO.19 | Tap 類別 | The visibility sheet opens |
 | MO.20 | Airplane mode, swipe months | Dots are absent, not wrong; no error wall, no crash |
 | MO.21 | A month holding no Entries at all | Grid renders with no dots anywhere; the panel reads 這天沒有紀錄 **[API]** |
-| MO.22 | Swipe months away, tap 今天 | This month, with today selected **[API]** |
+| MO.22 | Swipe months away, tap 今天 in the bottom bar | This month, with today selected **[API]** |
 | MO.23 | Tap 今天 while already on this month | Selection returns to today; nothing else moves |
 | MO.24 | Hide a Category while its dots are on screen | The dots go; the month never briefly shows the old set **[API]** |
+| MO.25 | The nav bar | Only 類別 and 設定; 今天 is in the bottom bar |
+| MO.26 | A day with more Entries than the panel fits | The panel scrolls; the last row clears the bar rather than running under it |
+| MO.27 | The bar on a device with a home indicator | The bar's material runs to the screen edge; no bare strip beneath it |
 
 ### DA — Day view
 
@@ -203,7 +206,7 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | DA.5 | Scroll a long list vertically | Scrolls; no accidental day change |
 | DA.6 | Swipe left / right | Previous and next date, gestures surviving the list underneath |
 | DA.7 | Back chevron | Returns to the month view |
-| DA.8 | Tap + | Entry form for this day |
+| DA.8 | Tap + in the bottom bar | Entry form for this day |
 | DA.9 | A day holding a retained Draft | A 尚未儲存 row above the cards |
 | DA.10 | Several Drafts on one day | All of them listed |
 | DA.11 | Tap a Draft row | The form opens prefilled from it |
@@ -211,7 +214,9 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | DA.13 | Airplane mode, open a day | 無法載入紀錄, no crash |
 | DA.14 | An Entry whose content will not decode | The card renders （無法讀取的紀錄） rather than failing |
 | DA.15 | Airplane mode, long-press and drag a card | 排序失敗，請再試一次, and the order returns to what the server holds **[API]** |
-| DA.16 | Tap 今天 | The view moves to today's date **[API]** |
+| DA.16 | Tap 今天 in the bottom bar | The view moves to today's date **[API]** |
+| DA.17 | Scroll a long card list to its end | The last card clears the bottom bar |
+| DA.18 | The bar on a device with a home indicator | Material to the screen edge, and the + clears the indicator |
 
 Round 2: #41 (a 類別 button).
 
@@ -272,8 +277,8 @@ Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
 | YR.1 | Open it | Twelve mini months for the viewed year **[API]** |
 | YR.2 | A recorded day | A solid box in its first visible Entry's Category color **[API]** |
 | YR.3 | Today, in the current year | Marked in its mini month |
-| YR.4 | The count label, current year | The this-year wording **[API]** |
-| YR.5 | The count label, a past year | The total wording **[API]** |
+| YR.4 | The count, current year | The this-year wording, centred in the bottom bar **[API]** |
+| YR.5 | The count, a past year | The total wording, centred in the bottom bar **[API]** |
 | YR.6 | Swipe left / right | One year per swipe, both directions **[API]** |
 | YR.7 | Scroll the mini months vertically | Scrolls without triggering a year swipe |
 | YR.8 | Tap a mini month | The month view opens on it |
@@ -286,6 +291,9 @@ Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
 | YR.15 | There is no back button and no year chevrons | Correct; swipes and the title are the navigation |
 | YR.16 | Airplane mode | Mini months render empty, no crash |
 | YR.17 | From a past year, tap a month, then tap ‹年 | Back to that past year, not this one |
+| YR.18 | The bottom bar | 今天 and the count only — no +, since there is no day to create into |
+| YR.19 | Scroll the mini months to the end | The last row clears the bar; the count stays put while they scroll |
+| YR.20 | The bar on a device with a home indicator | Material to the screen edge, count still centred |
 
 ### CS — 類別 sheet
 
