@@ -11,7 +11,7 @@ import { createStyles, theme } from '../theme';
  * instead of sitting under them. The controls hover over content, so the
  * content has to make room rather than the chrome taking it permanently.
  */
-export const FLOAT_CLEARANCE = theme.spacing.fabSize + theme.spacing.fabInset * 2;
+export const FLOAT_CLEARANCE = theme.spacing.hitMin + theme.spacing.fabInset * 2;
 
 // --duration-fast (design/tokens/motion.css); the generator does not emit
 // motion tokens, so the value is carried here.
@@ -86,7 +86,7 @@ export function CalendarFloatingActions({ onToday, onAdd, visible = true }: Prop
           style={styles.add}
           onPress={onAdd}
         >
-          <Plus size={24} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
+          <Plus size={22} color={theme.colors.controlPrimaryFg} strokeWidth={2} />
         </Pressable>
       ) : null}
     </Animated.View>
@@ -115,10 +115,11 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  // fabSize, not hitMin: the two controls share a height so their tops and
-  // bottoms line up. The circle's 56 is ratified, so the pill meets it.
+  // Both controls are hitMin, so their tops and bottoms line up. 56 made a
+  // text pill far too heavy, and 44 is enough for the + (Simon, 2026-09-12,
+  // superseding the 2026-08-19 fabSize).
   todayPill: {
-    height: t.spacing.fabSize,
+    height: t.spacing.hitMin,
     paddingHorizontal: t.spacing.space6,
     borderRadius: t.radius.pill,
     justifyContent: 'center',
@@ -130,8 +131,8 @@ const styles = createStyles((t) => ({
     color: t.colors.textPrimary,
   },
   add: {
-    width: t.spacing.fabSize,
-    height: t.spacing.fabSize,
+    width: t.spacing.hitMin,
+    height: t.spacing.hitMin,
     borderRadius: t.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

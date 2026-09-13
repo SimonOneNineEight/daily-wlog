@@ -105,15 +105,25 @@ export function YearScreen({
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         <View style={styles.navBar}>
           {/* No back and no chevrons (ratified 2026-09-10): swipes page the
-              years, tapping a month leaves, and the title opens the wheel. */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.year.pickYear}
-            style={styles.navTitleButton}
-            onPress={() => setWheelOpen(true)}
-          >
-            <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
-          </Pressable>
+              years, tapping a month leaves, and the title opens the wheel.
+              The count rides under the year as a sub-line, the shape the
+              month view already uses (Simon, 2026-09-12): the whole year is
+              on one screen, so scrolling purely to read a total was a wasted
+              scroll. */}
+          <View testID="year-header" style={styles.navTitleBlock}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={strings.year.pickYear}
+              onPress={() => setWheelOpen(true)}
+            >
+              <Text style={styles.navTitle}>{strings.year.title(year)}</Text>
+            </Pressable>
+            <Text style={styles.navSubtitle}>
+              {isCurrentYear
+                ? strings.year.countLabel(totalEntries)
+                : strings.year.totalLabel(totalEntries)}
+            </Text>
+          </View>
           {onChangeHidden ? (
             <Pressable
               accessibilityRole="button"
@@ -141,11 +151,6 @@ export function YearScreen({
               </View>
             ))}
           </View>
-          <Text style={styles.countLabel}>
-            {isCurrentYear
-              ? strings.year.countLabel(totalEntries)
-              : strings.year.totalLabel(totalEntries)}
-          </Text>
         </ScrollView>
         <CalendarFloatingActions
           visible={actionsVisible}
@@ -214,10 +219,15 @@ const styles = createStyles((t) => ({
   },
   navBar: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     gap: t.spacing.space4,
-    height: t.spacing.navBarHeight,
-    paddingHorizontal: t.spacing.space4,
+    paddingHorizontal: t.spacing.screenGutter,
+    paddingTop: t.spacing.space6,
+    paddingBottom: t.spacing.space4,
+  },
+  navTitleBlock: {
+    flex: 1,
   },
   todayButton: {
     height: t.spacing.hitMin,
@@ -234,14 +244,13 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navTitleButton: {
-    flex: 1,
-    height: t.spacing.hitMin,
-    justifyContent: 'center',
-  },
   navTitle: {
-    ...t.typography.sectionHeader,
+    ...t.typography.navTitle,
     color: t.colors.textPrimary,
+  },
+  navSubtitle: {
+    ...t.typography.meta,
+    color: t.colors.textSecondary,
   },
   wheelScrim: {
     position: 'absolute',
@@ -288,12 +297,6 @@ const styles = createStyles((t) => ({
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.space6,
     paddingBottom: FLOAT_CLEARANCE,
-  },
-  countLabel: {
-    ...t.typography.meta,
-    color: t.colors.textTertiary,
-    marginTop: t.spacing.space7,
-    marginHorizontal: t.spacing.space1,
   },
   grid: {
     flexDirection: 'row',

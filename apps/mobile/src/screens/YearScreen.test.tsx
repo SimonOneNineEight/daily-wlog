@@ -162,6 +162,16 @@ it('returns the year view to this year without leaving it (#40 item 11)', async 
   expect(onOpenMonth).not.toHaveBeenCalled();
 });
 
+it('carries the count in the header, not at the end of a scroll (#50)', async () => {
+  renderScreen();
+
+  // The whole year is on one screen, so a total you have to scroll for is a
+  // scroll spent on nothing.
+  const header = within(await screen.findByTestId('year-header'));
+  expect(header.getByText('2026年')).toBeTruthy();
+  expect(header.getByText('今年到目前為止 3 則紀錄')).toBeTruthy();
+});
+
 it('offers no + , having no day to create into (#50)', async () => {
   renderScreen();
   await waitFor(() => expect(screen.getByTestId('year-day-3-15')).toBeTruthy());

@@ -37,7 +37,14 @@ canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 >   floating controls — 今天 bottom-left as a capsule, + bottom-right as the
 >   ratified black circle. 今天 left the nav bar because it is a destination
 >   rather than a tool. The year view has no +, having no selected day to
->   create into. Both fade while you scroll and return when you stop.
+>   create into. Both are 44pt and line up; the circle's original 56 was too
+>   heavy for a text pill to match. Both fade while you scroll and return when
+>   you stop.
+>
+> - **年視圖 header** (#50): the year title gained a sub-line carrying the entry
+>   count, mirroring the month view's month-over-year block. The count used to
+>   close the scroll, which made the one screen that fits a whole year scroll
+>   for nothing.
 >   (Built first as a solid bottom bar and reverted the same day: ban 7 says
 >   depth is shadow and layering, and the bar had displaced the 2026-08-19
 >   floating circle.)

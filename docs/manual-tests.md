@@ -192,7 +192,7 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | MO.23 | Tap 今天 while already on this month | Selection returns to today; nothing else moves |
 | MO.24 | Hide a Category while its dots are on screen | The dots go; the month never briefly shows the old set **[API]** |
 | MO.25 | The nav bar | Only 類別 and 設定; 今天 floats at the bottom |
-| MO.30 | The two controls side by side | Same height; their tops and bottoms line up |
+| MO.30 | The two controls side by side | Both 44pt; their tops and bottoms line up |
 | MO.26 | A day with more Entries than the panel fits | The panel scrolls, and its last row scrolls clear of the floating controls |
 | MO.27 | Scroll the day panel | Both controls fade out while scrolling and return when it stops |
 | MO.28 | Tap between the two controls while they are showing | The tap reaches the panel beneath, not the gap |
@@ -282,12 +282,12 @@ Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
 | YR.1 | Open it | Twelve mini months for the viewed year **[API]** |
 | YR.2 | A recorded day | A solid box in its first visible Entry's Category color **[API]** |
 | YR.3 | Today, in the current year | Marked in its mini month |
-| YR.4 | The count, current year | The this-year wording, closing the scroll **[API]** |
-| YR.5 | The count, a past year | The total wording, closing the scroll **[API]** |
+| YR.4 | The count, current year | The this-year wording, under the year in the header, visible without scrolling **[API]** |
+| YR.5 | The count, a past year | The total wording, in the same place **[API]** |
 | YR.6 | Swipe left / right | One year per swipe, both directions **[API]** |
 | YR.7 | Scroll the mini months vertically | Scrolls without triggering a year swipe |
 | YR.8 | Tap a mini month | The month view opens on it |
-| YR.9 | Tap the year title | The wheel opens, the viewed year centred |
+| YR.9 | Tap the year title | The wheel opens, the viewed year centred; the count beneath is not a tap target |
 | YR.10 | Scroll the wheel far and pick | That year loads, mini months redraw **[API]** |
 | YR.11 | Pick a future year | Allowed; backfilling is the product |
 | YR.12 | Tap the scrim | The wheel closes, the year unchanged |
@@ -297,9 +297,9 @@ Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
 | YR.16 | Airplane mode | Mini months render empty, no crash |
 | YR.17 | From a past year, tap a month, then tap ‹年 | Back to that past year, not this one |
 | YR.18 | The floating controls | 今天 only — no +, since there is no day to create into |
-| YR.19 | Scroll the mini months to the end | The count scrolls clear of 今天 rather than sitting under it |
+| YR.19 | Scroll the mini months to the end | The last row scrolls clear of 今天 rather than sitting under it |
 | YR.20 | Scroll the mini months | 今天 fades while scrolling and returns when it stops |
-| YR.21 | On a device with a home indicator | 今天 sits above the indicator, and the count still scrolls clear of it |
+| YR.21 | On a device with a home indicator | 今天 sits above the indicator, never over it |
 
 ### CS — 類別 sheet
 
