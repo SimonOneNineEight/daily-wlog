@@ -102,7 +102,7 @@ export function YearScreen({
 
   return (
     <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
-      <SafeAreaView style={styles.screen} edges={['top']}>
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         <View style={styles.navBar}>
           {/* No back and no chevrons (ratified 2026-09-10): swipes page the
               years, tapping a month leaves, and the title opens the wheel. */}

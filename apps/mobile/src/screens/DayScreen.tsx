@@ -188,7 +188,7 @@ export function DayScreen({
 
   return (
     <GestureDetector gesture={Gesture.Exclusive(flingNext, flingPrev)}>
-      <SafeAreaView style={styles.screen} edges={['top']}>
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         {/* The gutter lives here, not on the screen, so the bar below runs
             edge to edge like the nav bars do. */}
         <View style={styles.content}>

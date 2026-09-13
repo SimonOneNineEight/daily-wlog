@@ -192,9 +192,11 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | MO.23 | Tap 今天 while already on this month | Selection returns to today; nothing else moves |
 | MO.24 | Hide a Category while its dots are on screen | The dots go; the month never briefly shows the old set **[API]** |
 | MO.25 | The nav bar | Only 類別 and 設定; 今天 floats at the bottom |
+| MO.30 | The two controls side by side | Same height; their tops and bottoms line up |
 | MO.26 | A day with more Entries than the panel fits | The panel scrolls, and its last row scrolls clear of the floating controls |
 | MO.27 | Scroll the day panel | Both controls fade out while scrolling and return when it stops |
 | MO.28 | Tap between the two controls while they are showing | The tap reaches the panel beneath, not the gap |
+| MO.29 | On a device with a home indicator | Both controls sit above the indicator, never over it |
 
 ### DA — Day view
 
@@ -219,6 +221,7 @@ Exhaustive. Every control, every state, including the ones no journey reaches.
 | DA.17 | Scroll a long card list to its end | The last card scrolls clear of the floating controls |
 | DA.18 | Scroll the card list | Both controls fade while scrolling and return when it stops |
 | DA.19 | Long-press-drag a card near the bottom | The drag works; the faded controls do not intercept it |
+| DA.20 | On a device with a home indicator | Both controls sit above the indicator, never over it |
 
 Round 2: #41 (a 類別 button).
 
@@ -296,6 +299,7 @@ Round 2: #44 (cap of 3, saving spinner), #42 (the search field's clipping).
 | YR.18 | The floating controls | 今天 only — no +, since there is no day to create into |
 | YR.19 | Scroll the mini months to the end | The count scrolls clear of 今天 rather than sitting under it |
 | YR.20 | Scroll the mini months | 今天 fades while scrolling and returns when it stops |
+| YR.21 | On a device with a home indicator | 今天 sits above the indicator, and the count still scrolls clear of it |
 
 ### CS — 類別 sheet
 

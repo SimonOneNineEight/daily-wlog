@@ -115,8 +115,10 @@ const styles = createStyles((t) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  // fabSize, not hitMin: the two controls share a height so their tops and
+  // bottoms line up. The circle's 56 is ratified, so the pill meets it.
   todayPill: {
-    height: t.spacing.hitMin,
+    height: t.spacing.fabSize,
     paddingHorizontal: t.spacing.space6,
     borderRadius: t.radius.pill,
     justifyContent: 'center',

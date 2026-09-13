@@ -101,10 +101,8 @@ export function HomeScreen({ accessToken, categories, onCategoriesChanged }: Pro
       />
     );
   }
-  // The month view's bottom bar owns the bottom inset, so its material
-  // reaches the screen edge rather than stopping above the home indicator.
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.body}>
         <MonthScreen
           accessToken={accessToken}
