@@ -8,9 +8,10 @@ import type { Category } from '../api/client';
 import { getYear } from '../api/client';
 import type { HiddenSet } from '../calendar/hidden';
 import { hiddenParams, nothingHidden } from '../calendar/hidden';
-import { CalendarBottomBar } from '../calendar/CalendarBottomBar';
+import { CalendarFloatingActions, FLOAT_CLEARANCE } from '../calendar/CalendarFloatingActions';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MiniMonth } from '../calendar/MiniMonth';
+import { useHideOnScroll } from '../calendar/useHideOnScroll';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
 import { createStyles, theme } from '../theme';
@@ -60,6 +61,7 @@ export function YearScreen({
   const [totalEntries, setTotalEntries] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
+  const { visible: actionsVisible, scrollHandlers } = useHideOnScroll();
 
   useEffect(() => {
     let active = true;
@@ -123,7 +125,7 @@ export function YearScreen({
             </Pressable>
           ) : null}
         </View>
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.body} {...scrollHandlers}>
           <View style={styles.grid}>
             {MONTHS.map((month) => (
               <View key={month} style={styles.gridItem}>
@@ -139,14 +141,15 @@ export function YearScreen({
               </View>
             ))}
           </View>
-        </ScrollView>
-        <CalendarBottomBar
-          onToday={() => setYear(today.getFullYear())}
-          status={
-            isCurrentYear
+          <Text style={styles.countLabel}>
+            {isCurrentYear
               ? strings.year.countLabel(totalEntries)
-              : strings.year.totalLabel(totalEntries)
-          }
+              : strings.year.totalLabel(totalEntries)}
+          </Text>
+        </ScrollView>
+        <CalendarFloatingActions
+          visible={actionsVisible}
+          onToday={() => setYear(today.getFullYear())}
         />
         {sheetOpen && onChangeHidden ? (
           <CategorySheet
@@ -284,7 +287,13 @@ const styles = createStyles((t) => ({
   body: {
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.space6,
-    paddingBottom: t.spacing.space10,
+    paddingBottom: FLOAT_CLEARANCE,
+  },
+  countLabel: {
+    ...t.typography.meta,
+    color: t.colors.textTertiary,
+    marginTop: t.spacing.space7,
+    marginHorizontal: t.spacing.space1,
   },
   grid: {
     flexDirection: 'row',

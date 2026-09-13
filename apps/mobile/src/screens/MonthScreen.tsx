@@ -9,10 +9,11 @@ import type { PanelEntry } from '../calendar/DayPanel';
 import { DayPanel } from '../calendar/DayPanel';
 import type { HiddenSet } from '../calendar/hidden';
 import { entryIsVisible, hiddenParams, nothingHidden } from '../calendar/hidden';
-import { CalendarBottomBar } from '../calendar/CalendarBottomBar';
+import { CalendarFloatingActions, FLOAT_CLEARANCE } from '../calendar/CalendarFloatingActions';
 import { CategorySheet } from '../calendar/CategorySheet';
 import { MonthGrid } from '../calendar/MonthGrid';
 import { monthKey, shiftMonth } from '../calendar/monthMath';
+import { useHideOnScroll } from '../calendar/useHideOnScroll';
 import { decodeContent } from '../entries/content';
 import { useStrings } from '../i18n/AppLanguageProvider';
 import { Pressable } from '../theme/press';
@@ -64,6 +65,7 @@ export function MonthScreen({
 }: Props) {
   const strings = useStrings();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { visible: actionsVisible, scrollHandlers } = useHideOnScroll();
   const todayParts = {
     year: today.getFullYear(),
     month: today.getMonth() + 1,
@@ -255,9 +257,13 @@ export function MonthScreen({
         })}
       </ScrollView>
 
-      {/* Scrolls, so a day with many Entries ends above the bar instead of
-          running under it (#50). */}
-      <ScrollView style={styles.panelHolder} contentContainerStyle={styles.panelContent}>
+      {/* Scrolls, so a day with many Entries can clear the floating controls
+          rather than sitting under them (#50). */}
+      <ScrollView
+        style={styles.panelHolder}
+        contentContainerStyle={styles.panelContent}
+        {...scrollHandlers}
+      >
         <DayPanel
           dateLabel={strings.month.dateLabel(visible.month, selectedDay, weekdayOfSelected)}
           entries={panelEntries}
@@ -265,7 +271,8 @@ export function MonthScreen({
         />
       </ScrollView>
 
-      <CalendarBottomBar
+      <CalendarFloatingActions
+        visible={actionsVisible}
         onToday={() =>
           setView({ year: todayParts.year, month: todayParts.month, day: todayParts.day })
         }
@@ -326,6 +333,7 @@ const styles = createStyles((t) => ({
   panelContent: {
     paddingHorizontal: t.spacing.screenGutter,
     paddingTop: t.spacing.panelGap,
+    paddingBottom: FLOAT_CLEARANCE,
   },
   navYear: {
     flexDirection: 'row',

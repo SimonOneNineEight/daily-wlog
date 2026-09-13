@@ -33,12 +33,14 @@ canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 >   navigating: it returns the surface you are on to now, rather than leaving
 >   the year view for today's month.
 >
-> - **Bottom bar** (#50): the month, day and year views gained a pinned bar —
->   今天 left, the surface's status centred, + right. 今天 left the nav bar
->   because it is a destination rather than a tool. The + left its floating
->   circle for the bar's right slot, and the year view has none at all, having
->   no selected day to create into. The year's entry count moved from the end
->   of its scroll into the bar's middle.
+> - **Floating actions** (#50): the month, day and year views carry two
+>   floating controls — 今天 bottom-left as a capsule, + bottom-right as the
+>   ratified black circle. 今天 left the nav bar because it is a destination
+>   rather than a tool. The year view has no +, having no selected day to
+>   create into. Both fade while you scroll and return when you stop.
+>   (Built first as a solid bottom bar and reverted the same day: ban 7 says
+>   depth is shadow and layering, and the bar had displaced the 2026-08-19
+>   floating circle.)
 >
 > The prototype project still shows the pre-round designs; redrawing those
 > artboards there (then re-pulling) is open design debt.
