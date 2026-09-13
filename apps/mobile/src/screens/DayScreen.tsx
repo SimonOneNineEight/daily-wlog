@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, Plus } from 'lucide-react-native';
+import { ChevronLeft, Plus } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -207,7 +207,7 @@ export function DayScreen({
               style={styles.todayButton}
               onPress={() => onChangeDate(localDateString(today))}
             >
-              <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+              <Text style={styles.todayLabel}>{strings.year.today}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -287,10 +287,13 @@ const styles = createStyles((t) => ({
     flex: 1,
   },
   todayButton: {
-    width: t.spacing.hitMin,
     height: t.spacing.hitMin,
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: t.spacing.space2,
+  },
+  todayLabel: {
+    ...t.typography.note,
+    color: t.colors.controlGhostFg,
   },
   muted: {
     ...t.typography.note,

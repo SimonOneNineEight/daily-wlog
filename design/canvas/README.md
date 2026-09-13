@@ -23,6 +23,16 @@ canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 > - **新增/編輯分類 sheet**: the parent list swaps in for its summary row
 >   (accordion); sheet titles center on the sheet, not the button gap.
 >
+> **Also superseded, 2026-09-12** (PM feedback round 2, #40):
+>
+> - **今天**: the word, on the month, day and year views, replacing the
+>   canvas's `iconBtn('calendar', '今天')`. In an app made entirely of
+>   calendars a calendar glyph says "calendar", not "today" — Apple Calendar
+>   and most third-party calendars use the word, and Google's icon only reads
+>   because it carries the date number inside it. The control also stopped
+>   navigating: it returns the surface you are on to now, rather than leaving
+>   the year view for today's month.
+>
 > The prototype project still shows the pre-round designs; redrawing those
 > artboards there (then re-pulling) is open design debt.
 

@@ -1,4 +1,4 @@
-import { CalendarDays, Tags } from 'lucide-react-native';
+import { Tags } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { FlatList, ScrollView, Text, View } from 'react-native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -122,14 +122,16 @@ export function YearScreen({
             </Pressable>
           ) : null}
           {/* 今天 returns this surface to now (#40). It used to leave for
-              today's month view; navigation depth now never changes. */}
+              today's month view; navigation depth now never changes. The
+              word replaces the canvas's calendar glyph (ratified
+              2026-09-12). */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={strings.year.today}
-            style={styles.navButton}
+            style={styles.todayButton}
             onPress={() => setYear(today.getFullYear())}
           >
-            <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            <Text style={styles.todayLabel}>{strings.year.today}</Text>
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.body}>
@@ -221,6 +223,15 @@ const styles = createStyles((t) => ({
     gap: t.spacing.space4,
     height: t.spacing.navBarHeight,
     paddingHorizontal: t.spacing.space4,
+  },
+  todayButton: {
+    height: t.spacing.hitMin,
+    justifyContent: 'center',
+    paddingHorizontal: t.spacing.space2,
+  },
+  todayLabel: {
+    ...t.typography.note,
+    color: t.colors.controlGhostFg,
   },
   navButton: {
     width: t.spacing.hitMin,

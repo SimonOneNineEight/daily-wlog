@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, Plus, Settings, Tags } from 'lucide-react-native';
+import { ChevronLeft, Plus, Settings, Tags } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
@@ -195,16 +195,19 @@ export function MonthScreen({
             so the nav holds just the lens and the utility. */}
         <View style={styles.navActions}>
           {/* 今天 returns this surface to now and never changes navigation
-              depth (#40): the month becomes today's, with today selected. */}
+              depth (#40). The word, not a calendar glyph (ratified
+              2026-09-12, overriding the canvas's iconBtn('calendar')): in an
+              app made of calendars a calendar icon says "calendar", not
+              "today". */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={strings.year.today}
-            style={styles.navButton}
+            style={styles.todayButton}
             onPress={() =>
               setView({ year: todayParts.year, month: todayParts.month, day: todayParts.day })
             }
           >
-            <CalendarDays size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+            <Text style={styles.todayLabel}>{strings.year.today}</Text>
           </Pressable>
           {onChangeHidden ? (
             <Pressable
@@ -325,6 +328,15 @@ const styles = createStyles((t) => ({
   },
   pager: {
     flexGrow: 0,
+  },
+  todayButton: {
+    height: t.spacing.hitMin,
+    justifyContent: 'center',
+    paddingHorizontal: t.spacing.space2,
+  },
+  todayLabel: {
+    ...t.typography.note,
+    color: t.colors.controlGhostFg,
   },
   navButton: {
     width: t.spacing.hitMin,
