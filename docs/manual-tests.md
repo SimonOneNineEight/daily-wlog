@@ -380,6 +380,11 @@ Keyboard cases are in **KB**.
 | CD.19 | A Category wearing the forgotten color | Still wears it — on its editor, on the month view, in the day list **[API]** |
 | CD.20 | Reopen the drawer | The color is still gone; the rest of the row is in the same order **[API]** |
 
+**CD.18–CD.20 need this round's API deployed.** `DELETE /color-recents/{hex}`
+arrives with #47; against an older revision the long-press and its
+confirmation still work (CD.16, CD.17, both client-side) and confirming then
+reports 移除失敗. That is the deployment gap, not the feature.
+
 Round 2: #47 (CD.16–CD.20). Keyboard cases are in **KB**.
 
 ### ST — Settings and account
