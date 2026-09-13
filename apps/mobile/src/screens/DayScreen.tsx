@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Tags } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
@@ -10,6 +10,7 @@ import type { Category, Entry } from '../api/client';
 import { listEntries, reorderDay } from '../api/client';
 import type { HiddenSet } from '../calendar/hidden';
 import { CalendarFloatingActions, useFloatingActions } from '../calendar/CalendarFloatingActions';
+import { CategorySheet } from '../calendar/CategorySheet';
 import { entryIsVisible, nothingHidden } from '../calendar/hidden';
 import { dateHeading } from '../calendar/dateLabel';
 import { localDateString, shiftDay } from '../calendar/monthMath';
@@ -43,6 +44,12 @@ type Props = {
    * while other categories hide.
    */
   hidden?: HiddenSet;
+  /**
+   * Opens the 類別 sheet from this screen's header (#41). The day view reads
+   * Hidden already, so this adds a door, not a new consumer — ADR-0005's
+   * revisit trigger stays untripped. Absent, the button is not drawn.
+   */
+  onChangeHidden?: (hidden: HiddenSet) => void;
 };
 
 // The day view (#7): the date's Entries as cards; long-press drag reorders
@@ -57,6 +64,7 @@ export function DayScreen({
   onEntrySaved,
   onCategoriesChanged,
   hidden = nothingHidden,
+  onChangeHidden,
 }: Props) {
   const strings = useStrings();
   const [entries, setEntries] = useState<Entry[] | null>(null);
@@ -68,6 +76,7 @@ export function DayScreen({
   // list; tapping one reopens the form prefilled, where 儲存 retries.
   const [drafts, setDrafts] = useState<EntryDraft[]>([]);
   const [openDraft, setOpenDraft] = useState<EntryDraft | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const { visible: actionsVisible, scrollHandlers, clearance } = useFloatingActions();
 
   // Bumping refresh reloads the list (after a save/edit/delete).
@@ -204,6 +213,19 @@ export function DayScreen({
                 </Pressable>
               ) : null}
               <Text style={styles.heading}>{heading}</Text>
+              {/* The same 類別 icon the month and year nav bars carry, in the
+                  same place and opening the same sheet: visibility is one
+                  thing to learn (#41, DESIGN.md §9 as amended 2026-09-12). */}
+              {onChangeHidden ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={strings.categories.title}
+                  style={styles.navButton}
+                  onPress={() => setSheetOpen(true)}
+                >
+                  <Tags size={20} color={theme.colors.iconDefault} strokeWidth={2} />
+                </Pressable>
+              ) : null}
             </View>
             {failed ? <Text style={styles.muted}>{strings.day.loadFailed}</Text> : null}
             {reorderFailed ? <Text style={styles.muted}>{strings.day.reorderFailed}</Text> : null}
@@ -250,6 +272,16 @@ export function DayScreen({
             {...(onChangeDate ? { onToday: () => onChangeDate(localDateString(today)) } : {})}
             onAdd={() => setComposing(true)}
           />
+          {sheetOpen && onChangeHidden ? (
+            <CategorySheet
+              accessToken={accessToken}
+              categories={categories}
+              hidden={hidden}
+              onChange={onChangeHidden}
+              onCategoriesChanged={() => onCategoriesChanged?.()}
+              onClose={() => setSheetOpen(false)}
+            />
+          ) : null}
         </View>
       </SafeAreaView>
     </GestureDetector>
@@ -277,6 +309,12 @@ const styles = createStyles((t) => ({
   backButton: {
     width: t.spacing.space9,
     height: t.spacing.space9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navButton: {
+    width: t.spacing.hitMin,
+    height: t.spacing.hitMin,
     alignItems: 'center',
     justifyContent: 'center',
   },

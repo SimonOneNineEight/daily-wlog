@@ -1,7 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
+import { localDateString } from './calendar/monthMath';
+import { encodeContent } from './entries/content';
+import { cat } from './testing/fixtures';
 import { installMockApi, type MockApi } from './testing/mockApi';
 import { AppRoot } from './AppRoot';
 
@@ -144,4 +147,77 @@ it('returns to the year you came from, not the current one (#40 item 10)', async
   await waitFor(() => expect(screen.getByLabelText('選擇年份')).toBeTruthy());
   expect(screen.getByText(`${lastYear}年`)).toBeTruthy();
   expect(screen.queryByText(`${thisYear}年`)).toBeNull();
+});
+
+// Visibility is a property of the Journal, not of a screen (#41 items 12-14).
+// The hidden-set is owned by HomeScreen and every surface reads it, so a hide
+// made from the day view reaching the month and year views is only true end
+// to end: the sheet changes state one route up, and the other two routes are
+// rebuilt from it.
+it('hides a Category from the day view, and the other surfaces agree (#41)', async () => {
+  const today = new Date();
+  const date = localDateString(today);
+  mockAuthState.session = { access_token: 'token-1', user: { id: 'u1' } };
+  api.restore();
+  api = installMockApi({
+    me: {
+      userId: 'u1',
+      journalId: 'j1',
+      categories: [cat.work, { ...cat.sport, position: 2 }, cat.gym],
+    },
+    entries: {
+      [date]: [
+        { id: 'e1', date, position: 1, categoryId: 'c-sport', subcategoryId: 'c-gym', authorId: 'u1', content: encodeContent({ title: '晨跑', note: '' }) },
+        { id: 'e2', date, position: 2, categoryId: 'c-work', authorId: 'u1', content: encodeContent({ title: '寫程式', note: '' }) },
+      ],
+    },
+  });
+  render(<AppRoot />);
+  await screen.findByLabelText('新增紀錄');
+
+  // Month view → day view: today is already the selected day, so its cell
+  // opens rather than reselects.
+  expect(await screen.findByText('晨跑')).toBeTruthy();
+  await act(async () => {
+    fireEvent.press(
+      within(screen.getByTestId('month-page-current')).getByTestId(`day-holder-${today.getDate()}`),
+    );
+  });
+  expect(await screen.findByLabelText('返回')).toBeTruthy();
+  expect(screen.getByText('運動 · 健身房')).toBeTruthy();
+
+  // Hide 運動 from the day view's own sheet — the family master switch takes
+  // 健身房 with it, so the refined Entry goes too.
+  fireEvent.press(screen.getByLabelText('類別'));
+  await act(async () => {
+    fireEvent.press(screen.getByText('運動'));
+  });
+  fireEvent.press(screen.getByText('完成'));
+  expect(screen.queryByText('晨跑')).toBeNull();
+  expect(screen.getByText('寫程式')).toBeTruthy();
+
+  // The month view, without a relaunch: its panel drops the Entry and its
+  // dots are asked for under the new hidden-set.
+  await act(async () => {
+    fireEvent.press(screen.getByLabelText('返回'));
+  });
+  expect(await screen.findByText('寫程式')).toBeTruthy();
+  expect(screen.queryByText('晨跑')).toBeNull();
+  const monthCalls = () =>
+    (globalThis.fetch as jest.Mock).mock.calls.map(([u]) => String(u)).filter((u) => u.includes('/months/'));
+  await waitFor(() => {
+    expect(monthCalls().at(-1)).toContain('hiddenCategories=c-sport&hiddenSubcategories=c-gym');
+  });
+
+  // And the year view, whose filtering is the server's: it has to ask.
+  await act(async () => {
+    fireEvent.press(screen.getByLabelText('年'));
+  });
+  await screen.findByLabelText('選擇年份');
+  const yearCalls = (globalThis.fetch as jest.Mock).mock.calls
+    .map(([u]) => String(u))
+    .filter((u) => u.includes('/years/'));
+  expect(yearCalls.at(-1)).toContain(
+    `/years/${today.getFullYear()}?hiddenCategories=c-sport&hiddenSubcategories=c-gym`,
+  );
 });
