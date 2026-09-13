@@ -56,6 +56,20 @@ canvas re-pulled 2026-09-10 for the new 設定 artboard (#35).
 >   the same day: ban 7 says depth is shadow and layering, and the bar had
 >   displaced the 2026-08-19 floating circle.)
 >
+> - **Icon grid selection** (#46): the chosen glyph's cell fills with the
+>   Category colour, glyph in white, retiring the artboard's
+>   `inset 0 0 0 1.5px var(--text-primary)` ring. Among sixty identical 40pt
+>   cells a hairline says nothing, and the app was faithful to it — the drawn
+>   design is what failed. The treatment is `CategoryIcon`'s — a fill in the
+>   colour, glyph in white — so the picker previews the result rather than
+>   describing it. The cell keeps the grid's own 40pt geometry rather than
+>   mounting that component, so tapping a glyph does not resize it.
+>   A Subcategory's appearance block renders disabled at 0.4 opacity,
+>   which a fill survives and a hairline does not; the fill there is the
+>   parent's colour, since a Subcategory inherits. The colour picker keeps
+>   its ring (CE.9) — selection there is a swatch among swatches, not a
+>   glyph among glyphs.
+>
 > The prototype project still shows the pre-round designs; redrawing those
 > artboards there (then re-pulling) is open design debt.
 

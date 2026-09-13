@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Keyboard } from 'react-native';
 
 import { expectSingleLineField } from '../testing/expectSingleLineField';
+import { theme } from '../theme';
 
 import { CategoryEditorSheet } from './CategoryEditorSheet';
 
@@ -18,6 +19,12 @@ function renderEditor(parentChoices: (typeof sport)[] = []) {
       onCategoriesChanged={jest.fn()}
     />,
   );
+}
+
+/** The color the cell's glyph renders in, as the swatch suite reads its dot. */
+function glyphColorOf(cell: { children: (string | { props?: { color?: string } })[] }) {
+  const glyph = cell.children[0];
+  return typeof glyph === 'string' ? undefined : glyph.props?.color;
 }
 
 describe('parent list accordion', () => {
@@ -64,5 +71,44 @@ describe('single-line fields (#42)', () => {
     renderEditor();
 
     expectSingleLineField('名稱');
+  });
+});
+
+describe('the chosen icon (#46)', () => {
+  it('fills the selected cell with the chosen Category color', () => {
+    renderEditor();
+
+    fireEvent.press(screen.getByLabelText('blue'));
+    fireEvent.press(screen.getByLabelText('bike'));
+
+    expect(screen.getByLabelText('bike')).toHaveStyle({ backgroundColor: '#4A93C4' });
+    expect(glyphColorOf(screen.getByLabelText('bike'))).toBe('#FFFFFF');
+
+    // Every other cell keeps the plain treatment.
+    expect(screen.getByLabelText('dumbbell')).toHaveStyle({
+      backgroundColor: theme.colors.surfaceFill,
+    });
+    expect(glyphColorOf(screen.getByLabelText('dumbbell'))).toBe(theme.colors.iconDefault);
+  });
+
+  it('restyles the selected cell when the color changes, with no re-selection', () => {
+    renderEditor();
+
+    fireEvent.press(screen.getByLabelText('bike'));
+    fireEvent.press(screen.getByLabelText('violet'));
+
+    expect(screen.getByLabelText('bike')).toHaveStyle({ backgroundColor: '#A26FBD' });
+  });
+
+  it("fills the inherited icon in the parent's color while the block is disabled", () => {
+    renderEditor([sport]);
+
+    fireEvent.press(screen.getByText('無'));
+    fireEvent.press(screen.getByText('運動'));
+
+    // A Subcategory inherits 運動's dumbbell and its green, and the dimmed
+    // appearance block still has to say which glyph that is.
+    expect(screen.getByText('子類別沿用上層分類的圖示與顏色。')).toBeTruthy();
+    expect(screen.getByLabelText('dumbbell')).toHaveStyle({ backgroundColor: '#73B062' });
   });
 });
