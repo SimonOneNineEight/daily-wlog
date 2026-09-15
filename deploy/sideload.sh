@@ -40,6 +40,18 @@ xcodebuild -workspace dailywlog.xcworkspace -scheme dailywlog \
   -derivedDataPath build -allowProvisioningUpdates \
   DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic build
 
-xcrun devicectl device install app --device "$DEVICE" \
-  "$MOBILE/ios/build/Build/Products/Release-iphoneos/dailywlog.app"
+# The phone must run without this Mac: the JS has to be inside the app and
+# point at the hosted stack, or it opens blank (or signed out) away from here.
+APP="$MOBILE/ios/build/Build/Products/Release-iphoneos/dailywlog.app"
+BUNDLE="$APP/main.jsbundle"
+if [ ! -f "$BUNDLE" ]; then
+  echo "refusing to install: no embedded JS bundle (not a Release build)"
+  exit 1
+fi
+if ! grep -q tebfjmsmnhfeapbzytxy "$BUNDLE" || grep -q 127.0.0.1:55321 "$BUNDLE"; then
+  echo "refusing to install: bundle does not point at the hosted Supabase (check .env.hosted)"
+  exit 1
+fi
+
+xcrun devicectl device install app --device "$DEVICE" "$APP"
 echo "installed — good for another 7 days"
